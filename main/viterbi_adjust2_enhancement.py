@@ -292,6 +292,7 @@ def save_track_dictionary(dictionary, save_file):
 
 
 
+
 if __name__ == '__main__':
     print("start")
 
@@ -305,7 +306,7 @@ if __name__ == '__main__':
     #celltypes = ['C1'] # enter all tracked celllines
 
     #all tracks shorter than DELTA_TIME are false postives and not included in tracks
-    DELTA_TIME = 5
+    # DELTA_TIME = 5
     result_list = []
 
     segmented_filename_list = listdir(segmentation_folder)
@@ -334,7 +335,7 @@ if __name__ == '__main__':
 
         for framenb in range(1, len(file_list)):
             #get next frame and number of cells next frame
-            img_next = plt.imread(segmentation_folder +'/' + file_list[framenb])
+            img_next = plt.imread(segmentation_folder + '/' + file_list[framenb])
             img_list.append(img_next)
             label_img_next = measure.label(img_next, background=0, connectivity=1)
             label_img_list.append(label_img_next)
@@ -350,10 +351,10 @@ if __name__ == '__main__':
                 cell_i_filename = "mother_" + file_list[framenb][:-4] + "_Cell" + str(cellnb_i + 1).zfill(2) + ".png"
                 cell_i = plt.imread(output_folder + series + '/' + cell_i_filename)
                 #predictions are for each cell in curr img
-                cell_i_props = measure.regionprops(label_img_next,intensity_image=cell_i) #label_img_next是二值图像为255，无intensity。需要与output中的预测的细胞一一对应，预测细胞有intensity
+                cell_i_props = measure.regionprops(label_img_next, intensity_image=cell_i) #label_img_next是二值图像为255，无intensity。需要与output中的预测的细胞一一对应，预测细胞有intensity
                 for cellnb_j in range(cellnb_img_next):
                     #calculate profit score from mean intensity neural network output in segmented cell area
-                    prof_mat[cellnb_i,cellnb_j] = cell_i_props[cellnb_j].mean_intensity         #得到填充矩阵size = max(cellnb_img, cellnb_img_next)：先用预测的每一个细胞的mean_intensity填满cellnb_img, cellnb_img_next行和列
+                    prof_mat[cellnb_i, cellnb_j] = cell_i_props[cellnb_j].mean_intensity         #得到填充矩阵size = max(cellnb_img, cellnb_img_next)：先用预测的每一个细胞的mean_intensity填满cellnb_img, cellnb_img_next行和列
 
             #prof_mat = prof_mat/np.max(prof_mat)    #np.max 矩阵中的最大数值 归一化
             prof_mat = prof_mat
@@ -367,6 +368,7 @@ if __name__ == '__main__':
         #prof_mat_list3 = prof_mat_list[0:4]
         all_tracks = _iteration(prof_mat_list)
 
+
         result_list = []
         for i in range(len(all_tracks)):
             if i not in all_tracks.keys():
@@ -374,6 +376,7 @@ if __name__ == '__main__':
             else:
                 if (len(all_tracks[i]) > 5):
                     result_list.append(all_tracks[i])
+
         #print(result)
         for j in range(len(result_list) - 1):
             for k in range(j + 1, len(result_list)):
@@ -382,6 +385,7 @@ if __name__ == '__main__':
                 overlap_track_list = sorted(set([i[0:2] for i in pre_track_list]) & set([i[0:2] for i in next_track_list]), key = lambda x : (x[1], x[0]))
                 if overlap_track_list == []:
                     continue
+
                 overlap_frame1_list =  overlap_track_list[0][1]
                 node_combine_list = overlap_track_list[0][0]
                 pre_frame = overlap_frame1_list - 1
@@ -391,6 +395,7 @@ if __name__ == '__main__':
                         break
                     else:
                         continue
+
                 node_merge1 = pre_track_list[index_merge1][0]
                 for ii, tuples in enumerate(next_track_list):
                     if tuples[1] == pre_frame:
@@ -398,23 +403,26 @@ if __name__ == '__main__':
                         break
                     else:
                         continue
+
                 node_merge2 = next_track_list[index_merge2][0]
                 sub_matrix = prof_mat_list[pre_frame]
-                threSh1 = sub_matrix[node_merge1][node_combine_list]
-                threSh2 = sub_matrix[node_merge2][node_combine_list]
-                if threSh1 < threSh2:
+                thre_sh1 = sub_matrix[node_merge1][node_combine_list]
+                thre_sh2 = sub_matrix[node_merge2][node_combine_list]
+                if thre_sh1 < thre_sh2:
                     result_list[k] = next_track_list
-                    pre_track_new = copy.deepcopy(pre_track_list[0:index_merge1 + 1])
+                    pre_track_new = copy.deepcopy(pre_track_list[0: index_merge1 + 1])
                     result_list[j] = pre_track_new
                 else:
                     result_list[j] = pre_track_list
-                    next_track_new = copy.deepcopy(next_track_list[0:index_merge2 + 1])
+                    next_track_new = copy.deepcopy(next_track_list[0: index_merge2 + 1])
                     result_list[k] = next_track_new
+
         #print(result)
         final_result_list = []
         for i in range(len(result_list)):
-            if (len(result_list[i])>5):
+            if ( len(result_list[i]) > 5 ):
                 final_result_list.append(result_list[i])
+
         identifier = series
         viterbi_result_dict[identifier] = final_result_list
 
