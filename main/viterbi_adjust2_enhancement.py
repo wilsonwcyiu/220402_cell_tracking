@@ -295,46 +295,46 @@ def save_track_dictionary(dictionary, save_file):
 if __name__ == '__main__':
     print("start")
 
-    viterbi_results_dict = {
+    viterbi_result_dict = {
         "S01": [], "S02": [], "S03": [], "S04": [], "S05": [], "S06": [], "S07": [], "S08": [], "S09": [], "S10": [],
         "S11": [], "S12": [], "S13": [], "S14": [], "S15": [], "S16": [], "S17": [], "S18": [], "S19": [], "S20": []
     }
 
-    series = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
-              'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
+    series_list = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
+                    'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
     #celltypes = ['C1'] # enter all tracked celllines
 
     #all tracks shorter than DELTA_TIME are false postives and not included in tracks
     DELTA_TIME = 5
-    result = []
+    result_list = []
 
-    segmented_files = listdir(segmentation_folder)
-    segmented_files.sort()
-    for serie in series:
+    segmented_filename_list = listdir(segmentation_folder)
+    segmented_filename_list.sort()
+    for series in series_list:
         #if data is not complete
-        if not serie in listdir(output_folder):
+        if not series in listdir(output_folder):
             continue
-        print(serie)
-        filelist = []
+        print(series)
+        file_list = []
         img_list = []
         label_img_list = []
         #select all files of the current images series and celltype
-        for filename in segmented_files:
-            if serie in filename:
-                filelist = filelist + [filename]
+        for filename in segmented_filename_list:
+            if series in filename:
+                file_list = file_list + [filename]
 
-        C = []
+        C_list = []
         prof_mat_list = []
         #get the first image (frame 0) and label the cells:
-        img = plt.imread(segmentation_folder + filelist[0])
+        img = plt.imread(segmentation_folder + file_list[0])
         img_list.append(img)
         label_img = measure.label(img, background=0, connectivity=1)
         label_img_list.append(label_img)
         cellnb_img = np.max(label_img)
 
-        for framenb in range(1,len(filelist)):
+        for framenb in range(1, len(file_list)):
             #get next frame and number of cells next frame
-            img_next = plt.imread(segmentation_folder +'/' + filelist[framenb])
+            img_next = plt.imread(segmentation_folder +'/' + file_list[framenb])
             img_list.append(img_next)
             label_img_next = measure.label(img_next, background=0, connectivity=1)
             label_img_list.append(label_img_next)
@@ -347,8 +347,8 @@ if __name__ == '__main__':
             #loop through all combinations of cells in this and the next frame
             for cellnb_i in range(cellnb_img):
                 #cellnb i + 1 because cellnumbering in output files starts from 1
-                cell_i_filename = "mother_" + filelist[framenb][:-4] + "_Cell" + str(cellnb_i+1).zfill(2) + ".png"
-                cell_i = plt.imread(output_folder + serie +'/' + cell_i_filename)
+                cell_i_filename = "mother_" + file_list[framenb][:-4] + "_Cell" + str(cellnb_i + 1).zfill(2) + ".png"
+                cell_i = plt.imread(output_folder + series + '/' + cell_i_filename)
                 #predictions are for each cell in curr img
                 cell_i_props = measure.regionprops(label_img_next,intensity_image=cell_i) #label_img_next是二值图像为255，无intensity。需要与output中的预测的细胞一一对应，预测细胞有intensity
                 for cellnb_j in range(cellnb_img_next):
@@ -367,60 +367,60 @@ if __name__ == '__main__':
         #prof_mat_list3 = prof_mat_list[0:4]
         all_tracks = _iteration(prof_mat_list)
 
-        result = []
+        result_list = []
         for i in range(len(all_tracks)):
             if i not in all_tracks.keys():
                 continue
             else:
-                if (len(all_tracks[i])>5):
-                    result.append(all_tracks[i])
+                if (len(all_tracks[i]) > 5):
+                    result_list.append(all_tracks[i])
         #print(result)
-        for j in range(len(result)-1):
-            for k in range(j + 1, len(result)):
-                pre_track = result[j]
-                next_track = result[k]
-                overlap_track = sorted(set([i[0:2] for i in pre_track]) & set([i[0:2] for i in next_track]), key = lambda x : (x[1], x[0]))
-                if overlap_track == []:
+        for j in range(len(result_list) - 1):
+            for k in range(j + 1, len(result_list)):
+                pre_track_list = result_list[j]
+                next_track_list = result_list[k]
+                overlap_track_list = sorted(set([i[0:2] for i in pre_track_list]) & set([i[0:2] for i in next_track_list]), key = lambda x : (x[1], x[0]))
+                if overlap_track_list == []:
                     continue
-                overlap_frame1 =  overlap_track[0][1]
-                node_combine = overlap_track[0][0]
-                pre_frame = overlap_frame1 - 1
-                for i, tuples in enumerate(pre_track):
-                    if tuples[1]==pre_frame:
+                overlap_frame1_list =  overlap_track_list[0][1]
+                node_combine_list = overlap_track_list[0][0]
+                pre_frame = overlap_frame1_list - 1
+                for i, tuples in enumerate(pre_track_list):
+                    if tuples[1] == pre_frame:
                         index_merge1 = i
                         break
                     else:
                         continue
-                node_merge1 = pre_track[index_merge1][0]
-                for ii, tuples in enumerate(next_track):
-                    if tuples[1]==pre_frame:
+                node_merge1 = pre_track_list[index_merge1][0]
+                for ii, tuples in enumerate(next_track_list):
+                    if tuples[1] == pre_frame:
                         index_merge2 = ii
                         break
                     else:
                         continue
-                node_merge2 = next_track[index_merge2][0]
+                node_merge2 = next_track_list[index_merge2][0]
                 sub_matrix = prof_mat_list[pre_frame]
-                threSh1 = sub_matrix[node_merge1][node_combine]
-                threSh2 = sub_matrix[node_merge2][node_combine]
+                threSh1 = sub_matrix[node_merge1][node_combine_list]
+                threSh2 = sub_matrix[node_merge2][node_combine_list]
                 if threSh1 < threSh2:
-                    result[k] = next_track
-                    pre_track_new = copy.deepcopy(pre_track[0:index_merge1 + 1])
-                    result[j] = pre_track_new
+                    result_list[k] = next_track_list
+                    pre_track_new = copy.deepcopy(pre_track_list[0:index_merge1 + 1])
+                    result_list[j] = pre_track_new
                 else:
-                    result[j] = pre_track
-                    next_track_new = copy.deepcopy(next_track[0:index_merge2 + 1])
-                    result[k] = next_track_new
+                    result_list[j] = pre_track_list
+                    next_track_new = copy.deepcopy(next_track_list[0:index_merge2 + 1])
+                    result_list[k] = next_track_new
         #print(result)
-        final_result = []
-        for i in range(len(result)):
-            if (len(result[i])>5):
-                final_result.append(result[i])
-        identifier = serie
-        viterbi_results_dict[identifier] = final_result
+        final_result_list = []
+        for i in range(len(result_list)):
+            if (len(result_list[i])>5):
+                final_result_list.append(result_list[i])
+        identifier = series
+        viterbi_result_dict[identifier] = final_result_list
 
 
     print("save_track_dictionary")
-    save_track_dictionary(viterbi_results_dict, save_dir + "viterbi_results_dict.pkl")
+    save_track_dictionary(viterbi_result_dict, save_dir + "viterbi_results_dict.pkl")
 
 
     execution_time = time.perf_counter() - start_time
