@@ -27,11 +27,15 @@ import time
 start_time = time.perf_counter()
 
 
+folder_path: str = 'D:/viterbi linkage/dataset/'
 
 
-segmentation_folder = 'D://viterbi linkage//dataset//segmentation_unet_seg//'
-images_folder = 'D://viterbi linkage//dataset//images//'
-output_folder = 'D://viterbi linkage//dataset//output_unet_seg_finetune//'
+segmentation_folder = folder_path + 'segmentation_unet_seg//'
+images_folder = folder_path + 'dataset//images//'
+output_folder = folder_path + 'output_unet_seg_finetune//'
+save_dir = folder_path + 'save_directory_enhancement//'
+
+
 
 
 #find the best track start from first frame based on dict which returned from _process
@@ -63,6 +67,9 @@ def _find(start_list_index, start_list_value):
         values = list.reverse(values)
     
     return store_dict
+
+
+
 #find the best track start from current frame, and current node based on dict which returned from _process_iter
 def _find_iter(start_list_index, start_list_value, start_frame, node):
     global previous_maximize_index_1
@@ -96,6 +103,8 @@ def _find_iter(start_list_index, start_list_value, start_frame, node):
     
     return store_dict
 
+
+
 # after got tracks which started from first frame, check if there are very lower prob between each two cells, then truncate it.
 def _cut(longTracks, Threshold, transition_group):
     short_Tracks = {} 
@@ -126,6 +135,9 @@ def _cut(longTracks, Threshold, transition_group):
             short_tracks.append(longTracks[key][len(short_tracks)])
             short_Tracks[key] = short_tracks       
     return short_Tracks
+
+
+
 # truncate the long tracks 
 def _cut_iter(longTracks, Threshold, transition_group, start_frame):
     short_Tracks = {}
@@ -158,6 +170,9 @@ def _cut_iter(longTracks, Threshold, transition_group, start_frame):
             short_tracks.append(longTracks[key][len(short_tracks)])
             short_Tracks[key] = short_tracks       
     return short_Tracks
+
+
+
 #after got all tracks start from first frame, define a mask matrix. all the nodes which are passed by any tracks are labels as True
 def _mask(short_Tracks, transition_group):
     mask_transition_group = []
@@ -173,6 +188,9 @@ def _mask(short_Tracks, transition_group):
             mask_transition_group[frame][node] = True
     
     return mask_transition_group
+
+
+
 #update the mask matrix based on each track obtained in iteration
 def _mask_update(short_Tracks, mask_transition_group):
     # if the node was passed, lable it to True
@@ -183,6 +201,9 @@ def _mask_update(short_Tracks, mask_transition_group):
             mask_transition_group[frame][node] = True
     
     return mask_transition_group
+
+
+
 #start from first frame and loop the unvisited nodes in the other frames
 def _iteration(transition_group):
     all_tracks = {}
@@ -214,6 +235,8 @@ def _iteration(transition_group):
             length = len(all_tracks)
     return all_tracks
 
+
+
 #loop each node on first frame to find the optimal path using probabilty multiply
 def _process(transition_group):
     step = len(transition_group)
@@ -233,6 +256,9 @@ def _process(transition_group):
             start_list_value[ii].append(value_ab)
             item = value_ab
     return start_list_index, start_list_value
+
+
+
 #loop each node on the other frames which is not passed by the tracks we've got.
 def _process_iter(transition_group):
     step = len(transition_group)
@@ -254,148 +280,7 @@ def _process_iter(transition_group):
     return start_list_index, start_list_value
 
 
-viterbi_results_dict = {   
 
-    "S01": [],    
-    "S02": [],
-    "S03": [],    
-    "S04": [],
-    "S05": [],    
-    "S06": [],
-    "S07": [],    
-    "S08": [],
-    "S09": [],    
-    "S10": [],
-    "S11": [],    
-    "S12": [],
-    "S13": [],    
-    "S14": [],
-    "S15": [],    
-    "S16": [],
-    "S17": [],    
-    "S18": [],
-    "S19": [],    
-    "S20": [],
-      
-}
-
-series = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10', 'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
-#celltypes = ['C1'] # enter all tracked celllines
-
-#all tracks shorter than DELTA_TIME are false postives and not included in tracks
-DELTA_TIME = 5 
-result = []
-
-segmented_files = listdir(segmentation_folder)
-segmented_files.sort()
-for serie in series:
-    #if data is not complete
-    if not serie in listdir(output_folder):
-        continue 
-    print(serie)
-    filelist = []
-    img_list = []
-    label_img_list = []
-    #select all files of the current images series and celltype
-    for filename in segmented_files:
-        if serie in filename:
-            filelist = filelist + [filename]
-
-    C = []
-    prof_mat_list = []
-    #get the first image (frame 0) and label the cells:
-    img = plt.imread(segmentation_folder + filelist[0])
-    img_list.append(img)
-    label_img = measure.label(img, background=0, connectivity=1)
-    label_img_list.append(label_img)
-    cellnb_img = np.max(label_img)
-        
-    for framenb in range(1,len(filelist)):
-        #get next frame and number of cells next frame
-        img_next = plt.imread(segmentation_folder +'/' + filelist[framenb])
-        img_list.append(img_next)
-        label_img_next = measure.label(img_next, background=0, connectivity=1)
-        label_img_list.append(label_img_next)
-        cellnb_img_next = np.max(label_img_next)
-
-        #prof_size = max(cellnb_img, cellnb_img_next)
-        #create empty dataframe for element of profit matrix C
-        prof_mat = np.zeros((cellnb_img, cellnb_img_next), dtype=float)
-
-        #loop through all combinations of cells in this and the next frame
-        for cellnb_i in range(cellnb_img):
-            #cellnb i + 1 because cellnumbering in output files starts from 1
-            cell_i_filename = "mother_" + filelist[framenb][:-4] + "_Cell" + str(cellnb_i+1).zfill(2) + ".png"
-            cell_i = plt.imread(output_folder + serie +'/' + cell_i_filename)
-            #predictions are for each cell in curr img
-            cell_i_props = measure.regionprops(label_img_next,intensity_image=cell_i) #label_img_next是二值图像为255，无intensity。需要与output中的预测的细胞一一对应，预测细胞有intensity
-            for cellnb_j in range(cellnb_img_next):
-                #calculate profit score from mean intensity neural network output in segmented cell area
-                prof_mat[cellnb_i,cellnb_j] = cell_i_props[cellnb_j].mean_intensity         #得到填充矩阵size = max(cellnb_img, cellnb_img_next)：先用预测的每一个细胞的mean_intensity填满cellnb_img, cellnb_img_next行和列
-
-        #prof_mat = prof_mat/np.max(prof_mat)    #np.max 矩阵中的最大数值 归一化
-        prof_mat = prof_mat
-        prof_mat_list.append(prof_mat)
-
-        #make next frame current frame
-        cellnb_img = cellnb_img_next
-        label_img = label_img_next
-    #print(len(C))
-    #result = tracking(C, prof_mat_list, DELTA_TIME)
-    #prof_mat_list3 = prof_mat_list[0:4]
-    all_tracks = _iteration(prof_mat_list)
-
-    result = []    
-    for i in range(len(all_tracks)):
-        if i not in all_tracks.keys():
-            continue
-        else:
-            if (len(all_tracks[i])>5):
-                result.append(all_tracks[i])
-    #print(result)
-    for j in range(len(result)-1):
-        for k in range(j + 1, len(result)):
-            pre_track = result[j]
-            next_track = result[k]
-            overlap_track = sorted(set([i[0:2] for i in pre_track]) & set([i[0:2] for i in next_track]), key = lambda x : (x[1], x[0]))
-            if overlap_track == []:
-                continue
-            overlap_frame1 =  overlap_track[0][1]
-            node_combine = overlap_track[0][0]
-            pre_frame = overlap_frame1 - 1
-            for i, tuples in enumerate(pre_track):
-                if tuples[1]==pre_frame:
-                    index_merge1 = i
-                    break
-                else:
-                    continue
-            node_merge1 = pre_track[index_merge1][0]
-            for ii, tuples in enumerate(next_track):
-                if tuples[1]==pre_frame:
-                    index_merge2 = ii
-                    break
-                else:
-                    continue
-            node_merge2 = next_track[index_merge2][0]
-            sub_matrix = prof_mat_list[pre_frame]
-            threSh1 = sub_matrix[node_merge1][node_combine]
-            threSh2 = sub_matrix[node_merge2][node_combine]
-            if threSh1 < threSh2:
-                result[k] = next_track
-                pre_track_new = copy.deepcopy(pre_track[0:index_merge1 + 1])
-                result[j] = pre_track_new
-            else:
-                result[j] = pre_track
-                next_track_new = copy.deepcopy(next_track[0:index_merge2 + 1])
-                result[k] = next_track_new
-    #print(result)
-    final_result = []    
-    for i in range(len(result)):
-        if (len(result[i])>5):
-            final_result.append(result[i])    
-    identifier = serie
-    viterbi_results_dict[identifier] = final_result      
-            
 '''save track dictionary'''
 def save_track_dictionary(dictionary, save_file):
     if not os.path.exists(save_file):
@@ -403,13 +288,140 @@ def save_track_dictionary(dictionary, save_file):
             pass
     pickle_out = open(save_file,"wb")
     pickle.dump(dictionary,pickle_out)
-    pickle_out.close()    
-save_dir ='D://viterbi linkage//dataset//save_directory//'
-print(save_dir)
-save_track_dictionary(viterbi_results_dict, save_dir + "viterbi_results_dict.pkl")
+    pickle_out.close()
 
 
 
+if __name__ == '__main__':
+    print("start")
 
-execution_time = time.perf_counter() - start_time
-print(f"Execution time: {execution_time: 0.4f} seconds")
+    viterbi_results_dict = {
+        "S01": [], "S02": [], "S03": [], "S04": [], "S05": [], "S06": [], "S07": [], "S08": [], "S09": [], "S10": [],
+        "S11": [], "S12": [], "S13": [], "S14": [], "S15": [], "S16": [], "S17": [], "S18": [], "S19": [], "S20": []
+    }
+
+    series = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
+              'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
+    #celltypes = ['C1'] # enter all tracked celllines
+
+    #all tracks shorter than DELTA_TIME are false postives and not included in tracks
+    DELTA_TIME = 5
+    result = []
+
+    segmented_files = listdir(segmentation_folder)
+    segmented_files.sort()
+    for serie in series:
+        #if data is not complete
+        if not serie in listdir(output_folder):
+            continue
+        print(serie)
+        filelist = []
+        img_list = []
+        label_img_list = []
+        #select all files of the current images series and celltype
+        for filename in segmented_files:
+            if serie in filename:
+                filelist = filelist + [filename]
+
+        C = []
+        prof_mat_list = []
+        #get the first image (frame 0) and label the cells:
+        img = plt.imread(segmentation_folder + filelist[0])
+        img_list.append(img)
+        label_img = measure.label(img, background=0, connectivity=1)
+        label_img_list.append(label_img)
+        cellnb_img = np.max(label_img)
+
+        for framenb in range(1,len(filelist)):
+            #get next frame and number of cells next frame
+            img_next = plt.imread(segmentation_folder +'/' + filelist[framenb])
+            img_list.append(img_next)
+            label_img_next = measure.label(img_next, background=0, connectivity=1)
+            label_img_list.append(label_img_next)
+            cellnb_img_next = np.max(label_img_next)
+
+            #prof_size = max(cellnb_img, cellnb_img_next)
+            #create empty dataframe for element of profit matrix C
+            prof_mat = np.zeros((cellnb_img, cellnb_img_next), dtype=float)
+
+            #loop through all combinations of cells in this and the next frame
+            for cellnb_i in range(cellnb_img):
+                #cellnb i + 1 because cellnumbering in output files starts from 1
+                cell_i_filename = "mother_" + filelist[framenb][:-4] + "_Cell" + str(cellnb_i+1).zfill(2) + ".png"
+                cell_i = plt.imread(output_folder + serie +'/' + cell_i_filename)
+                #predictions are for each cell in curr img
+                cell_i_props = measure.regionprops(label_img_next,intensity_image=cell_i) #label_img_next是二值图像为255，无intensity。需要与output中的预测的细胞一一对应，预测细胞有intensity
+                for cellnb_j in range(cellnb_img_next):
+                    #calculate profit score from mean intensity neural network output in segmented cell area
+                    prof_mat[cellnb_i,cellnb_j] = cell_i_props[cellnb_j].mean_intensity         #得到填充矩阵size = max(cellnb_img, cellnb_img_next)：先用预测的每一个细胞的mean_intensity填满cellnb_img, cellnb_img_next行和列
+
+            #prof_mat = prof_mat/np.max(prof_mat)    #np.max 矩阵中的最大数值 归一化
+            prof_mat = prof_mat
+            prof_mat_list.append(prof_mat)
+
+            #make next frame current frame
+            cellnb_img = cellnb_img_next
+            label_img = label_img_next
+        #print(len(C))
+        #result = tracking(C, prof_mat_list, DELTA_TIME)
+        #prof_mat_list3 = prof_mat_list[0:4]
+        all_tracks = _iteration(prof_mat_list)
+
+        result = []
+        for i in range(len(all_tracks)):
+            if i not in all_tracks.keys():
+                continue
+            else:
+                if (len(all_tracks[i])>5):
+                    result.append(all_tracks[i])
+        #print(result)
+        for j in range(len(result)-1):
+            for k in range(j + 1, len(result)):
+                pre_track = result[j]
+                next_track = result[k]
+                overlap_track = sorted(set([i[0:2] for i in pre_track]) & set([i[0:2] for i in next_track]), key = lambda x : (x[1], x[0]))
+                if overlap_track == []:
+                    continue
+                overlap_frame1 =  overlap_track[0][1]
+                node_combine = overlap_track[0][0]
+                pre_frame = overlap_frame1 - 1
+                for i, tuples in enumerate(pre_track):
+                    if tuples[1]==pre_frame:
+                        index_merge1 = i
+                        break
+                    else:
+                        continue
+                node_merge1 = pre_track[index_merge1][0]
+                for ii, tuples in enumerate(next_track):
+                    if tuples[1]==pre_frame:
+                        index_merge2 = ii
+                        break
+                    else:
+                        continue
+                node_merge2 = next_track[index_merge2][0]
+                sub_matrix = prof_mat_list[pre_frame]
+                threSh1 = sub_matrix[node_merge1][node_combine]
+                threSh2 = sub_matrix[node_merge2][node_combine]
+                if threSh1 < threSh2:
+                    result[k] = next_track
+                    pre_track_new = copy.deepcopy(pre_track[0:index_merge1 + 1])
+                    result[j] = pre_track_new
+                else:
+                    result[j] = pre_track
+                    next_track_new = copy.deepcopy(next_track[0:index_merge2 + 1])
+                    result[k] = next_track_new
+        #print(result)
+        final_result = []
+        for i in range(len(result)):
+            if (len(result[i])>5):
+                final_result.append(result[i])
+        identifier = serie
+        viterbi_results_dict[identifier] = final_result
+
+
+    print("save_track_dictionary")
+    save_track_dictionary(viterbi_results_dict, save_dir + "viterbi_results_dict.pkl")
+
+
+    execution_time = time.perf_counter() - start_time
+    print(f"Execution time: {execution_time: 0.4f} seconds")
