@@ -194,7 +194,7 @@ def _mask_update(short_Tracks, mask_transition_group):
 
 
 #start from first frame and loop the unvisited nodes in the other frames
-def _iteration(transition_group):
+def _iteration(transition_group: list):
     all_track_dict = {}
     start_list_index, start_list_value = _process(transition_group)
     store_dict = _find(start_list_index, start_list_value)
@@ -228,7 +228,7 @@ def _iteration(transition_group):
 
 
 #loop each node on first frame to find the optimal path using probabilty multiply
-def _process(transition_group):
+def _process(transition_group: list):
     step = len(transition_group)
     start_list_index = defaultdict(list)
     start_list_value = defaultdict(list)
@@ -381,9 +381,8 @@ if __name__ == '__main__':
     print("start")
     start_time = time.perf_counter()
 
-    input_series_list = ['S01']
-        # , 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
-        #                  'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
+    input_series_list = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
+                         'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
 
 
     #all tracks shorter than DELTA_TIME are false postives and not included in tracks
@@ -394,18 +393,19 @@ if __name__ == '__main__':
 
     existing_series_list = find_existing_series_list(input_series_list, listdir(output_folder))
 
+
     viterbi_result_dict = {}
     for input_series in input_series_list:
         viterbi_result_dict[input_series] = []
+
 
     all_prof_mat_list_dict: dict = {}
     for series in existing_series_list:
         print(f"working on series: {series}")
 
-        segmented_filename_list = find_segmented_filename_list_by_series(series, all_segmented_filename_list)
+        segmented_filename_list: list = find_segmented_filename_list_by_series(series, all_segmented_filename_list)
 
-        tmp_prof_mat_list = derive_prof_matrix_list(segmentation_folder, output_folder, series, segmented_filename_list)
-        print("==", len(tmp_prof_mat_list))
+        tmp_prof_mat_list: list = derive_prof_matrix_list(segmentation_folder, output_folder, series, segmented_filename_list)
 
         all_prof_mat_list_dict[series] = tmp_prof_mat_list
 
@@ -414,7 +414,6 @@ if __name__ == '__main__':
     if is_create_excel:
         excel_output_dir_path = "d:/tmp/"
         create_prof_matrix_excel(all_prof_mat_list_dict, excel_output_dir_path)
-
 
 
     for series in existing_series_list:
