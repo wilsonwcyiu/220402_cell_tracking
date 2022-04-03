@@ -378,8 +378,6 @@ if __name__ == '__main__':
                     #calculate profit score from mean intensity neural network output in segmented cell area
                     prof_mat[cellnb_i, cellnb_j] = cell_i_props[cellnb_j].mean_intensity         #得到填充矩阵size = max(cellnb_img, cellnb_img_next)：先用预测的每一个细胞的mean_intensity填满cellnb_img, cellnb_img_next行和列
 
-            #prof_mat = prof_mat/np.max(prof_mat)    #np.max 矩阵中的最大数值 归一化
-            prof_mat = prof_mat
             prof_mat_list.append(prof_mat)
 
             #make next frame current frame
