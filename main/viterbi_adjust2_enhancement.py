@@ -292,17 +292,39 @@ def save_track_dictionary(dictionary, save_file):
 
 
 
+def find_existing_series_list(input_series_list: list, series_dir_list: list):
+    existing_series_list:list = []
+    for input_series in input_series_list:
+        if input_series in series_dir_list:
+            existing_series_list.append(input_series)
+
+    return existing_series_list;
+
+
+def find_segmented_filename_list_by_series(series: str, segmented_filename_list: list):
+    result_segmented_filename_list: list = []
+
+    for segmented_filename in segmented_filename_list:
+        if series in segmented_filename:
+            result_segmented_filename_list.append(segmented_filename)
+
+    return result_segmented_filename_list
+
+
+
 
 if __name__ == '__main__':
     print("start")
 
-    viterbi_result_dict = {
-        "S01": [], "S02": [], "S03": [], "S04": [], "S05": [], "S06": [], "S07": [], "S08": [], "S09": [], "S10": [],
-        "S11": [], "S12": [], "S13": [], "S14": [], "S15": [], "S16": [], "S17": [], "S18": [], "S19": [], "S20": []
-    }
+    # viterbi_result_dict = {
+    #     "S01": [], "S02": [], "S03": [], "S04": [], "S05": [], "S06": [], "S07": [], "S08": [], "S09": [], "S10": [],
+    #     "S11": [], "S12": [], "S13": [], "S14": [], "S15": [], "S16": [], "S17": [], "S18": [], "S19": [], "S20": []
+    # }
 
-    series_list = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
-                    'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
+    input_series_list = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
+                         'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
+
+
     #celltypes = ['C1'] # enter all tracked celllines
 
     #all tracks shorter than DELTA_TIME are false postives and not included in tracks
@@ -311,39 +333,39 @@ if __name__ == '__main__':
 
     segmented_filename_list = listdir(segmentation_folder)
     segmented_filename_list.sort()
-    for series in series_list:
-        #if data is not complete
-        if not series in listdir(output_folder):
-            continue
-        print(series)
-        file_list = []
-        img_list = []
-        label_img_list = []
-        #select all files of the current images series and celltype
-        for filename in segmented_filename_list:
-            if series in filename:
-                file_list = file_list + [filename]
 
-        C_list = []
+    existing_series_list = find_existing_series_list(input_series_list, listdir(output_folder))
+
+    viterbi_result_dict = {}
+    for input_series in input_series_list:
+        viterbi_result_dict[input_series] = []
+
+    for series in existing_series_list:
+        print(f"working on series: {series}")
+
+        file_list = find_segmented_filename_list_by_series(series, segmented_filename_list)
+
+
+        img_list = []
         prof_mat_list = []
+
         #get the first image (frame 0) and label the cells:
         img = plt.imread(segmentation_folder + file_list[0])
         img_list.append(img)
+
         label_img = measure.label(img, background=0, connectivity=1)
-        label_img_list.append(label_img)
         cellnb_img = np.max(label_img)
 
         for framenb in range(1, len(file_list)):
             #get next frame and number of cells next frame
             img_next = plt.imread(segmentation_folder + '/' + file_list[framenb])
             img_list.append(img_next)
+
             label_img_next = measure.label(img_next, background=0, connectivity=1)
-            label_img_list.append(label_img_next)
             cellnb_img_next = np.max(label_img_next)
 
-            #prof_size = max(cellnb_img, cellnb_img_next)
             #create empty dataframe for element of profit matrix C
-            prof_mat = np.zeros((cellnb_img, cellnb_img_next), dtype=float)
+            prof_mat = np.zeros( (cellnb_img, cellnb_img_next), dtype=float)
 
             #loop through all combinations of cells in this and the next frame
             for cellnb_i in range(cellnb_img):
@@ -363,9 +385,7 @@ if __name__ == '__main__':
             #make next frame current frame
             cellnb_img = cellnb_img_next
             label_img = label_img_next
-        #print(len(C))
-        #result = tracking(C, prof_mat_list, DELTA_TIME)
-        #prof_mat_list3 = prof_mat_list[0:4]
+
         all_tracks = _iteration(prof_mat_list)
 
 
@@ -376,6 +396,10 @@ if __name__ == '__main__':
             else:
                 if (len(all_tracks[i]) > 5):
                     result_list.append(all_tracks[i])
+
+
+
+
 
         #print(result)
         for j in range(len(result_list) - 1):
