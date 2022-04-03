@@ -414,9 +414,6 @@ if __name__ == '__main__':
     if is_create_excel:
         excel_output_dir_path = "d:/tmp/"
         create_prof_matrix_excel(all_prof_mat_list_dict, excel_output_dir_path)
-        exit()
-
-
 
 
 
