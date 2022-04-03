@@ -24,17 +24,6 @@ from collections import defaultdict
 
 import time
 
-start_time = time.perf_counter()
-
-
-folder_path: str = 'D:/viterbi linkage/dataset/'
-
-
-segmentation_folder = folder_path + 'segmentation_unet_seg//'
-images_folder = folder_path + 'dataset//images//'
-output_folder = folder_path + 'output_unet_seg_finetune//'
-save_dir = folder_path + 'save_directory_enhancement//'
-
 
 
 
@@ -301,6 +290,7 @@ def find_existing_series_list(input_series_list: list, series_dir_list: list):
     return existing_series_list;
 
 
+
 def find_segmented_filename_list_by_series(series: str, segmented_filename_list: list):
     result_segmented_filename_list: list = []
 
@@ -314,7 +304,16 @@ def find_segmented_filename_list_by_series(series: str, segmented_filename_list:
 
 
 if __name__ == '__main__':
+    folder_path: str = 'D:/viterbi linkage/dataset/'
+
+    segmentation_folder = folder_path + 'segmentation_unet_seg//'
+    images_folder = folder_path + 'dataset//images//'
+    output_folder = folder_path + 'output_unet_seg_finetune//'
+    save_dir = folder_path + 'save_directory_enhancement//'
+
+
     print("start")
+    start_time = time.perf_counter()
 
     # viterbi_result_dict = {
     #     "S01": [], "S02": [], "S03": [], "S04": [], "S05": [], "S06": [], "S07": [], "S08": [], "S09": [], "S10": [],
@@ -331,8 +330,8 @@ if __name__ == '__main__':
     # DELTA_TIME = 5
     result_list = []
 
-    segmented_filename_list = listdir(segmentation_folder)
-    segmented_filename_list.sort()
+    all_segmented_filename_list = listdir(segmentation_folder)
+    all_segmented_filename_list.sort()
 
     existing_series_list = find_existing_series_list(input_series_list, listdir(output_folder))
 
@@ -340,26 +339,25 @@ if __name__ == '__main__':
     for input_series in input_series_list:
         viterbi_result_dict[input_series] = []
 
+
     for series in existing_series_list:
         print(f"working on series: {series}")
 
-        file_list = find_segmented_filename_list_by_series(series, segmented_filename_list)
+        segmented_filename_list = find_segmented_filename_list_by_series(series, all_segmented_filename_list)
 
 
-        img_list = []
         prof_mat_list = []
 
+
         #get the first image (frame 0) and label the cells:
-        img = plt.imread(segmentation_folder + file_list[0])
-        img_list.append(img)
+        img = plt.imread(segmentation_folder + segmented_filename_list[0])
 
         label_img = measure.label(img, background=0, connectivity=1)
         cellnb_img = np.max(label_img)
 
-        for framenb in range(1, len(file_list)):
+        for framenb in range(1, len(segmented_filename_list)):
             #get next frame and number of cells next frame
-            img_next = plt.imread(segmentation_folder + '/' + file_list[framenb])
-            img_list.append(img_next)
+            img_next = plt.imread(segmentation_folder + '/' + segmented_filename_list[framenb])
 
             label_img_next = measure.label(img_next, background=0, connectivity=1)
             cellnb_img_next = np.max(label_img_next)
@@ -370,7 +368,7 @@ if __name__ == '__main__':
             #loop through all combinations of cells in this and the next frame
             for cellnb_i in range(cellnb_img):
                 #cellnb i + 1 because cellnumbering in output files starts from 1
-                cell_i_filename = "mother_" + file_list[framenb][:-4] + "_Cell" + str(cellnb_i + 1).zfill(2) + ".png"
+                cell_i_filename = "mother_" + segmented_filename_list[framenb][:-4] + "_Cell" + str(cellnb_i + 1).zfill(2) + ".png"
                 cell_i = plt.imread(output_folder + series + '/' + cell_i_filename)
                 #predictions are for each cell in curr img
                 cell_i_props = measure.regionprops(label_img_next, intensity_image=cell_i) #label_img_next是二值图像为255，无intensity。需要与output中的预测的细胞一一对应，预测细胞有intensity
