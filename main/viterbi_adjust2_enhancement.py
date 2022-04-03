@@ -46,7 +46,7 @@ def _find(start_list_index, start_list_value):
             #      f'previous_maximize_index: {previous_maximize_index}')
             store_dict[k].append((current_maximize_index_, current_step + 1 - i, previous_maximize_index_))
             previous_maximize_index = previous_maximize_index_
-        if len(v)!=1:
+        if len(v) != 1:
             store_dict[k].append((previous_maximize_index_, 1, k))
             store_dict[k].append((k, 0, -1))
         else:
@@ -95,7 +95,7 @@ def _find_iter(start_list_index, start_list_value, start_frame, node):
 
 
 # after got tracks which started from first frame, check if there are very lower prob between each two cells, then truncate it.
-def _cut(longTracks, Threshold, transition_group):
+def _cut(longTracks, threshold, transition_group):
     short_Tracks = {} 
     
     if list(longTracks.keys())[0] != 0:
@@ -112,7 +112,7 @@ def _cut(longTracks, Threshold, transition_group):
             current_node = longTracks[key][index][0]
             next_node = longTracks[key][index+1][0]
             weight_between_nodes = transition_group[current_frame][current_node][next_node]
-            if (weight_between_nodes > Threshold):
+            if (weight_between_nodes > threshold):
                 short_tracks.append(longTracks[key][index])
             else:
                 short_tracks = copy.deepcopy(longTracks[key][0:index])
@@ -196,12 +196,17 @@ def _mask_update(short_Tracks, mask_transition_group):
 #start from first frame and loop the unvisited nodes in the other frames
 def _iteration(transition_group: list):
     all_track_dict = {}
+
     start_list_index, start_list_value = _process(transition_group)
+
     store_dict = _find(start_list_index, start_list_value)
+
     short_Tracks = _cut(store_dict, 0.01, transition_group)
+
     all_track_dict.update(short_Tracks)
+
     length = len(all_track_dict)
-    mask_transition_group =  _mask(short_Tracks, transition_group)
+    mask_transition_group = _mask(short_Tracks, transition_group)
     for p_matrix in range(1,len(transition_group)):
         #print(p_matrix)
         #print(transition_group[p_matrix].shape)
@@ -235,16 +240,18 @@ def _process(transition_group: list):
     #loop each row on first prob matrix. return the maximum value and index through the whole frames 
     #the first prob matrix in transition_group is a matrix (2D array)
     for ii, item in enumerate(transition_group[0]):
-        for i in range(1, step):          
-            item = item[:, np.newaxis]
-            item = np.repeat(item, transition_group[i].shape[1], 1)
-            index_ab = np.argmax(item * transition_group[i], 0)
-            value_ab = np.max(item * transition_group[i], 0)
-            if (np.all(value_ab==0)):
+        for i in range(1, step):
+            item = item[:, np.newaxis]   #https://stackoverflow.com/questions/29241056/how-does-numpy-newaxis-work-and-when-to-use-it
+            item = np.repeat(item, transition_group[i].shape[1], axis=1)
+            index_ab = np.argmax(item * transition_group[i], axis=0)
+            value_ab = np.max(item * transition_group[i], axis=0)
+            if (np.all(value_ab == 0)):
                 break
+
             start_list_index[ii].append(index_ab)
             start_list_value[ii].append(value_ab)
             item = value_ab
+
     return start_list_index, start_list_value
 
 
@@ -382,7 +389,7 @@ if __name__ == '__main__':
     start_time = time.perf_counter()
 
     input_series_list = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
-                         'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
+                          'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
 
 
     #all tracks shorter than DELTA_TIME are false postives and not included in tracks
@@ -418,7 +425,7 @@ if __name__ == '__main__':
 
     for series in existing_series_list:
         prof_mat_list = all_prof_mat_list_dict[series]
-
+        print("a.", prof_mat_list[0][0].shape)
         all_track_dict = _iteration(prof_mat_list)
 
         result_list = []
