@@ -312,7 +312,10 @@ def derive_prof_matrix_list(segmentation_folder_path: str, output_folder_path: s
     label_img = measure.label(img, background=0, connectivity=1)
     cellnb_img = np.max(label_img)
 
+    # print(series, len(segmented_filename_list))
+    # bug fix? need output file     #FileNotFoundError: [Errno 2] No such file or directory: 'D:/viterbi linkage/dataset/output_unet_seg_finetune//S01/mother_190621_++1_S01_frame001_Cell01.png'
     for framenb in range(1, len(segmented_filename_list)):
+    # for framenb in range(0, len(segmented_filename_list)):
         #get next frame and number of cells next frame
         img_next = plt.imread(segmentation_folder_path + '/' + segmented_filename_list[framenb])
 
@@ -343,6 +346,29 @@ def derive_prof_matrix_list(segmentation_folder_path: str, output_folder_path: s
 
 
 
+def create_prof_matrix_excel(all_prof_mat_list_dict: dict, excel_output_dir_path: str):
+    import pandas as pd
+    existing_series_list: list = all_prof_mat_list_dict.keys()
+    for series in existing_series_list:
+        one_series_img_list: list = all_prof_mat_list_dict[series]
+        num_of_segementation_img: int = len(one_series_img_list)
+
+        file_name: str = f"series_{series}.xlsx"
+        filepath = excel_output_dir_path + file_name;
+        writer = pd.ExcelWriter(filepath, engine='xlsxwriter') #pip install xlsxwriter
+
+
+        for seg_img_idx in range(0, num_of_segementation_img):
+            tmp_array: np.arrays = one_series_img_list[seg_img_idx]
+
+            df = pd.DataFrame (tmp_array)
+            sheet_name: str = "frame_1" if seg_img_idx == 0 else str(seg_img_idx+1)
+            df.to_excel(writer, sheet_name=sheet_name, index=True)
+
+        writer.save()
+
+
+
 if __name__ == '__main__':
     folder_path: str = 'D:/viterbi linkage/dataset/'
 
@@ -355,8 +381,9 @@ if __name__ == '__main__':
     print("start")
     start_time = time.perf_counter()
 
-    input_series_list = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
-                         'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
+    input_series_list = ['S01']
+        # , 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
+        #                  'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
 
 
     #all tracks shorter than DELTA_TIME are false postives and not included in tracks
@@ -371,17 +398,32 @@ if __name__ == '__main__':
     for input_series in input_series_list:
         viterbi_result_dict[input_series] = []
 
-
+    all_prof_mat_list_dict: dict = {}
     for series in existing_series_list:
         print(f"working on series: {series}")
 
         segmented_filename_list = find_segmented_filename_list_by_series(series, all_segmented_filename_list)
-        # print(segmented_filename_list)
-        # exit()
-        prof_mat_list = derive_prof_matrix_list(segmentation_folder, output_folder, series, segmented_filename_list)
+
+        tmp_prof_mat_list = derive_prof_matrix_list(segmentation_folder, output_folder, series, segmented_filename_list)
+        print("==", len(tmp_prof_mat_list))
+
+        all_prof_mat_list_dict[series] = tmp_prof_mat_list
+
+
+    is_create_excel: bool = True
+    if is_create_excel:
+        excel_output_dir_path = "d:/tmp/"
+        create_prof_matrix_excel(all_prof_mat_list_dict, excel_output_dir_path)
+        exit()
+
+
+
+
+
+    for series in existing_series_list:
+        prof_mat_list = all_prof_mat_list_dict[series]
 
         all_track_dict = _iteration(prof_mat_list)
-
 
         result_list = []
         for i in range(len(all_track_dict)):
@@ -390,9 +432,6 @@ if __name__ == '__main__':
             else:
                 if (len(all_track_dict[i]) > 5):
                     result_list.append(all_track_dict[i])
-
-
-
 
 
         #print(result)
@@ -445,9 +484,12 @@ if __name__ == '__main__':
         viterbi_result_dict[identifier] = final_result_list
 
 
+
+
+
     print("save_track_dictionary")
     save_track_dictionary(viterbi_result_dict, save_dir + "viterbi_results_dict.pkl")
 
 
     execution_time = time.perf_counter() - start_time
-    print(f"Execution time: {execution_time: 0.4f} seconds")
+    print(f"Execution time: {np.round(execution_time, 4)} seconds")
