@@ -195,12 +195,12 @@ def _mask_update(short_Tracks, mask_transition_group):
 
 #start from first frame and loop the unvisited nodes in the other frames
 def _iteration(transition_group):
-    all_tracks = {}
+    all_track_dict = {}
     start_list_index, start_list_value = _process(transition_group)
     store_dict = _find(start_list_index, start_list_value)
     short_Tracks = _cut(store_dict, 0.01, transition_group)
-    all_tracks.update(short_Tracks)
-    length = len(all_tracks)
+    all_track_dict.update(short_Tracks)
+    length = len(all_track_dict)
     mask_transition_group =  _mask(short_Tracks, transition_group)
     for p_matrix in range(1,len(transition_group)):
         #print(p_matrix)
@@ -220,9 +220,10 @@ def _iteration(transition_group):
                 new_short_Tracks = _cut_iter(new_store_dict, 0.01, new_transition_group, p_matrix)
             mask_transition_group =  _mask_update(new_short_Tracks, mask_transition_group)
             for ke, val in new_short_Tracks.items():                
-                all_tracks[length + ke + 1] = val
-            length = len(all_tracks)
-    return all_tracks
+                all_track_dict[length + ke + 1] = val
+            length = len(all_track_dict)
+
+    return all_track_dict
 
 
 
@@ -302,6 +303,45 @@ def find_segmented_filename_list_by_series(series: str, segmented_filename_list:
 
 
 
+def derive_prof_matrix_list(segmentation_folder_path: str, output_folder_path: str, series: str, segmented_filename_list):
+    prof_mat_list = []
+
+    #get the first image (frame 0) and label the cells:
+    img = plt.imread(segmentation_folder_path + segmented_filename_list[0])
+
+    label_img = measure.label(img, background=0, connectivity=1)
+    cellnb_img = np.max(label_img)
+
+    for framenb in range(1, len(segmented_filename_list)):
+        #get next frame and number of cells next frame
+        img_next = plt.imread(segmentation_folder_path + '/' + segmented_filename_list[framenb])
+
+        label_img_next = measure.label(img_next, background=0, connectivity=1)
+        cellnb_img_next = np.max(label_img_next)
+
+        #create empty dataframe for element of profit matrix C
+        prof_mat = np.zeros( (cellnb_img, cellnb_img_next), dtype=float)
+
+        #loop through all combinations of cells in this and the next frame
+        for cellnb_i in range(cellnb_img):
+            #cellnb i + 1 because cellnumbering in output files starts from 1
+            cell_i_filename = "mother_" + segmented_filename_list[framenb][:-4] + "_Cell" + str(cellnb_i + 1).zfill(2) + ".png"
+            cell_i = plt.imread(output_folder_path + series + '/' + cell_i_filename)
+            #predictions are for each cell in curr img
+            cell_i_props = measure.regionprops(label_img_next, intensity_image=cell_i) #label_img_next是二值图像为255，无intensity。需要与output中的预测的细胞一一对应，预测细胞有intensity
+            for cellnb_j in range(cellnb_img_next):
+                #calculate profit score from mean intensity neural network output in segmented cell area
+                prof_mat[cellnb_i, cellnb_j] = cell_i_props[cellnb_j].mean_intensity         #得到填充矩阵size = max(cellnb_img, cellnb_img_next)：先用预测的每一个细胞的mean_intensity填满cellnb_img, cellnb_img_next行和列
+
+        prof_mat_list.append(prof_mat)
+
+        #make next frame current frame
+        cellnb_img = cellnb_img_next
+        label_img = label_img_next
+
+    return prof_mat_list
+
+
 
 if __name__ == '__main__':
     folder_path: str = 'D:/viterbi linkage/dataset/'
@@ -315,19 +355,11 @@ if __name__ == '__main__':
     print("start")
     start_time = time.perf_counter()
 
-    # viterbi_result_dict = {
-    #     "S01": [], "S02": [], "S03": [], "S04": [], "S05": [], "S06": [], "S07": [], "S08": [], "S09": [], "S10": [],
-    #     "S11": [], "S12": [], "S13": [], "S14": [], "S15": [], "S16": [], "S17": [], "S18": [], "S19": [], "S20": []
-    # }
-
     input_series_list = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
                          'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
 
 
-    #celltypes = ['C1'] # enter all tracked celllines
-
     #all tracks shorter than DELTA_TIME are false postives and not included in tracks
-    # DELTA_TIME = 5
     result_list = []
 
     all_segmented_filename_list = listdir(segmentation_folder)
@@ -344,54 +376,20 @@ if __name__ == '__main__':
         print(f"working on series: {series}")
 
         segmented_filename_list = find_segmented_filename_list_by_series(series, all_segmented_filename_list)
+        # print(segmented_filename_list)
+        # exit()
+        prof_mat_list = derive_prof_matrix_list(segmentation_folder, output_folder, series, segmented_filename_list)
 
-
-        prof_mat_list = []
-
-
-        #get the first image (frame 0) and label the cells:
-        img = plt.imread(segmentation_folder + segmented_filename_list[0])
-
-        label_img = measure.label(img, background=0, connectivity=1)
-        cellnb_img = np.max(label_img)
-
-        for framenb in range(1, len(segmented_filename_list)):
-            #get next frame and number of cells next frame
-            img_next = plt.imread(segmentation_folder + '/' + segmented_filename_list[framenb])
-
-            label_img_next = measure.label(img_next, background=0, connectivity=1)
-            cellnb_img_next = np.max(label_img_next)
-
-            #create empty dataframe for element of profit matrix C
-            prof_mat = np.zeros( (cellnb_img, cellnb_img_next), dtype=float)
-
-            #loop through all combinations of cells in this and the next frame
-            for cellnb_i in range(cellnb_img):
-                #cellnb i + 1 because cellnumbering in output files starts from 1
-                cell_i_filename = "mother_" + segmented_filename_list[framenb][:-4] + "_Cell" + str(cellnb_i + 1).zfill(2) + ".png"
-                cell_i = plt.imread(output_folder + series + '/' + cell_i_filename)
-                #predictions are for each cell in curr img
-                cell_i_props = measure.regionprops(label_img_next, intensity_image=cell_i) #label_img_next是二值图像为255，无intensity。需要与output中的预测的细胞一一对应，预测细胞有intensity
-                for cellnb_j in range(cellnb_img_next):
-                    #calculate profit score from mean intensity neural network output in segmented cell area
-                    prof_mat[cellnb_i, cellnb_j] = cell_i_props[cellnb_j].mean_intensity         #得到填充矩阵size = max(cellnb_img, cellnb_img_next)：先用预测的每一个细胞的mean_intensity填满cellnb_img, cellnb_img_next行和列
-
-            prof_mat_list.append(prof_mat)
-
-            #make next frame current frame
-            cellnb_img = cellnb_img_next
-            label_img = label_img_next
-
-        all_tracks = _iteration(prof_mat_list)
+        all_track_dict = _iteration(prof_mat_list)
 
 
         result_list = []
-        for i in range(len(all_tracks)):
-            if i not in all_tracks.keys():
+        for i in range(len(all_track_dict)):
+            if i not in all_track_dict.keys():
                 continue
             else:
-                if (len(all_tracks[i]) > 5):
-                    result_list.append(all_tracks[i])
+                if (len(all_track_dict[i]) > 5):
+                    result_list.append(all_track_dict[i])
 
 
 
