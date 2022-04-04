@@ -197,17 +197,17 @@ def _mask_update(short_Tracks, mask_transition_group):
 def _iteration(transition_group: list):
     all_track_dict = {}
 
-    start_list_index, start_list_value = _process(transition_group)
+    start_list_index, start_list_value = _process(transition_group) # 2D array list
 
     store_dict = _find(start_list_index, start_list_value)
 
-    short_Tracks = _cut(store_dict, 0.01, transition_group)
+    short_Tracks = _cut(store_dict, 0.01, transition_group)   # filter out cells that does not make sense (e.g. too low probability)
 
     all_track_dict.update(short_Tracks)
 
     length = len(all_track_dict)
     mask_transition_group = _mask(short_Tracks, transition_group)
-    for p_matrix in range(1,len(transition_group)):
+    for p_matrix in range(1, len(transition_group)):
         #print(p_matrix)
         #print(transition_group[p_matrix].shape)
         #print(transition_group[p_matrix].shape[0])
@@ -321,7 +321,10 @@ def derive_prof_matrix_list(segmentation_folder_path: str, output_folder_path: s
     cellnb_img = np.max(label_img)
 
     # print(series, len(segmented_filename_list))
+
     # bug fix? need output file     #FileNotFoundError: [Errno 2] No such file or directory: 'D:/viterbi linkage/dataset/output_unet_seg_finetune//S01/mother_190621_++1_S01_frame001_Cell01.png'
+    # it is actually a prediction
+
     for framenb in range(1, len(segmented_filename_list)):
     # for framenb in range(0, len(segmented_filename_list)):
         #get next frame and number of cells next frame
@@ -389,9 +392,10 @@ if __name__ == '__main__':
     print("start")
     start_time = time.perf_counter()
 
+
     input_series_list = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
                           'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
-
+    # input_series_list = ['S01']
 
     #all tracks shorter than DELTA_TIME are false postives and not included in tracks
     result_list = []
@@ -414,11 +418,13 @@ if __name__ == '__main__':
         segmented_filename_list: list = find_segmented_filename_list_by_series(series, all_segmented_filename_list)
 
         tmp_prof_mat_list: list = derive_prof_matrix_list(segmentation_folder, output_folder, series, segmented_filename_list)
+        print("len(tmp_prof_mat_list)", len(tmp_prof_mat_list))
 
-        all_prof_mat_list_dict[series] = tmp_prof_mat_list
+
+        all_prof_mat_list_dict[series] = tmp_prof_mat_list  # prof = profit matrix
 
 
-    is_create_excel: bool = True
+    is_create_excel: bool = False
     if is_create_excel:
         excel_output_dir_path = "d:/tmp/"
         create_prof_matrix_excel(all_prof_mat_list_dict, excel_output_dir_path)
@@ -426,7 +432,7 @@ if __name__ == '__main__':
 
     for series in existing_series_list:
         prof_mat_list = all_prof_mat_list_dict[series]
-        print("a.", prof_mat_list[0][0].shape)
+        # print("a.", prof_mat_list[0][0].shape)
         all_track_dict = _iteration(prof_mat_list)
 
         result_list = []
@@ -490,10 +496,12 @@ if __name__ == '__main__':
 
 
 
-    print("version test")
+
     print("save_track_dictionary")
     save_track_dictionary(viterbi_result_dict, save_dir + "viterbi_results_dict.pkl")
 
+    with open(save_dir + "viterbi_results_dict.txt", 'w') as f:
+        f.write(str(viterbi_result_dict[identifier]))
 
     execution_time = time.perf_counter() - start_time
     print(f"Execution time: {np.round(execution_time, 4)} seconds")

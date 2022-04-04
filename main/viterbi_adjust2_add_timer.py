@@ -409,6 +409,8 @@ print(save_dir)
 save_track_dictionary(viterbi_results_dict, save_dir + "viterbi_results_dict.pkl")
 
 
+with open(save_dir + "viterbi_results_dict.txt", 'w') as f:
+    f.write(str(viterbi_results_dict[identifier]))
 
 
 execution_time = time.perf_counter() - start_time
