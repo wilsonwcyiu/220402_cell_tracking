@@ -213,7 +213,7 @@ def _iteration(transition_group: list):
         #print(transition_group[p_matrix].shape[0])
         for node in range(transition_group[p_matrix].shape[0]):  #skip all nodes which are already passed 
             #print(node)
-            if (mask_transition_group[p_matrix][node]==True):
+            if (mask_transition_group[p_matrix][node] == True):
                 continue
             else:
                 new_transition_group = []
@@ -223,7 +223,8 @@ def _iteration(transition_group: list):
                 next_list_index, next_list_value = _process_iter(new_transition_group)
                 new_store_dict = _find_iter(next_list_index, next_list_value, p_matrix, node)
                 new_short_Tracks = _cut_iter(new_store_dict, 0.01, new_transition_group, p_matrix)
-            mask_transition_group =  _mask_update(new_short_Tracks, mask_transition_group)
+
+            mask_transition_group = _mask_update(new_short_Tracks, mask_transition_group)
             for ke, val in new_short_Tracks.items():                
                 all_track_dict[length + ke + 1] = val
             length = len(all_track_dict)
@@ -489,7 +490,7 @@ if __name__ == '__main__':
 
 
 
-
+    print("version test")
     print("save_track_dictionary")
     save_track_dictionary(viterbi_result_dict, save_dir + "viterbi_results_dict.pkl")
 
