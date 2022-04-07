@@ -205,6 +205,10 @@ def _iteration(transition_group: list):
 
     all_track_dict.update(short_Tracks)
 
+
+    ##
+    ## handle new cells that enter the image
+    ##
     length = len(all_track_dict)
     mask_transition_group = _mask(short_Tracks, transition_group)
     for p_matrix in range(1, len(transition_group)):
@@ -392,29 +396,36 @@ def _iteration_1(profit_matrix_list: list):
 
     all_track_dict.update(short_track_list_dict)
 
-    length = len(all_track_dict)
-    mask_transition_group = _mask(short_track_list_dict, profit_matrix_list)
-    for p_matrix in range(1, len(profit_matrix_list)):
-        #print(p_matrix)
-        #print(transition_group[p_matrix].shape)
-        #print(transition_group[p_matrix].shape[0])
-        for node in range(profit_matrix_list[p_matrix].shape[0]):  #skip all nodes which are already passed
-            #print(node)
-            if (mask_transition_group[p_matrix][node] == True):
+
+    ##
+    ## handle new cells that enter the image
+    ##
+    max_id_in_dict: int = len(all_track_dict)           # dict key is cell idx
+    mask_transition_group_mtx = _mask_1(short_track_list_dict, profit_matrix_list)
+
+    for profit_matrix_idx in range(1, len(profit_matrix_list)):
+        #print(profit_matrix_idx)
+        #print(transition_group[profit_matrix_idx].shape)
+        #print(transition_group[profit_matrix_idx].shape[0])
+        for cell_row_idx in range(profit_matrix_list[profit_matrix_idx].shape[0]):  #skip all nodes which are already passed
+            #print(cell_row_idx)
+            is_old_call: bool = (mask_transition_group_mtx[profit_matrix_idx][cell_row_idx] == True)
+            if is_old_call:
                 continue
             else:
-                new_transition_group = []
-                new_transition_group_ = profit_matrix_list[p_matrix:]
-                new_transition_group.append(new_transition_group_[0][node])
-                new_transition_group[1:] = profit_matrix_list[p_matrix + 1:]
-                next_list_index, next_list_value = _process_iter(new_transition_group)
-                new_store_dict = _find_iter(next_list_index, next_list_value, p_matrix, node)
-                new_short_Tracks = _cut_iter(new_store_dict, 0.01, new_transition_group, p_matrix)
+                new_transition_group_list: list = []
+                new_transition_group_list_ = profit_matrix_list[profit_matrix_idx:]
+                new_transition_group_list.append(new_transition_group_list_[0][cell_row_idx])
+                new_transition_group_list[1:] = profit_matrix_list[profit_matrix_idx + 1:]
+                next_list_index, next_list_value = _process_iter(new_transition_group_list)
+                new_store_dict = _find_iter(next_list_index, next_list_value, profit_matrix_idx, cell_row_idx)
+                new_short_Tracks = _cut_iter(new_store_dict, 0.01, new_transition_group_list, profit_matrix_idx)
 
-            mask_transition_group = _mask_update(new_short_Tracks, mask_transition_group)
+            mask_transition_group_mtx = _mask_update(new_short_Tracks, mask_transition_group_mtx)
             for ke, val in new_short_Tracks.items():
-                all_track_dict[length + ke + 1] = val
-            length = len(all_track_dict)
+                all_track_dict[max_id_in_dict + ke + 1] = val
+
+            max_id_in_dict = len(all_track_dict)
 
     return all_track_dict
 
@@ -554,6 +565,28 @@ def _cut_1(longTracks, threshold, transition_group):
 
 
 
+#after got all tracks start from first frame, define a mask matrix. all the nodes which are passed by any tracks are labels as True
+def _mask_1(short_track_list_dict: dict, profit_matrix_list: list):
+    print("_mask_1")
+    mask_transition_group_list: list = []
+
+    # initialize the transition group with all False
+    for profit_matrix in profit_matrix_list:
+        num_of_cell: int = profit_matrix.shape[0]
+        mask_transition_group_list.append(np.array([False for i in range(num_of_cell)]))
+
+    mask_transition_group_list.append(np.array([False for i in range(profit_matrix.shape[1])]))
+
+    # if the cell_id was passed, lable it to True
+    for short_track_cell_idx in short_track_list_dict.keys():
+        for short_track_frame_idx in range(len(short_track_list_dict[short_track_cell_idx])):
+            cell_idx_data = short_track_list_dict[short_track_cell_idx][short_track_frame_idx][0]
+            frame_idx_data = short_track_list_dict[short_track_cell_idx][short_track_frame_idx][1]
+            mask_transition_group_list[frame_idx_data][cell_idx_data] = True
+
+    return mask_transition_group_list
+
+
 
 if __name__ == '__main__':
     folder_path: str = 'D:/viterbi linkage/dataset/'
@@ -592,19 +625,19 @@ if __name__ == '__main__':
 
         segmented_filename_list: list = find_segmented_filename_list_by_series(series, all_segmented_filename_list)
 
-        tmp_prof_mat_list: list = derive_prof_matrix_list(segmentation_folder, output_folder, series, segmented_filename_list)
+        prof_mat_list: list = derive_prof_matrix_list(segmentation_folder, output_folder, series, segmented_filename_list)
 
-        all_prof_mat_list_dict[series] = tmp_prof_mat_list  # prof = profit matrix
-
-
-    is_create_excel: bool = False
-    if is_create_excel:
-        excel_output_dir_path = "d:/tmp/"
-        create_prof_matrix_excel(all_prof_mat_list_dict, excel_output_dir_path)
+        # all_prof_mat_list_dict[series] = tmp_prof_mat_list  # prof = profit matrix
 
 
-    for series in existing_series_list:
-        prof_mat_list = all_prof_mat_list_dict[series]
+    # is_create_excel: bool = False
+    # if is_create_excel:
+    #     excel_output_dir_path = "d:/tmp/"
+    #     create_prof_matrix_excel(all_prof_mat_list_dict, excel_output_dir_path)
+
+
+    # for series in existing_series_list:
+    #     prof_mat_list = all_prof_mat_list_dict[series]
         # print("a.", prof_mat_list[0][0].shape)
         all_track_dict = _iteration_1(prof_mat_list)
 
