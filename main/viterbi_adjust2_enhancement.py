@@ -268,7 +268,10 @@ def _process_iter(transition_group):
     start_list_value = defaultdict(list)
     #transition_group[0] is the node, shape is (n,), convert it to (1,n)    
     #the first prob matrix in transition_group is a vector (1D array)
+
+    # print("shape", transition_group[0].shape)
     for ii, item in enumerate(transition_group[0].reshape(1, transition_group[0].shape[0])):
+        # print("shape1", transition_group[0].reshape(1, transition_group[0].shape[0]))
         for i in range(1, step):                  
             item = item[:, np.newaxis]
             item = np.repeat(item, transition_group[i].shape[1], 1)
@@ -388,10 +391,12 @@ def create_prof_matrix_excel(all_prof_mat_list_dict: dict, excel_output_dir_path
 def _iteration_1(profit_matrix_list: list):
     print("_iteration_1")
     all_track_dict: dict = {}
+
+
     start_list_index_vec_dict, start_list_value_vec_dict = calculate_best_cell_track(profit_matrix_list) # 2D array list
 
-    store_dict = _find_1(start_list_index_vec_dict, start_list_value_vec_dict)
 
+    store_dict = _find_1(start_list_index_vec_dict, start_list_value_vec_dict)
     short_track_list_dict = _cut_1(store_dict, 0.01, profit_matrix_list)   # filter out cells that does not make sense (e.g. too low probability)
 
     all_track_dict.update(short_track_list_dict)
@@ -404,28 +409,32 @@ def _iteration_1(profit_matrix_list: list):
     mask_transition_group_mtx = _mask_1(short_track_list_dict, profit_matrix_list)
 
     for profit_matrix_idx in range(1, len(profit_matrix_list)):
-        #print(profit_matrix_idx)
-        #print(transition_group[profit_matrix_idx].shape)
-        #print(transition_group[profit_matrix_idx].shape[0])
         for cell_row_idx in range(profit_matrix_list[profit_matrix_idx].shape[0]):  #skip all nodes which are already passed
             #print(cell_row_idx)
             is_old_call: bool = (mask_transition_group_mtx[profit_matrix_idx][cell_row_idx] == True)
+
             if is_old_call:
                 continue
-            else:
-                new_transition_group_list: list = []
-                new_transition_group_list_ = profit_matrix_list[profit_matrix_idx:]
-                new_transition_group_list.append(new_transition_group_list_[0][cell_row_idx])
-                new_transition_group_list[1:] = profit_matrix_list[profit_matrix_idx + 1:]
-                next_list_index, next_list_value = _process_iter(new_transition_group_list)
-                new_store_dict = _find_iter(next_list_index, next_list_value, profit_matrix_idx, cell_row_idx)
-                new_short_Tracks = _cut_iter(new_store_dict, 0.01, new_transition_group_list, profit_matrix_idx)
+
+
+            new_transition_group_list_ = profit_matrix_list[profit_matrix_idx:]
+
+            new_transition_group_list: list = [new_transition_group_list_[0][cell_row_idx]]
+            new_transition_group_list[1:] = profit_matrix_list[profit_matrix_idx + 1:]
+
+            # new_transition_group_list[0] = new_transition_group_list.
+            # print("new_transition_group_list[0].shape", new_transition_group_list[0].shape)
+            new_transition_group_list[0] = new_transition_group_list[0].reshape(1, new_transition_group_list[0].shape[0])
+            next_list_index, next_list_value = calculate_best_cell_track(new_transition_group_list)
+            new_store_dict = _find_iter(next_list_index, next_list_value, profit_matrix_idx, cell_row_idx)
+            new_short_Tracks = _cut_iter(new_store_dict, 0.01, new_transition_group_list, profit_matrix_idx)
 
             mask_transition_group_mtx = _mask_update(new_short_Tracks, mask_transition_group_mtx)
             for ke, val in new_short_Tracks.items():
                 all_track_dict[max_id_in_dict + ke + 1] = val
 
             max_id_in_dict = len(all_track_dict)
+
 
     return all_track_dict
 
@@ -453,10 +462,17 @@ def calculate_best_cell_track(profit_mtx_list: list):   # former method _process
             num_of_cell_in_next_frame: int = profit_mtx_list[next_frame_idx].shape[1]
             single_cell_mtx = np.repeat(single_cell_mtx, num_of_cell_in_next_frame, axis=1)
 
-            ## calculate profit matrix of 2 steps
             probability_mtx: np.array = single_cell_mtx * profit_mtx_list[next_frame_idx]
-            index_ab_vec = np.argmax(probability_mtx, axis=0)
-            value_ab_vec = np.max(probability_mtx, axis=0)
+
+            linkage_strategy: str = "individual"
+            if linkage_strategy == "viterbi":
+                index_ab_vec = np.argmax(probability_mtx, axis=0)
+                value_ab_vec = np.max(probability_mtx, axis=0)
+            elif linkage_strategy == "individual":
+                index_ab_vec = np.argmax(profit_mtx_list[next_frame_idx], axis=0)
+                value_ab_vec = np.max(profit_mtx_list[next_frame_idx], axis=0)
+            else:
+                raise Exception(linkage_strategy)
 
             if ( np.all(value_ab_vec == 0) ):
                 break
@@ -466,6 +482,53 @@ def calculate_best_cell_track(profit_mtx_list: list):   # former method _process
             single_cell_vec = value_ab_vec
 
     return start_list_index_vec_dict, start_list_value_vec_dict
+
+
+
+
+
+
+# #loop each node on first frame to find the optimal path using probabilty multiply
+# def calculate_best_cell_track_individual(profit_mtx_list: list):   # former method _process
+#     print("_process_1")
+#     total_step: int = len(profit_mtx_list)
+#
+#     start_list_index_vec_dict: int = defaultdict(list)
+#     start_list_value_vec_dict: int = defaultdict(list)
+#
+#     #loop each row on first prob matrix. return the maximum value and index through all the frames, the first prob matrix in profit_matrix_list is a matrix (2D array)
+#     first_frame_mtx: np.array = profit_mtx_list[0]
+#     total_cell_in_first_frame: int = first_frame_mtx.shape[0]
+#     for cell_idx in range(0, total_cell_in_first_frame):
+#
+#         single_cell_vec = first_frame_mtx[cell_idx]
+#         for next_frame_idx in range(1, total_step):
+#             # single_cell_mtx: np.array = single_cell_vec[:, np.newaxis]   #https://stackoverflow.com/questions/29241056/how-does-numpy-newaxis-work-and-when-to-use-it
+#             single_cell_mtx: np.array = single_cell_vec.reshape(single_cell_vec.shape[0], 1)
+#
+#             ## ?? Is this step attempting to calculate the max probability from 2 steps prof_mtx?
+#             num_of_cell_in_next_frame: int = profit_mtx_list[next_frame_idx].shape[1]
+#             single_cell_mtx = np.repeat(single_cell_mtx, num_of_cell_in_next_frame, axis=1)
+#
+#
+#             tmp_one_step_probability_mtx = None
+#             print ("individual")
+#             probability_mtx: np.array = single_cell_mtx * profit_mtx_list[next_frame_idx]
+#             index_ab_vec = np.argmax(profit_mtx_list[next_frame_idx], axis=0)
+#             value_ab_vec = np.max(profit_mtx_list[next_frame_idx], axis=0)
+#
+#
+#
+#             if ( np.all(value_ab_vec == 0) ):
+#                 break
+#
+#             start_list_index_vec_dict[cell_idx].append(index_ab_vec)
+#             start_list_value_vec_dict[cell_idx].append(value_ab_vec)
+#             single_cell_vec = value_ab_vec
+#
+#     return start_list_index_vec_dict, start_list_value_vec_dict
+#
+
 
 
 
@@ -568,23 +631,24 @@ def _cut_1(longTracks, threshold, transition_group):
 #after got all tracks start from first frame, define a mask matrix. all the nodes which are passed by any tracks are labels as True
 def _mask_1(short_track_list_dict: dict, profit_matrix_list: list):
     print("_mask_1")
-    mask_transition_group_list: list = []
+    mask_frame_cell_id_list: list = []      #list list that stores [frame_id][cell_id]
 
     # initialize the transition group with all False
     for profit_matrix in profit_matrix_list:
         num_of_cell: int = profit_matrix.shape[0]
-        mask_transition_group_list.append(np.array([False for i in range(num_of_cell)]))
+        mask_frame_cell_id_list.append(np.array([False for i in range(num_of_cell)]))
 
-    mask_transition_group_list.append(np.array([False for i in range(profit_matrix.shape[1])]))
+    mask_frame_cell_id_list.append(np.array([False for i in range(profit_matrix.shape[1])]))
 
     # if the cell_id was passed, lable it to True
     for short_track_cell_idx in short_track_list_dict.keys():
         for short_track_frame_idx in range(len(short_track_list_dict[short_track_cell_idx])):
             cell_idx_data = short_track_list_dict[short_track_cell_idx][short_track_frame_idx][0]
             frame_idx_data = short_track_list_dict[short_track_cell_idx][short_track_frame_idx][1]
-            mask_transition_group_list[frame_idx_data][cell_idx_data] = True
 
-    return mask_transition_group_list
+            mask_frame_cell_id_list[frame_idx_data][cell_idx_data] = True
+
+    return mask_frame_cell_id_list
 
 
 

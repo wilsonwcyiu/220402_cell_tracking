@@ -4,9 +4,16 @@ import sys
 
 
 def main():
-    method_7()
+    method_8()
 
 
+def method_8():
+    a_dict = {}
+    a_dict["1"] = 1
+    a_dict["2"] = 2
+    a_dict["3"] = 2
+
+    print(len(a_dict))
 
 def method_7():
     arr1 = np.array([1, 2, 3])
