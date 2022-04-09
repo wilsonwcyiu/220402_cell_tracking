@@ -1,10 +1,47 @@
-from main.viterbi_adjust2_enhancement import derive_prof_matrix_list
+from main.viterbi_adjust2_enhancement import derive_prof_matrix_list, obtain_matrix_value_by_index_list
 import numpy as np
 import sys
 
 
 def main():
-    method_8()
+    method_12()
+
+
+
+def method_12():
+    data_list = np.array([
+        [1, 2, 3],
+        [4, 5, 6]])
+    tmp = np.max(data_list, axis=1)
+    print(tmp.shape)
+    tmp = tmp.tolist()
+    print(type(tmp))
+    print(tmp)
+
+
+def method_11():
+    data_list = np.array([
+                            [1, 2, 3],
+                            [4, 5, 6]])
+
+    b = obtain_matrix_value_by_index_list(data_list, [0, 1, 0])
+    print(b)
+
+
+def method_10():
+    original_track_list = [0, 1, 2, 3, 4]
+
+    print(original_track_list[-1])
+
+
+
+def method_9():
+    value_ab_vec = np.array([0, 0, 0, 1])
+    if ( np.all(value_ab_vec == 0) ):
+        print("np.all(value_ab_vec == 0); break")
+    else:
+        print("np.all(value_ab_vec != 0); break")
+
 
 
 def method_8():
