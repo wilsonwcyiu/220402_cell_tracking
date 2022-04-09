@@ -364,42 +364,76 @@ def derive_prof_matrix_list(segmentation_folder_path: str, output_folder_path: s
 
 
 
-def create_prof_matrix_excel(all_prof_mat_list_dict: dict, excel_output_dir_path: str):
+def create_prof_matrix_excel(series: str, one_series_img_list, excel_output_dir_path: str):
     import pandas as pd
-    existing_series_list: list = all_prof_mat_list_dict.keys()
-    for series in existing_series_list:
-        one_series_img_list: list = all_prof_mat_list_dict[series]
-        num_of_segementation_img: int = len(one_series_img_list)
+    # existing_series_list: list = all_prof_mat_list_dict.keys()
+    # for series in existing_series_list:
+    # one_series_img_list: list = all_prof_mat_list_dict[series]
+    num_of_segementation_img: int = len(one_series_img_list)
 
-        file_name: str = f"series_{series}.xlsx"
-        filepath = excel_output_dir_path + file_name;
-        writer = pd.ExcelWriter(filepath, engine='xlsxwriter') #pip install xlsxwriter
+    file_name: str = f"series_{series}.xlsx"
+    filepath = excel_output_dir_path + file_name;
+    writer = pd.ExcelWriter(filepath, engine='xlsxwriter') #pip install xlsxwriter
 
 
-        for seg_img_idx in range(0, num_of_segementation_img):
-            tmp_array: np.arrays = one_series_img_list[seg_img_idx]
+    for seg_img_idx in range(0, num_of_segementation_img):
+        tmp_array: np.arrays = one_series_img_list[seg_img_idx]
 
-            df = pd.DataFrame (tmp_array)
-            sheet_name: str = "frame_1" if seg_img_idx == 0 else str(seg_img_idx+1)
-            df.to_excel(writer, sheet_name=sheet_name, index=True)
+        df = pd.DataFrame (tmp_array)
+        sheet_name: str = "frame_1" if seg_img_idx == 0 else str(seg_img_idx+1)
+        df.to_excel(writer, sheet_name=sheet_name, index=True)
 
-        writer.save()
+    writer.save()
 
 
 
 #start from first frame and loop the unvisited nodes in the other frames
 def _iteration_1(profit_matrix_list: list):
-    print("_iteration_1")
+    # print("_iteration_1")
     all_track_dict: dict = {}
 
-
+                                                            # _process
     start_list_index_vec_dict, start_list_value_vec_dict = calculate_best_cell_track(profit_matrix_list) # 2D array list
 
 
     store_dict = _find_1(start_list_index_vec_dict, start_list_value_vec_dict)
-    short_track_list_dict = _cut_1(store_dict, 0.01, profit_matrix_list)   # filter out cells that does not make sense (e.g. too low probability)
+
+    print(store_dict[0])
+
+    # count_dict = {}
+    # for key, value_list in store_dict.items():
+    #     seq_length = len(value_list)
+    #     if seq_length not in count_dict:
+    #         count_dict[seq_length] = 0
+    #
+    #     count_dict[seq_length] += 1
+    #
+    # import collections
+    # count_dict = collections.OrderedDict(sorted(count_dict.items()))
+    # print(count_dict)
+
+
+
+    threshold: float = 0.01
+    # threshold: float = -0.1  # smaller value means less likely to cut
+
+    short_track_list_dict = _cut(store_dict, threshold, profit_matrix_list)   # filter out cells that does not make sense (e.g. too low probability)
 
     all_track_dict.update(short_track_list_dict)
+
+    # count_dict = {}
+    # for key, value_list in all_track_dict.items():
+    #     seq_length = len(value_list)
+    #     if seq_length not in count_dict:
+    #         count_dict[seq_length] = 0
+    #
+    #     count_dict[seq_length] += 1
+    #
+    # import collections
+    # count_dict = collections.OrderedDict(sorted(count_dict.items()))
+    # print(count_dict)
+
+
 
 
     ##
@@ -425,6 +459,7 @@ def _iteration_1(profit_matrix_list: list):
             # new_transition_group_list[0] = new_transition_group_list.
             # print("new_transition_group_list[0].shape", new_transition_group_list[0].shape)
             new_transition_group_list[0] = new_transition_group_list[0].reshape(1, new_transition_group_list[0].shape[0])
+                                                # _process
             next_list_index, next_list_value = calculate_best_cell_track(new_transition_group_list)
             new_store_dict = _find_iter(next_list_index, next_list_value, profit_matrix_idx, cell_row_idx)
             new_short_Tracks = _cut_iter(new_store_dict, 0.01, new_transition_group_list, profit_matrix_idx)
@@ -436,13 +471,17 @@ def _iteration_1(profit_matrix_list: list):
             max_id_in_dict = len(all_track_dict)
 
 
+
+    print("len(start_list_index_vec_dict), len(store_dict), len(short_track_list_dict), len(all_track_dict)",
+          len(start_list_index_vec_dict), len(store_dict), len(short_track_list_dict), len(all_track_dict))
+
     return all_track_dict
 
 
 
 #loop each node on first frame to find the optimal path using probabilty multiply
 def calculate_best_cell_track(profit_mtx_list: list):   # former method _process
-    print("_process_1")
+    # print("_process_1")
     total_step: int = len(profit_mtx_list)
 
     start_list_index_vec_dict: int = defaultdict(list)
@@ -451,10 +490,13 @@ def calculate_best_cell_track(profit_mtx_list: list):   # former method _process
     #loop each row on first prob matrix. return the maximum value and index through all the frames, the first prob matrix in profit_matrix_list is a matrix (2D array)
     first_frame_mtx: np.array = profit_mtx_list[0]
     total_cell_in_first_frame: int = first_frame_mtx.shape[0]
+    linkage_strategy: str = "viterbi"
+
     for cell_idx in range(0, total_cell_in_first_frame):
 
         single_cell_vec = first_frame_mtx[cell_idx]
         for next_frame_idx in range(1, total_step):
+
             # single_cell_mtx: np.array = single_cell_vec[:, np.newaxis]   #https://stackoverflow.com/questions/29241056/how-does-numpy-newaxis-work-and-when-to-use-it
             single_cell_mtx: np.array = single_cell_vec.reshape(single_cell_vec.shape[0], 1)
 
@@ -462,26 +504,67 @@ def calculate_best_cell_track(profit_mtx_list: list):   # former method _process
             num_of_cell_in_next_frame: int = profit_mtx_list[next_frame_idx].shape[1]
             single_cell_mtx = np.repeat(single_cell_mtx, num_of_cell_in_next_frame, axis=1)
 
-            probability_mtx: np.array = single_cell_mtx * profit_mtx_list[next_frame_idx]
+            last_layer_all_probability_mtx: np.array = single_cell_mtx * profit_mtx_list[next_frame_idx]
 
-            linkage_strategy: str = "individual"
+        #     if linkage_strategy == "viterbi":
+        #         index_ab_vec = np.argmax(last_layer_all_probability_mtx, axis=0)
+        #     elif linkage_strategy == "individual":
+        #         index_ab_vec = np.argmax(profit_mtx_list[next_frame_idx], axis=0)
+        #     else:
+        #         raise Exception(linkage_strategy)
+        #
+        #     value_ab_vec = np.max(last_layer_all_probability_mtx, axis=0)
+        #     # value_ab_vec = obtain_matrix_value_by_index_list(last_layer_all_probability_mtx, index_ab_vec)
+        #
+        #
+        #     if ( np.all(value_ab_vec == 0) ):
+        #         # print(">> np.all(value_ab_vec == 0); break")
+        #         break
+        #
+        #     start_list_index_vec_dict[cell_idx].append(index_ab_vec)
+        #     start_list_value_vec_dict[cell_idx].append(value_ab_vec)
+        #     single_cell_vec = value_ab_vec
+        #
+        # return start_list_index_vec_dict, start_list_value_vec_dict
+
+
+
+
             if linkage_strategy == "viterbi":
-                index_ab_vec = np.argmax(probability_mtx, axis=0)
-                value_ab_vec = np.max(probability_mtx, axis=0)
+                index_ab_vec = np.argmax(last_layer_all_probability_mtx, axis=0)
+                value_ab_vec = np.max(last_layer_all_probability_mtx, axis=0)
+
+                if ( np.all(value_ab_vec == 0) ):
+                    # print(">> np.all(value_ab_vec == 0); break")
+                    break
+
+                start_list_index_vec_dict[cell_idx].append(index_ab_vec)
+                start_list_value_vec_dict[cell_idx].append(value_ab_vec)
+                single_cell_vec = value_ab_vec
+
             elif linkage_strategy == "individual":
-                index_ab_vec = np.argmax(profit_mtx_list[next_frame_idx], axis=0)
-                value_ab_vec = np.max(profit_mtx_list[next_frame_idx], axis=0)
+                tmp = profit_mtx_list[next_frame_idx]
+                index_ab_vec = np.argmax(tmp, axis=0)
+                value_ab_vec = np.max(tmp, axis=0)
+
+
+                start_list_index_vec_dict[cell_idx].append(index_ab_vec)
+                start_list_value_vec_dict[cell_idx].append(value_ab_vec)
+                single_cell_vec = value_ab_vec
+
             else:
                 raise Exception(linkage_strategy)
 
-            if ( np.all(value_ab_vec == 0) ):
-                break
 
-            start_list_index_vec_dict[cell_idx].append(index_ab_vec)
-            start_list_value_vec_dict[cell_idx].append(value_ab_vec)
-            single_cell_vec = value_ab_vec
 
-    return start_list_index_vec_dict, start_list_value_vec_dict
+    if linkage_strategy == "viterbi":
+        return start_list_index_vec_dict, start_list_value_vec_dict
+    elif linkage_strategy == "individual":
+        tmp = np.max(last_layer_all_probability_mtx, axis=0)
+        return start_list_index_vec_dict,
+    else:
+        raise Exception(linkage_strategy)
+
 
 
 
@@ -592,37 +675,49 @@ def generate_reverse_range_list(start: int, end: int = 0):
 
 
 # after got tracks which started from first frame, check if there are very lower prob between each two cells, then truncate it.
-def _cut_1(longTracks, threshold, transition_group):
-    short_track_list_dict = {}
+# store_dict, threshold, profit_matrix_list
+def _cut_1(original_track_dict: dict, threshold: float, profit_matrix_list: list):
+    short_track_list_dict: dict = {}
 
-    if list(longTracks.keys())[0] != 0:
-        for miss_key in range(list(longTracks.keys())[0]):
+
+    is_first_cell_id_not_zero: bool = list(original_track_dict.keys())[0] != 0
+    if is_first_cell_id_not_zero:
+        print("is_first_cell_id_not_zero", is_first_cell_id_not_zero)
+        raise Exception("investigate")
+
+        for miss_key in range(list(original_track_dict.keys())[0]):
             short_track_list = []
             short_track_list.append((miss_key,0, -1))
             short_track_list_dict[miss_key] = short_track_list
 
-    for key, track in longTracks.items():
+
+
+    for cell_id, track_content_list in original_track_dict.items():
         short_track_list = []
-        for index in range(len(longTracks[key])-1):
-            current_frame = longTracks[key][index][1]
-            next_frame = longTracks[key][index+1][1]
-            current_node = longTracks[key][index][0]
-            next_node = longTracks[key][index+1][0]
-            weight_between_nodes = transition_group[current_frame][current_node][next_node]
+        for index in range(len(original_track_dict[cell_id]) - 1):
+            current_frame = original_track_dict[cell_id][index][1]
+
+            current_node = original_track_dict[cell_id][index][0]
+            next_node = original_track_dict[cell_id][index + 1][0]
+
+            weight_between_nodes = profit_matrix_list[current_frame][current_node][next_node]
             if (weight_between_nodes > threshold):
-                short_track_list.append(longTracks[key][index])
+                short_track_list.append(original_track_dict[cell_id][index])
             else:
-                short_track_list = copy.deepcopy(longTracks[key][0: index])
+                short_track_list = copy.deepcopy(original_track_dict[cell_id][0: index])
                 break
 
 
-        if (len(short_track_list) == len(longTracks[key])-1 ):
-            short_track_list.append( longTracks[key][-1] )
-            short_track_list_dict[key] = short_track_list
+        if (len(short_track_list) == len(original_track_dict[cell_id])-1 ):
+            tmp = original_track_dict[cell_id][-1]
+
+            print(tmp)
+            short_track_list.append(tmp)
+            short_track_list_dict[cell_id] = short_track_list
 
         else:
-            short_track_list.append( longTracks[key][len(short_track_list)] )
-            short_track_list_dict[key] = short_track_list
+            short_track_list.append(original_track_dict[cell_id][len(short_track_list)])
+            short_track_list_dict[cell_id] = short_track_list
 
     return short_track_list_dict
 
@@ -630,7 +725,7 @@ def _cut_1(longTracks, threshold, transition_group):
 
 #after got all tracks start from first frame, define a mask matrix. all the nodes which are passed by any tracks are labels as True
 def _mask_1(short_track_list_dict: dict, profit_matrix_list: list):
-    print("_mask_1")
+    # print("_mask_1")
     mask_frame_cell_id_list: list = []      #list list that stores [frame_id][cell_id]
 
     # initialize the transition group with all False
@@ -649,6 +744,22 @@ def _mask_1(short_track_list_dict: dict, profit_matrix_list: list):
             mask_frame_cell_id_list[frame_idx_data][cell_idx_data] = True
 
     return mask_frame_cell_id_list
+
+
+def obtain_matrix_value_by_index_list(mtx: np.array, index_value_list: list, axis=0):
+    if axis == 0:
+        num_of_col: int = mtx.shape[1]
+        is_valid: bool = (num_of_col == len(index_value_list))
+        if not is_valid:
+            raise Exception("num_of_col != len(index_value_list)")
+
+        result_list: list = []
+        for idx, index_value in enumerate(index_value_list):
+            result_list.append(mtx[index_value][idx])
+
+        return np.array(result_list)
+
+    raise Exception(axis)
 
 
 
@@ -693,17 +804,30 @@ if __name__ == '__main__':
 
         # all_prof_mat_list_dict[series] = tmp_prof_mat_list  # prof = profit matrix
 
-
-    # is_create_excel: bool = False
-    # if is_create_excel:
-    #     excel_output_dir_path = "d:/tmp/"
-    #     create_prof_matrix_excel(all_prof_mat_list_dict, excel_output_dir_path)
+        is_create_excel: bool = False
+        if is_create_excel:
+            excel_output_dir_path = "d:/tmp/"
+            create_prof_matrix_excel(series, prof_mat_list, excel_output_dir_path)
 
 
     # for series in existing_series_list:
     #     prof_mat_list = all_prof_mat_list_dict[series]
         # print("a.", prof_mat_list[0][0].shape)
         all_track_dict = _iteration_1(prof_mat_list)
+
+        count_dict = {}
+        for key, value_list in all_track_dict.items():
+            seq_length = len(value_list)
+            if seq_length not in count_dict:
+                count_dict[seq_length] = 0
+
+            count_dict[seq_length] += 1
+
+
+        import collections
+        count_dict = collections.OrderedDict(sorted(count_dict.items()))
+        print(count_dict)
+
 
         result_list = []
         for i in range(len(all_track_dict)):
@@ -712,6 +836,8 @@ if __name__ == '__main__':
             else:
                 if (len(all_track_dict[i]) > 5):
                     result_list.append(all_track_dict[i])
+
+        print("series", series, "len(result_list)", len(result_list));
 
 
         #print(result)
