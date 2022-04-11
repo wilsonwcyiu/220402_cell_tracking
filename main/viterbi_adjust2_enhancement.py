@@ -493,6 +493,17 @@ def calculate_best_cell_track(profit_mtx_list: list):   # former method _process
     #loop each row on first prob matrix. return the maximum value and index through all the frames, the first prob matrix in profit_matrix_list is a matrix (2D array)
     first_frame_mtx: np.array = profit_mtx_list[0]
     total_cell_in_first_frame: int = first_frame_mtx.shape[0]
+
+
+
+    # cell_idx_frame_idx_tuple_list: list = []
+    # for cell_idx in range(0, total_cell_in_first_frame):
+    #     for next_frame_idx in range(1, total_step):
+    #         cell_idx_frame_idx_tuple: tuple = (cell_idx, next_frame_idx)
+    #         cell_idx_frame_idx_tuple_list.append(cell_idx_frame_idx_tuple)
+
+
+
     for cell_idx in range(0, total_cell_in_first_frame):
 
         single_cell_vec = first_frame_mtx[cell_idx]
