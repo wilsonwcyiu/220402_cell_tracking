@@ -254,7 +254,7 @@ def _process(transition_group):
     first_frame_mtx: np.array = transition_group[0]
     total_cell_in_first_frame: int = first_frame_mtx.shape[0]
     for cell_idx in range(0, total_cell_in_first_frame):
-        item = first_frame_mtx[cell_idx]
+        item: np.array = first_frame_mtx[cell_idx]            # single_cell_vec
         for frame_num in range(1, step):
             item = item[:, np.newaxis]
             item = np.repeat(item, transition_group[frame_num].shape[1], 1)
