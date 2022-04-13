@@ -4,7 +4,21 @@ import sys
 
 
 def main():
-    method_12()
+    method_13()
+
+
+def method_13():
+    data_list = np.array([
+        [1, 2, 3],
+        [4, 5, 6]])
+
+    print(data_list[0])
+    print(data_list[0].shape)
+
+    tmp_list = [1,2,3]
+    tmp_arr = np.array(tmp_list)
+    print(tmp_arr)
+    print(tmp_arr.shape)
 
 
 

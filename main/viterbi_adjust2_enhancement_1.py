@@ -496,60 +496,66 @@ def calculate_best_cell_track(profit_mtx_list: list):   # former method _process
 
 
 
-    # cell_idx_frame_idx_tuple_list: list = []
-    # for cell_idx in range(0, total_cell_in_first_frame):
-    #     for next_frame_num in range(1, total_step):
-    #         cell_idx_frame_idx_tuple: tuple = (cell_idx, next_frame_num)
-    #         cell_idx_frame_idx_tuple_list.append(cell_idx_frame_idx_tuple)
-    #
-    #
-    # for cell_idx_frame_idx_tuple in cell_idx_frame_idx_tuple_list:
-    #     cell_idx = cell_idx_frame_idx_tuple[0]
-    #     next_frame_num = cell_idx_frame_idx_tuple[1]
-    #
-    #     if next_frame_num == 1:
-    #         single_cell_vec = first_frame_mtx[cell_idx]
-    #     elif next_frame_num > 1:
-    #         # print("next_frame_num", next_frame_num)
-    #         next_frame_idx: int = next_frame_num-2
-    #         single_cell_vec = start_list_value_vec_dict[cell_idx][next_frame_idx]
-    #     else:
-    #         raise Exception()
-
-
-
-
+    cell_idx_frame_num_tuple_list: list = []
     for cell_idx in range(0, total_cell_in_first_frame):
-
-        single_cell_vec = first_frame_mtx[cell_idx]
         for next_frame_num in range(1, total_step):
-            # single_cell_mtx: np.array = single_cell_vec[:, np.newaxis]   #https://stackoverflow.com/questions/29241056/how-does-numpy-newaxis-work-and-when-to-use-it
-            single_cell_mtx: np.array = single_cell_vec.reshape(single_cell_vec.shape[0], 1)
-
-            ## ?? Is this step attempting to calculate the max probability from 2 steps prof_mtx?
-            num_of_cell_in_next_frame: int = profit_mtx_list[next_frame_num].shape[1]
-            single_cell_mtx = np.repeat(single_cell_mtx, num_of_cell_in_next_frame, axis=1)
-
-            last_layer_all_probability_mtx: np.array = single_cell_mtx * profit_mtx_list[next_frame_num]
+            cell_idx_frame_idx_tuple: tuple = (cell_idx, next_frame_num)
+            cell_idx_frame_num_tuple_list.append(cell_idx_frame_idx_tuple)
 
 
-            if linkage_strategy == "viterbi":
-                index_ab_vec = np.argmax(last_layer_all_probability_mtx, axis=0)
-            elif linkage_strategy == "individual":
-                index_ab_vec = np.argmax(profit_mtx_list[next_frame_num], axis=0)
-            else:
-                raise Exception(linkage_strategy)
+    to_skip_cell_idx_list: list = []
+    for cell_idx_frame_idx_tuple in cell_idx_frame_num_tuple_list:
+        cell_idx = cell_idx_frame_idx_tuple[0]
+        next_frame_num = cell_idx_frame_idx_tuple[1]
 
-            # value_ab_vec = np.max(last_layer_all_probability_mtx, axis=0)
-            value_ab_vec = obtain_matrix_value_by_index_list(last_layer_all_probability_mtx, index_ab_vec)
+        if cell_idx in to_skip_cell_idx_list:
+            continue
 
-            if ( np.all(value_ab_vec == 0) ):
-                # print(">> np.all(value_ab_vec == 0); break")
-                break
+        if next_frame_num == 1:
+            single_cell_vec = first_frame_mtx[cell_idx]
+        elif next_frame_num > 1:
+            # print("next_frame_num", next_frame_num)
+            next_frame_idx: int = next_frame_num-2
+            single_cell_vec = start_list_value_vec_dict[cell_idx][next_frame_idx]
+        else:
+            raise Exception()
 
-            start_list_index_vec_dict[cell_idx].append(index_ab_vec)
-            start_list_value_vec_dict[cell_idx].append(value_ab_vec)
-            single_cell_vec = value_ab_vec
+
+
+
+    # for cell_idx in range(0, total_cell_in_first_frame):
+    #
+    #     single_cell_vec = first_frame_mtx[cell_idx]
+    #     for next_frame_num in range(1, total_step):
+    #         # single_cell_mtx: np.array = single_cell_vec[:, np.newaxis]   #https://stackoverflow.com/questions/29241056/how-does-numpy-newaxis-work-and-when-to-use-it
+        single_cell_mtx: np.array = single_cell_vec.reshape(single_cell_vec.shape[0], 1)
+
+        ## ?? Is this step attempting to calculate the max probability from 2 steps prof_mtx?
+        num_of_cell_in_next_frame: int = profit_mtx_list[next_frame_num].shape[1]
+        single_cell_mtx = np.repeat(single_cell_mtx, num_of_cell_in_next_frame, axis=1)
+
+        last_layer_all_probability_mtx: np.array = single_cell_mtx * profit_mtx_list[next_frame_num]
+
+
+        if linkage_strategy == "viterbi":
+            index_ab_vec = np.argmax(last_layer_all_probability_mtx, axis=0)
+        elif linkage_strategy == "individual":
+            index_ab_vec = np.argmax(profit_mtx_list[next_frame_num], axis=0)
+        else:
+            raise Exception(linkage_strategy)
+
+        # value_ab_vec = np.max(last_layer_all_probability_mtx, axis=0)
+        value_ab_vec = obtain_matrix_value_by_index_list(last_layer_all_probability_mtx, index_ab_vec)
+
+        if ( np.all(value_ab_vec == 0) ):
+            # print(">> np.all(value_ab_vec == 0); break")
+            to_skip_cell_idx_list.append(cell_idx)
+            continue
+            # break
+
+        start_list_index_vec_dict[cell_idx].append(index_ab_vec)
+        start_list_value_vec_dict[cell_idx].append(value_ab_vec)
+        single_cell_vec = value_ab_vec
 
     return start_list_index_vec_dict, start_list_value_vec_dict
 
@@ -820,7 +826,7 @@ if __name__ == '__main__':
         # all_prof_mat_list_dict[series] = tmp_prof_mat_list  # prof = profit matrix
 
 
-        is_create_excel: bool = True
+        is_create_excel: bool = False
         if is_create_excel:
             excel_output_dir_path = "d:/tmp/"
             create_prof_matrix_excel(series, prof_mat_list, excel_output_dir_path)
