@@ -212,8 +212,8 @@ def _iteration(transition_group):
                 # next_list_index, next_list_value = _process_iter(new_transition_group)
 
                 # new 220413
-                num_of_col: int = new_transition_group[0].shape[0]
-                new_transition_group[0] = new_transition_group[0].reshape(1, num_of_col)
+                total_col: int = new_transition_group[0].shape[0]
+                new_transition_group[0] = new_transition_group[0].reshape(1, total_col)
                 next_list_index, next_list_value = _process(new_transition_group)
 
 
@@ -233,17 +233,39 @@ def _process(transition_group):
     start_list_value = defaultdict(list)
     #loop each row on first prob matrix. return the maximum value and index through the whole frames 
     #the first prob matrix in transition_group is a matrix (2D array)
-    for ii, item in enumerate(transition_group[0]):
-        for i in range(1, step):          
+
+
+    # #existing 220413
+    # for ii, item in enumerate(transition_group[0]):
+    #     for i in range(1, step):
+    #         item = item[:, np.newaxis]
+    #         item = np.repeat(item, transition_group[i].shape[1], 1)
+    #         index_ab = np.argmax(item * transition_group[i], 0)
+    #         value_ab = np.max(item * transition_group[i], 0)
+    #         if (np.all(value_ab==0)):
+    #             break
+    #         start_list_index[ii].append(index_ab)
+    #         start_list_value[ii].append(value_ab)
+    #         item = value_ab
+    # return start_list_index, start_list_value
+
+
+    #new 220413
+    first_frame_mtx: np.array = transition_group[0]
+    total_cell_in_first_frame: int = first_frame_mtx.shape[0]
+    for cell_idx in range(0, total_cell_in_first_frame):
+        item = first_frame_mtx[cell_idx]
+        for frame_num in range(1, step):
             item = item[:, np.newaxis]
-            item = np.repeat(item, transition_group[i].shape[1], 1)
-            index_ab = np.argmax(item * transition_group[i], 0)
-            value_ab = np.max(item * transition_group[i], 0)
+            item = np.repeat(item, transition_group[frame_num].shape[1], 1)
+            index_ab = np.argmax(item * transition_group[frame_num], 0)
+            value_ab = np.max(item * transition_group[frame_num], 0)
             if (np.all(value_ab==0)):
                 break
-            start_list_index[ii].append(index_ab)
-            start_list_value[ii].append(value_ab)
+            start_list_index[cell_idx].append(index_ab)
+            start_list_value[cell_idx].append(value_ab)
             item = value_ab
+
     return start_list_index, start_list_value
 
 
