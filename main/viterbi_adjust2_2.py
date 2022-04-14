@@ -244,8 +244,8 @@ def _process(profit_mtx_list: list):   # former method _process
     total_cell_in_first_frame: int = first_frame_mtx.shape[0]
 
     cell_idx_frame_num_tuple_list: list = []
-    for cell_idx in range(0, total_cell_in_first_frame):
-        for frame_num in range(1, total_frame):
+    for frame_num in range(1, total_frame):
+        for cell_idx in range(0, total_cell_in_first_frame):
             cell_idx_frame_idx_tuple: tuple = (cell_idx, frame_num)
             cell_idx_frame_num_tuple_list.append(cell_idx_frame_idx_tuple)
 
@@ -255,14 +255,15 @@ def _process(profit_mtx_list: list):   # former method _process
         cell_idx = cell_idx_frame_idx_tuple[0]
         frame_num = cell_idx_frame_idx_tuple[1]
 
+        print(f"working on cell_idx: {cell_idx}. frame_num: {frame_num}")
+
         if cell_idx in to_skip_cell_idx_list:
             continue
 
         if frame_num == 1:
             single_cell_vec = first_frame_mtx[cell_idx]
         elif frame_num > 1:
-            # print("next_frame_num", next_frame_num)
-            frame_idx: int = frame_num-2
+            frame_idx: int = frame_num - 2
             single_cell_vec = start_list_value_vec_dict[cell_idx][frame_idx]
         else:
             raise Exception()
