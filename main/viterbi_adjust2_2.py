@@ -226,47 +226,185 @@ def _iteration(transition_group):
             length = len(all_tracks)
     return all_tracks
 
-#loop each node on first frame to find the optimal path using probabilty multiply
-def _process(transition_group):
-    step = len(transition_group)
-    start_list_index = defaultdict(list)
-    start_list_value = defaultdict(list)
-    #loop each row on first prob matrix. return the maximum value and index through the whole frames 
-    #the first prob matrix in transition_group is a matrix (2D array)
 
 
-    # #existing 220413
-    # for ii, item in enumerate(transition_group[0]):
-    #     for i in range(1, step):
-    #         item = item[:, np.newaxis]
-    #         item = np.repeat(item, transition_group[i].shape[1], 1)
-    #         index_ab = np.argmax(item * transition_group[i], 0)
-    #         value_ab = np.max(item * transition_group[i], 0)
-    #         if (np.all(value_ab==0)):
-    #             break
-    #         start_list_index[ii].append(index_ab)
-    #         start_list_value[ii].append(value_ab)
-    #         item = value_ab
-    # return start_list_index, start_list_value
 
 
-    #new 220413
-    first_frame_mtx: np.array = transition_group[0]
+def _process(profit_mtx_list: list):   # former method _process
+    # print("_process_1")
+    total_frame: int = len(profit_mtx_list)
+
+    start_list_index_vec_dict: int = defaultdict(list)
+    start_list_value_vec_dict: int = defaultdict(list)
+
+    linkage_strategy: str = "viterbi"
+
+    #loop each row on first prob matrix. return the maximum value and index through all the frames, the first prob matrix in profit_matrix_list is a matrix (2D array)
+    first_frame_mtx: np.array = profit_mtx_list[0]
     total_cell_in_first_frame: int = first_frame_mtx.shape[0]
-    for cell_idx in range(0, total_cell_in_first_frame):
-        item: np.array = first_frame_mtx[cell_idx]            # single_cell_vec
-        for frame_num in range(1, step):
-            item = item[:, np.newaxis]
-            item = np.repeat(item, transition_group[frame_num].shape[1], 1)
-            index_ab = np.argmax(item * transition_group[frame_num], 0)
-            value_ab = np.max(item * transition_group[frame_num], 0)
-            if (np.all(value_ab==0)):
-                break
-            start_list_index[cell_idx].append(index_ab)
-            start_list_value[cell_idx].append(value_ab)
-            item = value_ab
 
-    return start_list_index, start_list_value
+    cell_idx_frame_num_tuple_list: list = []
+    for cell_idx in range(0, total_cell_in_first_frame):
+        for frame_num in range(1, total_frame):
+            cell_idx_frame_idx_tuple: tuple = (cell_idx, frame_num)
+            cell_idx_frame_num_tuple_list.append(cell_idx_frame_idx_tuple)
+
+
+    to_skip_cell_idx_list: list = []
+    for cell_idx_frame_idx_tuple in cell_idx_frame_num_tuple_list:
+        cell_idx = cell_idx_frame_idx_tuple[0]
+        frame_num = cell_idx_frame_idx_tuple[1]
+
+        if cell_idx in to_skip_cell_idx_list:
+            continue
+
+        if frame_num == 1:
+            single_cell_vec = first_frame_mtx[cell_idx]
+        elif frame_num > 1:
+            # print("next_frame_num", next_frame_num)
+            frame_idx: int = frame_num-2
+            single_cell_vec = start_list_value_vec_dict[cell_idx][frame_idx]
+        else:
+            raise Exception()
+
+
+        single_cell_mtx: np.array = single_cell_vec.reshape(single_cell_vec.shape[0], 1)
+
+        total_cell_in_next_frame: int = profit_mtx_list[frame_num].shape[1]
+        single_cell_mtx = np.repeat(single_cell_mtx, total_cell_in_next_frame, axis=1)
+
+        last_layer_all_probability_mtx: np.array = single_cell_mtx * profit_mtx_list[frame_num]
+
+
+        if linkage_strategy == "viterbi":
+            index_ab_vec = np.argmax(last_layer_all_probability_mtx, axis=0)
+        elif linkage_strategy == "individual":
+            index_ab_vec = np.argmax(profit_mtx_list[frame_num], axis=0)
+        else:
+            raise Exception(linkage_strategy)
+
+        # value_ab_vec = np.max(last_layer_all_probability_mtx, axis=0)
+        value_ab_vec = obtain_matrix_value_by_index_list(last_layer_all_probability_mtx, index_ab_vec)
+
+        if ( np.all(value_ab_vec == 0) ):
+            # print(">> np.all(value_ab_vec == 0); break")
+            to_skip_cell_idx_list.append(cell_idx)
+            continue
+            # break
+
+        start_list_index_vec_dict[cell_idx].append(index_ab_vec)
+        start_list_value_vec_dict[cell_idx].append(value_ab_vec)
+
+    return start_list_index_vec_dict, start_list_value_vec_dict
+
+
+
+
+#loop each node on first frame to find the optimal path using probabilty multiply
+# def _process(transition_group):
+#     start_list_index = defaultdict(list)
+#     start_list_value = defaultdict(list)
+#     #loop each row on first prob matrix. return the maximum value and index through the whole frames
+#     #the first prob matrix in transition_group is a matrix (2D array)
+#
+#
+#     # #existing 220413
+#     # for ii, item in enumerate(transition_group[0]):
+#     #     for i in range(1, step):
+#     #         item = item[:, np.newaxis]
+#     #         item = np.repeat(item, transition_group[i].shape[1], 1)
+#     #         index_ab = np.argmax(item * transition_group[i], 0)
+#     #         value_ab = np.max(item * transition_group[i], 0)
+#     #         if (np.all(value_ab==0)):
+#     #             break
+#     #         start_list_index[ii].append(index_ab)
+#     #         start_list_value[ii].append(value_ab)
+#     #         item = value_ab
+#     # return start_list_index, start_list_value
+#
+#
+#     #new 220413
+#     first_frame_mtx: np.array = transition_group[0]
+#     total_cell_in_first_frame: int = first_frame_mtx.shape[0]
+#
+#     total_frame: int = len(transition_group)
+#     cell_idx_frame_num_tuple_list: list = []
+#     for cell_idx1 in range(0, total_cell_in_first_frame):
+#         for frame_num1 in range(1, total_frame):
+#             cell_idx_frame_num_tuple: tuple = (cell_idx1, frame_num1)
+#             cell_idx_frame_num_tuple_list.append(cell_idx_frame_num_tuple)
+#
+#
+#     to_skip_cell_idx_list: list = []
+#     for cell_idx_frame_idx_tuple1 in cell_idx_frame_num_tuple_list:
+#         cell_idx = cell_idx_frame_idx_tuple1[0]
+#         frame_num = cell_idx_frame_idx_tuple1[1]
+#
+#         print(f"working on cell_idx: {cell_idx}. frame_num: {frame_num}")
+#
+#         if cell_idx in to_skip_cell_idx_list:
+#             continue
+#
+#         item = None
+#         if frame_num == 1:
+#             item = first_frame_mtx[cell_idx]
+#         elif frame_num > 1:
+#             next_frame_idx: int = frame_num - 2
+#             item = start_list_index[cell_idx][next_frame_idx]
+#         else:
+#             raise Exception()
+#
+#
+#         # item = item[:, np.newaxis]
+#         item = item.reshape(item.shape[0], 1)
+#
+#         total_cell_in_next_frame: int = transition_group[frame_num].shape[1]
+#         item = np.repeat(item, total_cell_in_next_frame, 1)
+#
+#         last_layer_all_probability_mtx: np.array = item * transition_group[frame_num]
+#
+#         linkage_strategy: str = "viterbi"
+#         if linkage_strategy == "viterbi":
+#             index_ab = np.argmax(last_layer_all_probability_mtx, axis=0)
+#         elif linkage_strategy == "individual":
+#             index_ab = np.argmax(transition_group[frame_num], axis=0)
+#         else:
+#             raise Exception(linkage_strategy)
+#
+#
+#         # value_ab = np.max(item * transition_group[frame_num], 0)
+#         value_ab = obtain_matrix_value_by_index_list(last_layer_all_probability_mtx, index_ab)
+#
+#
+#         if (np.all(value_ab==0)):
+#             to_skip_cell_idx_list.append(cell_idx)
+#             continue
+#             # break
+#
+#         start_list_index[cell_idx].append(index_ab)
+#         start_list_value[cell_idx].append(value_ab)
+#         # item = value_ab
+#
+#
+#     return start_list_index, start_list_value
+
+
+
+def obtain_matrix_value_by_index_list(mtx: np.array, index_value_list: list, axis=0):
+    if axis == 0:
+        num_of_col: int = mtx.shape[1]
+        is_valid: bool = (num_of_col == len(index_value_list))
+        if not is_valid:
+            raise Exception("num_of_col != len(index_value_list)")
+
+        result_list: list = []
+        for idx, index_value in enumerate(index_value_list):
+            result_list.append(mtx[index_value][idx])
+
+        return np.array(result_list)
+
+    raise Exception(axis)
+
 
 
 # #loop each node on the other frames which is not passed by the tracks we've got.
