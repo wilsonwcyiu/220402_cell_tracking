@@ -393,7 +393,7 @@ def _iteration_1(profit_matrix_list: list):
     all_track_dict: dict = {}
 
     # _process
-    start_list_index_vec_dict, start_list_value_vec_dict = calculate_best_cell_track(profit_matrix_list) # 2D array list
+    start_list_index_vec_dict, start_list_value_vec_dict = _process_calculate_best_cell_track(profit_matrix_list) # 2D array list
 
 
     store_dict = _find_1(start_list_index_vec_dict, start_list_value_vec_dict)
@@ -461,7 +461,7 @@ def _iteration_1(profit_matrix_list: list):
             # print("new_transition_group_list[0].shape", new_transition_group_list[0].shape)
             new_transition_group_list[0] = new_transition_group_list[0].reshape(1, new_transition_group_list[0].shape[0])
             # _process
-            next_list_index, next_list_value = calculate_best_cell_track(new_transition_group_list)
+            next_list_index, next_list_value = _process_calculate_best_cell_track(new_transition_group_list)
             new_store_dict = _find_iter(next_list_index, next_list_value, profit_matrix_idx, cell_row_idx)
             new_short_Tracks = _cut_iter(new_store_dict, 0.01, new_transition_group_list, profit_matrix_idx)
 
@@ -481,9 +481,8 @@ def _iteration_1(profit_matrix_list: list):
 
 
 #loop each node on first frame to find the optimal path using probabilty multiply
-def calculate_best_cell_track(profit_mtx_list: list):   # former method _process
+def _process_calculate_best_cell_track(profit_mtx_list: list, merge_above_threshold:float=1.0, split_below_threshold:float=1.0):   # former method _process
     # print("_process_1")
-    total_step: int = len(profit_mtx_list)
 
     start_list_index_vec_dict: int = defaultdict(list)
     start_list_value_vec_dict: int = defaultdict(list)
@@ -494,53 +493,44 @@ def calculate_best_cell_track(profit_mtx_list: list):   # former method _process
     first_frame_mtx: np.array = profit_mtx_list[0]
     total_cell_in_first_frame: int = first_frame_mtx.shape[0]
 
-
-
     cell_idx_frame_num_tuple_list: list = []
+    total_frame: int = len(profit_mtx_list)
     for cell_idx in range(0, total_cell_in_first_frame):
-        for next_frame_num in range(1, total_step):
-            cell_idx_frame_idx_tuple: tuple = (cell_idx, next_frame_num)
+        for frame_num in range(1, total_frame):
+            cell_idx_frame_idx_tuple: tuple = (cell_idx, frame_num)
             cell_idx_frame_num_tuple_list.append(cell_idx_frame_idx_tuple)
 
 
     to_skip_cell_idx_list: list = []
     for cell_idx_frame_idx_tuple in cell_idx_frame_num_tuple_list:
         cell_idx = cell_idx_frame_idx_tuple[0]
-        next_frame_num = cell_idx_frame_idx_tuple[1]
+        frame_num = cell_idx_frame_idx_tuple[1]
 
         if cell_idx in to_skip_cell_idx_list:
             continue
 
-        if next_frame_num == 1:
+        if frame_num == 1:
             single_cell_vec = first_frame_mtx[cell_idx]
-        elif next_frame_num > 1:
+        elif frame_num > 1:
             # print("next_frame_num", next_frame_num)
-            next_frame_idx: int = next_frame_num-2
-            single_cell_vec = start_list_value_vec_dict[cell_idx][next_frame_idx]
+            frame_idx: int = frame_num-2
+            single_cell_vec = start_list_value_vec_dict[cell_idx][frame_idx]
         else:
             raise Exception()
 
 
-
-
-    # for cell_idx in range(0, total_cell_in_first_frame):
-    #
-    #     single_cell_vec = first_frame_mtx[cell_idx]
-    #     for next_frame_num in range(1, total_step):
-    #         # single_cell_mtx: np.array = single_cell_vec[:, np.newaxis]   #https://stackoverflow.com/questions/29241056/how-does-numpy-newaxis-work-and-when-to-use-it
         single_cell_mtx: np.array = single_cell_vec.reshape(single_cell_vec.shape[0], 1)
 
-        ## ?? Is this step attempting to calculate the max probability from 2 steps prof_mtx?
-        num_of_cell_in_next_frame: int = profit_mtx_list[next_frame_num].shape[1]
-        single_cell_mtx = np.repeat(single_cell_mtx, num_of_cell_in_next_frame, axis=1)
+        total_cell_in_next_frame: int = profit_mtx_list[frame_num].shape[1]
+        single_cell_mtx = np.repeat(single_cell_mtx, total_cell_in_next_frame, axis=1)
 
-        last_layer_all_probability_mtx: np.array = single_cell_mtx * profit_mtx_list[next_frame_num]
+        last_layer_all_probability_mtx: np.array = single_cell_mtx * profit_mtx_list[frame_num]
 
 
         if linkage_strategy == "viterbi":
             index_ab_vec = np.argmax(last_layer_all_probability_mtx, axis=0)
         elif linkage_strategy == "individual":
-            index_ab_vec = np.argmax(profit_mtx_list[next_frame_num], axis=0)
+            index_ab_vec = np.argmax(profit_mtx_list[frame_num], axis=0)
         else:
             raise Exception(linkage_strategy)
 
@@ -555,7 +545,6 @@ def calculate_best_cell_track(profit_mtx_list: list):   # former method _process
 
         start_list_index_vec_dict[cell_idx].append(index_ab_vec)
         start_list_value_vec_dict[cell_idx].append(value_ab_vec)
-        single_cell_vec = value_ab_vec
 
     return start_list_index_vec_dict, start_list_value_vec_dict
 
@@ -563,71 +552,9 @@ def calculate_best_cell_track(profit_mtx_list: list):   # former method _process
 
 
 
-    #         linkage_strategy: str = "viterbi"
-    #         if linkage_strategy == "viterbi":
-    #             index_ab_vec = np.argmax(last_layer_all_probability_mtx, axis=0)
-    #             value_ab_vec = np.max(last_layer_all_probability_mtx, axis=0)
-    #         elif linkage_strategy == "individual":
-    #             index_ab_vec = np.argmax(profit_mtx_list[next_frame_num], axis=0)
-    #             value_ab_vec = np.max(profit_mtx_list[next_frame_num], axis=0)
-    #         else:
-    #             raise Exception(linkage_strategy)
-    #
-    #         if ( np.all(value_ab_vec == 0) ):
-    #             # print(">> np.all(value_ab_vec == 0); break")
-    #             break
-    #
-    #         start_list_index_vec_dict[cell_idx].append(index_ab_vec)
-    #         start_list_value_vec_dict[cell_idx].append(value_ab_vec)
-    #         single_cell_vec = value_ab_vec
-    #
-    # return start_list_index_vec_dict, start_list_value_vec_dict
 
 
 
-
-
-
-# #loop each node on first frame to find the optimal path using probabilty multiply
-# def calculate_best_cell_track_individual(profit_mtx_list: list):   # former method _process
-#     print("_process_1")
-#     total_step: int = len(profit_mtx_list)
-#
-#     start_list_index_vec_dict: int = defaultdict(list)
-#     start_list_value_vec_dict: int = defaultdict(list)
-#
-#     #loop each row on first prob matrix. return the maximum value and index through all the frames, the first prob matrix in profit_matrix_list is a matrix (2D array)
-#     first_frame_mtx: np.array = profit_mtx_list[0]
-#     total_cell_in_first_frame: int = first_frame_mtx.shape[0]
-#     for cell_idx in range(0, total_cell_in_first_frame):
-#
-#         single_cell_vec = first_frame_mtx[cell_idx]
-#         for next_frame_idx in range(1, total_step):
-#             # single_cell_mtx: np.array = single_cell_vec[:, np.newaxis]   #https://stackoverflow.com/questions/29241056/how-does-numpy-newaxis-work-and-when-to-use-it
-#             single_cell_mtx: np.array = single_cell_vec.reshape(single_cell_vec.shape[0], 1)
-#
-#             ## ?? Is this step attempting to calculate the max probability from 2 steps prof_mtx?
-#             num_of_cell_in_next_frame: int = profit_mtx_list[next_frame_idx].shape[1]
-#             single_cell_mtx = np.repeat(single_cell_mtx, num_of_cell_in_next_frame, axis=1)
-#
-#
-#             tmp_one_step_probability_mtx = None
-#             print ("individual")
-#             probability_mtx: np.array = single_cell_mtx * profit_mtx_list[next_frame_idx]
-#             index_ab_vec = np.argmax(profit_mtx_list[next_frame_idx], axis=0)
-#             value_ab_vec = np.max(profit_mtx_list[next_frame_idx], axis=0)
-#
-#
-#
-#             if ( np.all(value_ab_vec == 0) ):
-#                 break
-#
-#             start_list_index_vec_dict[cell_idx].append(index_ab_vec)
-#             start_list_value_vec_dict[cell_idx].append(value_ab_vec)
-#             single_cell_vec = value_ab_vec
-#
-#     return start_list_index_vec_dict, start_list_value_vec_dict
-#
 
 
 
@@ -786,7 +713,7 @@ if __name__ == '__main__':
     segmentation_folder = folder_path + 'segmentation_unet_seg//'
     images_folder = folder_path + 'dataset//images//'
     output_folder = folder_path + 'output_unet_seg_finetune//'
-    save_dir = folder_path + 'save_directory_enhancement//'
+    save_dir = folder_path + 'save_directory_enhancement/'
 
 
     print("start")
@@ -815,15 +742,9 @@ if __name__ == '__main__':
     for series in existing_series_list:
         print(f"working on series: {series}")
 
-        if series == "S04":
-            print()
-
-
         segmented_filename_list: list = find_segmented_filename_list_by_series(series, all_segmented_filename_list)
 
         prof_mat_list: list = derive_prof_matrix_list(segmentation_folder, output_folder, series, segmented_filename_list)
-
-        # all_prof_mat_list_dict[series] = tmp_prof_mat_list  # prof = profit matrix
 
 
         is_create_excel: bool = False
@@ -832,9 +753,6 @@ if __name__ == '__main__':
             create_prof_matrix_excel(series, prof_mat_list, excel_output_dir_path)
 
 
-        # for series in existing_series_list:
-        #     prof_mat_list = all_prof_mat_list_dict[series]
-        # print("a.", prof_mat_list[0][0].shape)
         all_track_dict = _iteration_1(prof_mat_list)
 
         count_dict = {}
@@ -848,7 +766,6 @@ if __name__ == '__main__':
 
         import collections
         count_dict = collections.OrderedDict(sorted(count_dict.items()))
-        # print(count_dict)
 
 
         result_list = []
