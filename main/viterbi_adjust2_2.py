@@ -183,6 +183,9 @@ def _mask_update(short_Tracks, mask_transition_group):
             mask_transition_group[frame][node] = True
     
     return mask_transition_group
+
+
+
 #start from first frame and loop the unvisited nodes in the other frames
 def _iteration(transition_group):
     all_tracks = {}
@@ -234,8 +237,8 @@ def _process(profit_mtx_list: list):   # former method _process
     # print("_process_1")
     total_frame: int = len(profit_mtx_list)
 
-    start_list_index_vec_dict: int = defaultdict(list)
-    start_list_value_vec_dict: int = defaultdict(list)
+    start_list_index_vec_dict: dict = defaultdict(list)
+    start_list_value_vec_dict: dict = defaultdict(list)
 
     linkage_strategy: str = "viterbi"
 
@@ -244,43 +247,49 @@ def _process(profit_mtx_list: list):   # former method _process
     total_cell_in_first_frame: int = first_frame_mtx.shape[0]
 
     cell_idx_frame_num_tuple_list: list = []
-    for frame_num in range(1, total_frame):
-        for cell_idx in range(0, total_cell_in_first_frame):
-            cell_idx_frame_idx_tuple: tuple = (cell_idx, frame_num)
+    for i_frame_num in range(1, total_frame):
+        for ii_cell_idx in range(0, total_cell_in_first_frame):
+            cell_idx_frame_idx_tuple: tuple = (ii_cell_idx, i_frame_num)
             cell_idx_frame_num_tuple_list.append(cell_idx_frame_idx_tuple)
+
+
+    # for ii_cell_idx in range(0, total_cell_in_first_frame):
+    #     for i_frame_num in range(1, total_frame):
+    #         cell_idx_frame_idx_tuple: tuple = (ii_cell_idx, i_frame_num)
+    #         cell_idx_frame_num_tuple_list.append(cell_idx_frame_idx_tuple)
 
 
     to_skip_cell_idx_list: list = []
     for cell_idx_frame_idx_tuple in cell_idx_frame_num_tuple_list:
-        cell_idx = cell_idx_frame_idx_tuple[0]
-        frame_num = cell_idx_frame_idx_tuple[1]
+        ii_cell_idx = cell_idx_frame_idx_tuple[0]
+        i_frame_num = cell_idx_frame_idx_tuple[1]
 
-        print(f"working on cell_idx: {cell_idx}. frame_num: {frame_num}")
+        print(f"working on cell_idx: {ii_cell_idx}. frame_num: {i_frame_num}")
 
-        if cell_idx in to_skip_cell_idx_list:
+        if ii_cell_idx in to_skip_cell_idx_list:
             continue
 
-        if frame_num == 1:
-            single_cell_vec = first_frame_mtx[cell_idx]
-        elif frame_num > 1:
-            frame_idx: int = frame_num - 2
-            single_cell_vec = start_list_value_vec_dict[cell_idx][frame_idx]
+        if i_frame_num == 1:
+            single_cell_vec = first_frame_mtx[ii_cell_idx]
+        elif i_frame_num > 1:
+            frame_idx: int = i_frame_num - 2
+            single_cell_vec = start_list_value_vec_dict[ii_cell_idx][frame_idx]
         else:
             raise Exception()
 
 
         single_cell_mtx: np.array = single_cell_vec.reshape(single_cell_vec.shape[0], 1)
 
-        total_cell_in_next_frame: int = profit_mtx_list[frame_num].shape[1]
+        total_cell_in_next_frame: int = profit_mtx_list[i_frame_num].shape[1]
         single_cell_mtx = np.repeat(single_cell_mtx, total_cell_in_next_frame, axis=1)
 
-        last_layer_all_probability_mtx: np.array = single_cell_mtx * profit_mtx_list[frame_num]
+        last_layer_all_probability_mtx: np.array = single_cell_mtx * profit_mtx_list[i_frame_num]
 
 
         if linkage_strategy == "viterbi":
             index_ab_vec = np.argmax(last_layer_all_probability_mtx, axis=0)
         elif linkage_strategy == "individual":
-            index_ab_vec = np.argmax(profit_mtx_list[frame_num], axis=0)
+            index_ab_vec = np.argmax(profit_mtx_list[i_frame_num], axis=0)
         else:
             raise Exception(linkage_strategy)
 
@@ -289,12 +298,12 @@ def _process(profit_mtx_list: list):   # former method _process
 
         if ( np.all(value_ab_vec == 0) ):
             # print(">> np.all(value_ab_vec == 0); break")
-            to_skip_cell_idx_list.append(cell_idx)
+            to_skip_cell_idx_list.append(ii_cell_idx)
             continue
             # break
 
-        start_list_index_vec_dict[cell_idx].append(index_ab_vec)
-        start_list_value_vec_dict[cell_idx].append(value_ab_vec)
+        start_list_index_vec_dict[ii_cell_idx].append(index_ab_vec)
+        start_list_value_vec_dict[ii_cell_idx].append(value_ab_vec)
 
     return start_list_index_vec_dict, start_list_value_vec_dict
 
