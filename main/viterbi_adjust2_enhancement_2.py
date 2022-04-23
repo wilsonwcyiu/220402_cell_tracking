@@ -389,74 +389,30 @@ def create_prof_matrix_excel(series: str, one_series_img_list, excel_output_dir_
 
 
 #start from first frame and loop the unvisited nodes in the other frames
-def _iteration_1(profit_matrix_list: list):
-    # print("_iteration_1")
+def _iteration_create_viterbi_track_data(profit_matrix_list: list):
     all_cell_track_dict: dict = {}
 
-
-    # _process
     start_list_index_vec_dict, start_list_value_vec_dict = _process_calculate_best_cell_track(profit_matrix_list) # 2D array list
 
-    start_list_index_vec_dict = {0: start_list_index_vec_dict[0]}
-    start_list_value_vec_dict = {0: start_list_value_vec_dict[0]}
+    # start_list_index_vec_dict = {0: start_list_index_vec_dict[0]}
+    # start_list_value_vec_dict = {0: start_list_value_vec_dict[0]}
 
-    # print("len(start_list_value_vec_dict[0]", len(start_list_value_vec_dict[0]))
-    # print("len(start_list_index_vec_dict[0]", len(start_list_index_vec_dict[0]))
-
-    value_list_len: int = len(start_list_index_vec_dict[0])
-    # print("=== value:", np.round(start_list_value_vec_dict[0][value_list_len-1], 4))
-    # is_all_zero = np.all(start_list_value_vec_dict[0][value_list_len-1] == 0)
-    # print("is_all_zero", is_all_zero)
 
     store_dict = _find_1(start_list_index_vec_dict, start_list_value_vec_dict)
 
-    # print("result store_dict lenght", len(store_dict[0]))
-    # last_data_idx = len(store_dict[0]) - 1
 
-
-
-    store_dict_1: dict = {}
-    track_idx = 0
-    for cell_id in start_list_index_vec_dict.keys():
-        start_list_index_vec: np.array = start_list_index_vec_dict[cell_id]
-        start_list_value_vec: np.array = start_list_value_vec_dict[cell_id]
-        track_tuple_list: list = derive_one_cell_track(track_idx, start_list_index_vec, start_list_value_vec)
-
-        store_dict_1[cell_id] = track_tuple_list
-        break
-
-    print(store_dict[0])
-    print(store_dict_1[0])
-    exit()
-
-
+    # store_dict_1: dict = {}
+    # track_idx = 0
+    # for cell_id in start_list_index_vec_dict.keys():
+    #     start_list_index_vec: np.array = start_list_index_vec_dict[cell_id]
+    #     start_list_value_vec: np.array = start_list_value_vec_dict[cell_id]
+    #     track_tuple_list: list = derive_one_cell_track(track_idx, start_list_index_vec, start_list_value_vec)
     #
-
-    # for key, value_tuple_list in store_dict.items():
-    #     print(type(key))
-    #     print(type(value_tuple_list))
-    #     print(key)
-    #     print(value_tuple_list)
-    #     exit()
-
-
-    # count_dict = {}
-    # for key, value_list in store_dict.items():
-    #     seq_length = len(value_list)
-    #     if seq_length not in count_dict:
-    #         count_dict[seq_length] = 0
-    #
-    #     count_dict[seq_length] += 1
-    #
-    # import collections
-    # count_dict = collections.OrderedDict(sorted(count_dict.items()))
-    # print(count_dict)
-
+    #     store_dict_1[cell_id] = track_tuple_list
+    #     break
 
 
     threshold: float = 0.01
-    # threshold: float = -0.1  # smaller value means less likely to cut
-
     short_track_list_dict = _cut_1(store_dict, threshold, profit_matrix_list)   # filter out cells that does not make sense (e.g. too low probability)
 
 
@@ -828,8 +784,6 @@ def _cut_1(original_track_dict: dict, threshold: float, profit_matrix_list: list
 
         if (len(short_track_list) == len(original_track_dict[cell_id])-1 ):
             tmp = original_track_dict[cell_id][-1]
-
-            print(tmp)
             short_track_list.append(tmp)
             short_track_list_dict[cell_id] = short_track_list
 
@@ -929,7 +883,7 @@ if __name__ == '__main__':
             create_prof_matrix_excel(series, prof_mat_list, excel_output_dir_path)
 
 
-        all_track_dict = _iteration_1(prof_mat_list)
+        all_track_dict = _iteration_create_viterbi_track_data(prof_mat_list)
 
         count_dict = {}
         for key, value_list in all_track_dict.items():
@@ -949,10 +903,13 @@ if __name__ == '__main__':
             if i not in all_track_dict.keys():
                 continue
             else:
-                if (len(all_track_dict[i]) > 5):
+                min_track_length: int = 5
+                if (len(all_track_dict[i]) > min_track_length):
                     result_list.append(all_track_dict[i])
 
-        # print("series", series, "len(result_list)", len(result_list));
+
+
+
 
 
         #print(result)
