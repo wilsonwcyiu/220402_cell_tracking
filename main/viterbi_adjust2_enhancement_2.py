@@ -822,6 +822,102 @@ def obtain_matrix_value_by_index_list(mtx: np.array, index_value_list: list, axi
     raise Exception(axis)
 
 
+def viterbi_flow(series: str, segmentation_folder: str, all_segmented_filename_list: list, output_folder: str):
+    print(f"working on series: {series}")
+
+    segmented_filename_list: list = find_segmented_filename_list_by_series(series, all_segmented_filename_list)
+
+    prof_mat_list: list = derive_prof_matrix_list(segmentation_folder, output_folder, series, segmented_filename_list)
+
+
+    is_create_excel: bool = False
+    if is_create_excel:
+        excel_output_dir_path = "d:/tmp/"
+        create_prof_matrix_excel(series, prof_mat_list, excel_output_dir_path)
+
+
+    all_track_dict = _iteration_create_viterbi_track_data(prof_mat_list)
+
+    count_dict = {}
+    for key, value_list in all_track_dict.items():
+        seq_length = len(value_list)
+        if seq_length not in count_dict:
+            count_dict[seq_length] = 0
+
+        count_dict[seq_length] += 1
+
+
+    import collections
+    count_dict = collections.OrderedDict(sorted(count_dict.items()))
+
+
+    result_list = []
+    for i in range(len(all_track_dict)):
+        if i not in all_track_dict.keys():
+            continue
+        else:
+            min_track_length: int = 5
+            if (len(all_track_dict[i]) > min_track_length):
+                result_list.append(all_track_dict[i])
+
+
+
+
+
+
+    #print(result)
+    for j in range(len(result_list) - 1):
+        for k in range(j + 1, len(result_list)):
+            pre_track_list = result_list[j]
+            next_track_list = result_list[k]
+            overlap_track_list = sorted(set([i[0:2] for i in pre_track_list]) & set([i[0:2] for i in next_track_list]), key = lambda x : (x[1], x[0]))
+            if overlap_track_list == []:
+                continue
+
+            overlap_frame1_list = overlap_track_list[0][1]
+            node_combine_list = overlap_track_list[0][0]
+            pre_frame = overlap_frame1_list - 1
+            for i, tuples in enumerate(pre_track_list):
+                if tuples[1] == pre_frame:
+                    index_merge1 = i
+                    break
+                else:
+                    continue
+
+            node_merge1 = pre_track_list[index_merge1][0]
+            for ii, tuples in enumerate(next_track_list):
+                if tuples[1] == pre_frame:
+                    index_merge2 = ii
+                    break
+                else:
+                    continue
+
+            node_merge2 = next_track_list[index_merge2][0]
+            sub_matrix = prof_mat_list[pre_frame]
+            thre_sh1 = sub_matrix[node_merge1][node_combine_list]
+            thre_sh2 = sub_matrix[node_merge2][node_combine_list]
+            if thre_sh1 < thre_sh2:
+                result_list[k] = next_track_list
+                pre_track_new = copy.deepcopy(pre_track_list[0: index_merge1 + 1])
+                result_list[j] = pre_track_new
+            else:
+                result_list[j] = pre_track_list
+                next_track_new = copy.deepcopy(next_track_list[0: index_merge2 + 1])
+                result_list[k] = next_track_new
+
+    #print(result)
+    final_result_list = []
+    for i in range(len(result_list)):
+        if ( len(result_list[i]) > 5 ):
+            final_result_list.append(result_list[i])
+
+    return final_result_list
+    # identifier = series
+    # viterbi_result_dict[identifier] = final_result_list
+
+
+
+
 
 
 if __name__ == '__main__':
@@ -857,96 +953,13 @@ if __name__ == '__main__':
 
     all_prof_mat_list_dict: dict = {}
     for series in existing_series_list:
-        print(f"working on series: {series}")
-
-        segmented_filename_list: list = find_segmented_filename_list_by_series(series, all_segmented_filename_list)
-
-        prof_mat_list: list = derive_prof_matrix_list(segmentation_folder, output_folder, series, segmented_filename_list)
-
-
-        is_create_excel: bool = False
-        if is_create_excel:
-            excel_output_dir_path = "d:/tmp/"
-            create_prof_matrix_excel(series, prof_mat_list, excel_output_dir_path)
-
-
-        all_track_dict = _iteration_create_viterbi_track_data(prof_mat_list)
-
-        count_dict = {}
-        for key, value_list in all_track_dict.items():
-            seq_length = len(value_list)
-            if seq_length not in count_dict:
-                count_dict[seq_length] = 0
-
-            count_dict[seq_length] += 1
-
-
-        import collections
-        count_dict = collections.OrderedDict(sorted(count_dict.items()))
-
-
-        result_list = []
-        for i in range(len(all_track_dict)):
-            if i not in all_track_dict.keys():
-                continue
-            else:
-                min_track_length: int = 5
-                if (len(all_track_dict[i]) > min_track_length):
-                    result_list.append(all_track_dict[i])
+        final_result_list = viterbi_flow(series, segmentation_folder, all_segmented_filename_list, output_folder)
+        viterbi_result_dict[series] = final_result_list
 
 
 
 
 
-
-        #print(result)
-        for j in range(len(result_list) - 1):
-            for k in range(j + 1, len(result_list)):
-                pre_track_list = result_list[j]
-                next_track_list = result_list[k]
-                overlap_track_list = sorted(set([i[0:2] for i in pre_track_list]) & set([i[0:2] for i in next_track_list]), key = lambda x : (x[1], x[0]))
-                if overlap_track_list == []:
-                    continue
-
-                overlap_frame1_list = overlap_track_list[0][1]
-                node_combine_list = overlap_track_list[0][0]
-                pre_frame = overlap_frame1_list - 1
-                for i, tuples in enumerate(pre_track_list):
-                    if tuples[1] == pre_frame:
-                        index_merge1 = i
-                        break
-                    else:
-                        continue
-
-                node_merge1 = pre_track_list[index_merge1][0]
-                for ii, tuples in enumerate(next_track_list):
-                    if tuples[1] == pre_frame:
-                        index_merge2 = ii
-                        break
-                    else:
-                        continue
-
-                node_merge2 = next_track_list[index_merge2][0]
-                sub_matrix = prof_mat_list[pre_frame]
-                thre_sh1 = sub_matrix[node_merge1][node_combine_list]
-                thre_sh2 = sub_matrix[node_merge2][node_combine_list]
-                if thre_sh1 < thre_sh2:
-                    result_list[k] = next_track_list
-                    pre_track_new = copy.deepcopy(pre_track_list[0: index_merge1 + 1])
-                    result_list[j] = pre_track_new
-                else:
-                    result_list[j] = pre_track_list
-                    next_track_new = copy.deepcopy(next_track_list[0: index_merge2 + 1])
-                    result_list[k] = next_track_new
-
-        #print(result)
-        final_result_list = []
-        for i in range(len(result_list)):
-            if ( len(result_list[i]) > 5 ):
-                final_result_list.append(result_list[i])
-
-        identifier = series
-        viterbi_result_dict[identifier] = final_result_list
 
 
 
@@ -956,7 +969,7 @@ if __name__ == '__main__':
     save_track_dictionary(viterbi_result_dict, save_dir + "viterbi_results_dict.pkl")
 
     with open(save_dir + "viterbi_results_dict.txt", 'w') as f:
-        f.write(str(viterbi_result_dict[identifier]))
+        f.write(str(viterbi_result_dict[series]))
 
 
     execution_time = time.perf_counter() - start_time
