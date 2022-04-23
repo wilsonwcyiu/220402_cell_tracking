@@ -46,6 +46,7 @@ def _find(start_list_index, start_list_value):
             #      f'previous_maximize_index: {previous_maximize_index}')
             store_dict[k].append((current_maximize_index_, current_step + 1 - i, previous_maximize_index_))
             previous_maximize_index = previous_maximize_index_
+
         if len(v) != 1:
             store_dict[k].append((previous_maximize_index_, 1, k))
             store_dict[k].append((k, 0, -1))
@@ -392,11 +393,52 @@ def _iteration_1(profit_matrix_list: list):
     # print("_iteration_1")
     all_track_dict: dict = {}
 
+
+
+
     # _process
     start_list_index_vec_dict, start_list_value_vec_dict = _process_calculate_best_cell_track(profit_matrix_list) # 2D array list
 
+    start_list_index_vec_dict = {0: start_list_index_vec_dict[0]}
+    start_list_value_vec_dict = {0: start_list_value_vec_dict[0]}
+
+    print("len(start_list_value_vec_dict[0]", len(start_list_value_vec_dict[0]))
+    print("len(start_list_index_vec_dict[0]", len(start_list_index_vec_dict[0]))
+
+    value_list_len: int = len(start_list_index_vec_dict[0])
+    # print("=== value:", np.round(start_list_value_vec_dict[0][value_list_len-1], 4))
+    # is_all_zero = np.all(start_list_value_vec_dict[0][value_list_len-1] == 0)
+    # print("is_all_zero", is_all_zero)
 
     store_dict = _find_1(start_list_index_vec_dict, start_list_value_vec_dict)
+
+    # print("result store_dict lenght", len(store_dict[0]))
+    # last_data_idx = len(store_dict[0]) - 1
+
+
+
+    store_dict_1: dict = {}
+    for cell_id in start_list_index_vec_dict.keys():
+        start_list_index_vec: np.array = start_list_index_vec_dict[cell_id]
+        start_list_value_vec: np.array = start_list_value_vec_dict[cell_id]
+        track_tuple_list: list = derive_one_cell_track(start_list_index_vec, start_list_value_vec)
+
+        store_dict_1[cell_id] = track_tuple_list
+        break
+
+    print(store_dict[0])
+    print(store_dict_1[0])
+    exit()
+
+
+    #
+
+    # for key, value_tuple_list in store_dict.items():
+    #     print(type(key))
+    #     print(type(value_tuple_list))
+    #     print(key)
+    #     print(value_tuple_list)
+    #     exit()
 
 
     # count_dict = {}
@@ -423,8 +465,8 @@ def _iteration_1(profit_matrix_list: list):
     all_track_dict.update(short_track_list_dict)
 
     count_dict = {}
-    for key, value_list in all_track_dict.items():
-        seq_length = len(value_list)
+    for key, value_tuple_list in all_track_dict.items():
+        seq_length = len(value_tuple_list)
         if seq_length not in count_dict:
             count_dict[seq_length] = 0
 
@@ -495,10 +537,17 @@ def _process_calculate_best_cell_track(profit_mtx_list: list, merge_above_thresh
 
     cell_idx_frame_num_tuple_list: list = []
     total_frame: int = len(profit_mtx_list)
-    for cell_idx in range(0, total_cell_in_first_frame):
-        for frame_num in range(1, total_frame):
+    for frame_num in range(1, total_frame):
+        for cell_idx in range(0, total_cell_in_first_frame):
             cell_idx_frame_idx_tuple: tuple = (cell_idx, frame_num)
             cell_idx_frame_num_tuple_list.append(cell_idx_frame_idx_tuple)
+
+
+
+    frame_num_cell_idx_occupation_vec_dict: dict = {}
+    for frame_num in range(1, total_frame):
+        total_cell_in_frame_num: int = profit_mtx_list[frame_num].shape[0]
+        frame_num_cell_idx_occupation_vec_dict[frame_num] = [False for idx in range(0, total_cell_in_frame_num)]
 
 
     to_skip_cell_idx_list: list = []
@@ -546,6 +595,9 @@ def _process_calculate_best_cell_track(profit_mtx_list: list, merge_above_thresh
         start_list_index_vec_dict[cell_idx].append(index_ab_vec)
         start_list_value_vec_dict[cell_idx].append(value_ab_vec)
 
+
+
+
     return start_list_index_vec_dict, start_list_value_vec_dict
 
 
@@ -556,7 +608,126 @@ def _process_calculate_best_cell_track(profit_mtx_list: list, merge_above_thresh
 
 
 
+#loop each node on first frame to find the optimal path using probabilty multiply
+def _process_and_find_calculate_best_cell_track(profit_mtx_list: list, merge_above_threshold:float=1.0, split_below_threshold:float=1.0):   # former method _process
+    # print("_process_1")
+    store_dict = defaultdict(list)
 
+    start_list_index_vec_dict: int = defaultdict(list)
+    start_list_value_vec_dict: int = defaultdict(list)
+
+    linkage_strategy: str = "viterbi"
+
+    #loop each row on first prob matrix. return the maximum value and index through all the frames, the first prob matrix in profit_matrix_list is a matrix (2D array)
+    first_frame_mtx: np.array = profit_mtx_list[0]
+    total_cell_in_first_frame: int = first_frame_mtx.shape[0]
+
+    cell_idx_frame_num_tuple_list: list = []
+    total_frame: int = len(profit_mtx_list)
+    for frame_num in range(1, total_frame):
+        for cell_idx in range(0, total_cell_in_first_frame):
+            cell_idx_frame_idx_tuple: tuple = (cell_idx, frame_num)
+            cell_idx_frame_num_tuple_list.append(cell_idx_frame_idx_tuple)
+
+
+
+    frame_num_cell_idx_occupation_vec_dict: dict = {}
+    for frame_num in range(1, total_frame):
+        total_cell_in_frame_num: int = profit_mtx_list[frame_num].shape[0]
+        frame_num_cell_idx_occupation_vec_dict[frame_num] = [False for idx in range(0, total_cell_in_frame_num)]
+
+
+    to_skip_cell_idx_list: list = []
+    for cell_idx_frame_idx_tuple in cell_idx_frame_num_tuple_list:
+        cell_idx = cell_idx_frame_idx_tuple[0]
+        frame_num = cell_idx_frame_idx_tuple[1]
+
+        if cell_idx in to_skip_cell_idx_list:
+            continue
+
+        if frame_num == 1:
+            single_cell_vec = first_frame_mtx[cell_idx]
+        elif frame_num > 1:
+            # print("next_frame_num", next_frame_num)
+            frame_idx: int = frame_num-2
+            single_cell_vec = start_list_value_vec_dict[cell_idx][frame_idx]
+        else:
+            raise Exception()
+
+
+        single_cell_mtx: np.array = single_cell_vec.reshape(single_cell_vec.shape[0], 1)
+
+        total_cell_in_next_frame: int = profit_mtx_list[frame_num].shape[1]
+        single_cell_mtx = np.repeat(single_cell_mtx, total_cell_in_next_frame, axis=1)
+
+        last_layer_all_probability_mtx: np.array = single_cell_mtx * profit_mtx_list[frame_num]
+
+
+        if linkage_strategy == "viterbi":
+            index_ab_vec = np.argmax(last_layer_all_probability_mtx, axis=0)
+        elif linkage_strategy == "individual":
+            index_ab_vec = np.argmax(profit_mtx_list[frame_num], axis=0)
+        else:
+            raise Exception(linkage_strategy)
+
+        # value_ab_vec = np.max(last_layer_all_probability_mtx, axis=0)
+        value_ab_vec = obtain_matrix_value_by_index_list(last_layer_all_probability_mtx, index_ab_vec)
+
+        if ( np.all(value_ab_vec == 0) ):
+            # print(">> np.all(value_ab_vec == 0); break")
+            to_skip_cell_idx_list.append(cell_idx)
+            continue
+            # break
+
+
+
+        start_list_index_vec_dict[cell_idx].append(index_ab_vec)
+        start_list_value_vec_dict[cell_idx].append(value_ab_vec)
+
+    return start_list_index_vec_dict, start_list_value_vec_dict
+
+
+
+
+def derive_one_cell_track(index_ab_vec_list: np.array, value_ab_vec_list: list):
+
+    total_step: int = len(value_ab_vec_list)
+    total_frame: int = total_step + 2
+    best_track_list: list = [None] * total_frame
+    last_step_idx: int = total_step - 1;    print("last_step_idx", last_step_idx)
+
+
+    print("new value_ab_vec", np.round(value_ab_vec_list[last_step_idx], 20))
+    last_step_best_result_idx: int = np.argmax(value_ab_vec_list[last_step_idx])
+
+    end_idx: int = 0
+    for reversed_idx in range(last_step_idx, end_idx-1, -1):
+
+        # previous_step_idx = reversed_idx - 1
+        frame_num: int = reversed_idx + 2
+        # next_step_best_result_idx: int = index_ab_vec_list[previous_step_idx][last_step_best_result_idx]
+        previous_frame_cell_idx: int = index_ab_vec_list[reversed_idx][last_step_best_result_idx]
+        best_track_list[frame_num] = (last_step_best_result_idx, frame_num, previous_frame_cell_idx)
+
+        last_step_best_result_idx = previous_frame_cell_idx
+
+
+    if len(index_ab_vec_list) > 1:
+        frame_num = 1
+        best_track_list[frame_num] = (99, 1, 99)
+        frame_num = 0
+        best_track_list[frame_num] = (99, 0, -1)
+
+    elif len(index_ab_vec_list) == 1:
+        frame_num = 0
+        best_track_list[frame_num] = (99, 0, -1)
+
+    else:
+        raise Exception(len(index_ab_vec_list))
+
+
+
+    return best_track_list
 
 
 
@@ -565,17 +736,20 @@ def _find_1(start_list_index_vec_dict, start_list_value_vec_dict):
 
     store_dict = defaultdict(list)
 
+    print("len(start_list_value_vec_dict.items())", len(start_list_value_vec_dict.items()))
     for track_idx, value_ab_vec_list in start_list_value_vec_dict.items():
         index_ab_vec_list: list = start_list_index_vec_dict[track_idx]
 
         last_step: int = len(value_ab_vec_list) - 1
-
+        frame_num: int = last_step + 2
         value_ab_vec: np.array = value_ab_vec_list[last_step]
+
+        print("original value_ab_vec", np.round(value_ab_vec, 20))
         current_maximize_idx: int = np.argmax(value_ab_vec)
 
         current_maximize_index_value: int = index_ab_vec_list[last_step][current_maximize_idx]
 
-        store_dict[track_idx].append( (current_maximize_idx, last_step + 2, current_maximize_index_value) )
+        store_dict[track_idx].append( (current_maximize_idx, frame_num, current_maximize_index_value) )
 
         for reverse_step_i in generate_reverse_range_list( len(value_ab_vec_list)-1, end=0):    #https://realpython.com/python-range/#decrementing-with-range
             current_maximize_idx = current_maximize_index_value
@@ -586,6 +760,8 @@ def _find_1(start_list_index_vec_dict, start_list_value_vec_dict):
 
             current_maximize_index_value = previous_maximize_index_value
 
+        print("len(store_dict[track_idx])", len(store_dict[track_idx]))
+
         # for i in range( len(value_ab_vec_list)-1 ):
         #     current_maximize_index_ = previous_maximize_index
         #     previous_maximize_index_ = index_ab_vec_list[current_step - i - 1][current_maximize_index_]
@@ -593,12 +769,15 @@ def _find_1(start_list_index_vec_dict, start_list_value_vec_dict):
         #     previous_maximize_index = previous_maximize_index_
 
         ## code walkthrough
-        if len(value_ab_vec_list) != 1:
+        if len(value_ab_vec_list) > 1:
             store_dict[track_idx].append( (previous_maximize_index_value, 1, track_idx) )
             store_dict[track_idx].append( (track_idx, 0, -1) )
 
-        else:
+        elif len(value_ab_vec_list) == 1:
             store_dict[track_idx].append( (current_maximize_index_value, 0, -1) )
+
+        else:
+            raise Exception(len(value_ab_vec_list))
 
 
     for value_list in store_dict.values():
