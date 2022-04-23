@@ -23,7 +23,7 @@ from collections import defaultdict
 
 
 import time
-
+from multiprocessing.pool import ThreadPool
 
 
 
@@ -823,7 +823,6 @@ def obtain_matrix_value_by_index_list(mtx: np.array, index_value_list: list, axi
 
 
 def viterbi_flow(series: str, segmentation_folder: str, all_segmented_filename_list: list, output_folder: str):
-    print(f"working on series: {series}")
 
     segmented_filename_list: list = find_segmented_filename_list_by_series(series, all_segmented_filename_list)
 
@@ -951,17 +950,27 @@ if __name__ == '__main__':
         viterbi_result_dict[input_series] = []
 
 
+
+    pool = ThreadPool(processes=8)
+    thread_list: list = []
+    total_processes: int = len(existing_series_list)
+
+
     all_prof_mat_list_dict: dict = {}
     for series in existing_series_list:
-        final_result_list = viterbi_flow(series, segmentation_folder, all_segmented_filename_list, output_folder)
+        print(f"working on series: {series}")
+
+        async_result = pool.apply_async(viterbi_flow, (series, segmentation_folder, all_segmented_filename_list, output_folder,)) # tuple of args for foo
+        thread_list.append(async_result)
+
+        # final_result_list = viterbi_flow(series, segmentation_folder, all_segmented_filename_list, output_folder)
+
+
+    for thread_idx in range(len(thread_list)):
+        final_result_list = thread_list[thread_idx].get()
+        print(f"{thread_idx} completed")
         viterbi_result_dict[series] = final_result_list
-
-
-
-
-
-
-
+        # print(return_val)
 
 
 
