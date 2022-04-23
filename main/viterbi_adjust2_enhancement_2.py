@@ -577,8 +577,8 @@ def _process_and_find_calculate_best_cell_track(profit_mtx_list: list, merge_abo
 
     cell_idx_frame_num_tuple_list: list = []
     total_frame: int = len(profit_mtx_list)
-    for frame_num in range(1, total_frame):
-        for cell_idx in range(0, total_cell_in_first_frame):
+    for cell_idx in range(0, total_cell_in_first_frame):
+        for frame_num in range(1, total_frame):
             cell_idx_frame_idx_tuple: tuple = (cell_idx, frame_num)
             cell_idx_frame_num_tuple_list.append(cell_idx_frame_idx_tuple)
 
