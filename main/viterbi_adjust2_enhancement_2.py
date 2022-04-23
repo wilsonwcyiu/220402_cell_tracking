@@ -571,8 +571,6 @@ def _process_and_find_calculate_best_cell_track(profit_mtx_list: list, merge_abo
     start_list_index_vec_dict: int = defaultdict(list)
     start_list_value_vec_dict: int = defaultdict(list)
 
-    linkage_strategy: str = "viterbi"
-
     #loop each row on first prob matrix. return the maximum value and index through all the frames, the first prob matrix in profit_matrix_list is a matrix (2D array)
     first_frame_mtx: np.array = profit_mtx_list[0]
     total_cell_in_first_frame: int = first_frame_mtx.shape[0]
@@ -617,24 +615,13 @@ def _process_and_find_calculate_best_cell_track(profit_mtx_list: list, merge_abo
 
         last_layer_all_probability_mtx: np.array = single_cell_mtx * profit_mtx_list[frame_num]
 
-
-        if linkage_strategy == "viterbi":
-            index_ab_vec = np.argmax(last_layer_all_probability_mtx, axis=0)
-        elif linkage_strategy == "individual":
-            index_ab_vec = np.argmax(profit_mtx_list[frame_num], axis=0)
-        else:
-            raise Exception(linkage_strategy)
-
+        index_ab_vec = np.argmax(last_layer_all_probability_mtx, axis=0)
         # value_ab_vec = np.max(last_layer_all_probability_mtx, axis=0)
         value_ab_vec = obtain_matrix_value_by_index_list(last_layer_all_probability_mtx, index_ab_vec)
 
         if ( np.all(value_ab_vec == 0) ):
-            # print(">> np.all(value_ab_vec == 0); break")
             to_skip_cell_idx_list.append(cell_idx)
             continue
-            # break
-
-
 
         start_list_index_vec_dict[cell_idx].append(index_ab_vec)
         start_list_value_vec_dict[cell_idx].append(value_ab_vec)
