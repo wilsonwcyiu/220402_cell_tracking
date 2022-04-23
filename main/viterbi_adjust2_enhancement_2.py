@@ -953,8 +953,6 @@ if __name__ == '__main__':
 
     pool = ThreadPool(processes=8)
     thread_list: list = []
-    total_processes: int = len(existing_series_list)
-
 
     all_prof_mat_list_dict: dict = {}
     for series in existing_series_list:
@@ -963,14 +961,14 @@ if __name__ == '__main__':
         async_result = pool.apply_async(viterbi_flow, (series, segmentation_folder, all_segmented_filename_list, output_folder,)) # tuple of args for foo
         thread_list.append(async_result)
 
-        # final_result_list = viterbi_flow(series, segmentation_folder, all_segmented_filename_list, output_folder)
-
 
     for thread_idx in range(len(thread_list)):
         final_result_list = thread_list[thread_idx].get()
-        print(f"{thread_idx} completed")
         viterbi_result_dict[series] = final_result_list
-        # print(return_val)
+
+        print(f"{thread_idx} completed")
+
+
 
 
 
