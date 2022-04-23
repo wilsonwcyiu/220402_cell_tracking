@@ -61,32 +61,32 @@ def _find(start_list_index, start_list_value):
 
 
 #find the best track start from current frame, and current node based on dict which returned from _process_iter
-def _find_iter(start_list_index, start_list_value, start_frame, node):
+def _find_iter(start_list_index_vec_list: np.array, start_list_value_vec_list: np.array, start_frame_num: int, track_idx: int):
     global previous_maximize_index_1
     store_dict = defaultdict(list)
-    for k, v in start_list_value.items():
+    for k, v in start_list_value_vec_list.items():
         #print(f'start from {k}-th sample:')
         current_step = len(v) - 1
         current_maximize_index = np.argmax(v[current_step])
-        previous_maximize_index = start_list_index[k][current_step][current_maximize_index]
-        store_dict[k].append((current_maximize_index, start_frame + current_step + 2, previous_maximize_index))
+        previous_maximize_index = start_list_index_vec_list[k][current_step][current_maximize_index]
+        store_dict[k].append((current_maximize_index, start_frame_num + current_step + 2, previous_maximize_index))
 
         for i in range(len(v)-1):
             # print(current_maximize_index)
             current_maximize_index_ = previous_maximize_index
             # previous_maximize_index = np.argmax(v[current_step - 1])
-            previous_maximize_index_1 = start_list_index[k][current_step - i - 1][current_maximize_index_]
+            previous_maximize_index_1 = start_list_index_vec_list[k][current_step - i - 1][current_maximize_index_]
             #print(f'current_maximize_index: {current_maximize_index}, '
             #      f'current_step: {current_step}, '
             #      f'previous_maximize_index: {previous_maximize_index}')
-            store_dict[k].append((current_maximize_index_, start_frame + current_step + 1 - i, previous_maximize_index_1))
+            store_dict[k].append((current_maximize_index_, start_frame_num + current_step + 1 - i, previous_maximize_index_1))
             previous_maximize_index = previous_maximize_index_1
         if len(v)!=1:
-            store_dict[k].append((previous_maximize_index_1, start_frame + 1, node))
-            store_dict[k].append((node, start_frame + 0, -1))
+            store_dict[k].append((previous_maximize_index_1, start_frame_num + 1, track_idx))
+            store_dict[k].append((track_idx, start_frame_num + 0, -1))
         else:
-            store_dict[k].append((previous_maximize_index, start_frame + 1, node))
-            store_dict[k].append((node, start_frame + 0, -1))
+            store_dict[k].append((previous_maximize_index, start_frame_num + 1, track_idx))
+            store_dict[k].append((track_idx, start_frame_num + 0, -1))
 
     for values in store_dict.values():
         values = list.reverse(values)
@@ -412,8 +412,8 @@ def _iteration_create_viterbi_track_data(profit_matrix_list: list):
     #     break
 
 
-    threshold: float = 0.01
-    short_track_list_dict = _cut_1(store_dict, threshold, profit_matrix_list)   # filter out cells that does not make sense (e.g. too low probability)
+    cut_threshold: float = 0.01
+    short_track_list_dict = _cut_1(store_dict, cut_threshold, profit_matrix_list)   # filter out cells that does not make sense (e.g. too low probability)
 
 
 
@@ -427,11 +427,6 @@ def _iteration_create_viterbi_track_data(profit_matrix_list: list):
 
         count_dict[seq_length] += 1
 
-    import collections
-    count_dict = collections.OrderedDict(sorted(count_dict.items()))
-    # print(count_dict)
-
-
 
 
     ##
@@ -440,9 +435,10 @@ def _iteration_create_viterbi_track_data(profit_matrix_list: list):
     max_id_in_dict: int = len(all_cell_track_dict)           # dict key is cell idx
     mask_transition_group_mtx = _mask_1(short_track_list_dict, profit_matrix_list)
 
-    for profit_matrix_idx in range(1, len(profit_matrix_list)):
+    total_step: int = len(profit_matrix_list)
+    for profit_matrix_idx in range(1, total_step):
         for cell_row_idx in range(profit_matrix_list[profit_matrix_idx].shape[0]):  #skip all nodes which are already passed
-            #print(cell_row_idx)
+
             is_old_call: bool = (mask_transition_group_mtx[profit_matrix_idx][cell_row_idx] == True)
 
             if is_old_call:
@@ -457,10 +453,9 @@ def _iteration_create_viterbi_track_data(profit_matrix_list: list):
             # new_transition_group_list[0] = new_transition_group_list.
             # print("new_transition_group_list[0].shape", new_transition_group_list[0].shape)
             new_transition_group_list[0] = new_transition_group_list[0].reshape(1, new_transition_group_list[0].shape[0])
-            # _process
-            next_list_index, next_list_value = _process_calculate_best_cell_track(new_transition_group_list)
-            new_store_dict = _find_iter(next_list_index, next_list_value, profit_matrix_idx, cell_row_idx)
-            new_short_Tracks = _cut_iter(new_store_dict, 0.01, new_transition_group_list, profit_matrix_idx)
+            next_list_index_vec_list, next_list_value_vec_list = _process_calculate_best_cell_track(new_transition_group_list)
+            new_store_dict = _find_iter(next_list_index_vec_list, next_list_value_vec_list, profit_matrix_idx, cell_row_idx)
+            new_short_Tracks = _cut_iter(new_store_dict, cut_threshold, new_transition_group_list, profit_matrix_idx)
 
             mask_transition_group_mtx = _mask_update(new_short_Tracks, mask_transition_group_mtx)
             for ke, val in new_short_Tracks.items():
@@ -531,13 +526,7 @@ def _process_calculate_best_cell_track(profit_mtx_list: list, merge_above_thresh
         last_layer_all_probability_mtx: np.array = single_cell_mtx * profit_mtx_list[frame_num]
 
 
-        if linkage_strategy == "viterbi":
-            index_ab_vec = np.argmax(last_layer_all_probability_mtx, axis=0)
-        elif linkage_strategy == "individual":
-            index_ab_vec = np.argmax(profit_mtx_list[frame_num], axis=0)
-        else:
-            raise Exception(linkage_strategy)
-
+        index_ab_vec = np.argmax(last_layer_all_probability_mtx, axis=0)
         # value_ab_vec = np.max(last_layer_all_probability_mtx, axis=0)
         value_ab_vec = obtain_matrix_value_by_index_list(last_layer_all_probability_mtx, index_ab_vec)
 
@@ -828,7 +817,6 @@ def viterbi_flow(series: str, segmentation_folder: str, all_segmented_filename_l
 
     prof_mat_list: list = derive_prof_matrix_list(segmentation_folder, output_folder, series, segmented_filename_list)
 
-
     is_create_excel: bool = False
     if is_create_excel:
         excel_output_dir_path = "d:/tmp/"
@@ -846,10 +834,6 @@ def viterbi_flow(series: str, segmentation_folder: str, all_segmented_filename_l
         count_dict[seq_length] += 1
 
 
-    import collections
-    count_dict = collections.OrderedDict(sorted(count_dict.items()))
-
-
     result_list = []
     for i in range(len(all_track_dict)):
         if i not in all_track_dict.keys():
@@ -862,9 +846,7 @@ def viterbi_flow(series: str, segmentation_folder: str, all_segmented_filename_l
 
 
 
-
-
-    #print(result)
+    # post adjustment
     for j in range(len(result_list) - 1):
         for k in range(j + 1, len(result_list)):
             pre_track_list = result_list[j]
@@ -966,10 +948,7 @@ if __name__ == '__main__':
         final_result_list = thread_list[thread_idx].get()
         viterbi_result_dict[series] = final_result_list
 
-        print(f"{thread_idx} completed")
-
-
-
+        print(f"Thread {thread_idx} completed")
 
 
     print("save_track_dictionary")
