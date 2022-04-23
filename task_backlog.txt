@@ -1,7 +1,7 @@
 todo:
 combine _find and _find_iter
-algorithm to cut track
 cell_occupation_vec_dict function
+algorithm to cut track
 
 
 
