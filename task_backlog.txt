@@ -1,4 +1,6 @@
 todo:
+breakdown _process to single cell level instead of processing all cells at once
+??add first frame connection to start_list_index, start_list_value
 cell_occupation_vec_dict function
 algorithm to delete and reconnect track
 
