@@ -506,6 +506,34 @@ def create_prof_matrix_excel(series: str, one_series_img_list, excel_output_dir_
 
 
 
+def derive_frame_cell_occupation_vec_list(profit_matrix_list: np.array, track_tuple_list_dict: dict):
+    frame_cell_occupation_vec_list_dict: dict = {}
+
+    # initiate frame_cell_occupation_vec_list_dict
+    for idx, profit_matrix in enumerate(profit_matrix_list):
+        frame_num: int = idx + 1
+        total_cell: int = profit_matrix.shape[0]
+        frame_cell_occupation_vec_list_dict[frame_num] = [False] * total_cell
+
+        is_last_frame: bool = (idx == len(profit_matrix_list)-1)
+        if is_last_frame:
+            total_cell = profit_matrix.shape[1]
+            frame_cell_occupation_vec_list_dict[idx + 2] = [False] * total_cell
+
+
+    # assign True to cell that is occupied
+    for track_tuple_list in track_tuple_list_dict.values():
+        for idx, track_tuple in enumerate(track_tuple_list):
+            frame_num: int = idx + 1
+            occupied_cell_idx: int = track_tuple[0]
+
+            frame_cell_occupation_vec_list_dict[frame_num][occupied_cell_idx] = True
+
+
+    return frame_cell_occupation_vec_list_dict
+
+
+
 #start from first frame and loop the unvisited nodes in the other frames
 def _iteration_create_viterbi_track_data(profit_matrix_list: list):
     all_cell_track_dict: dict = {}
@@ -513,10 +541,8 @@ def _iteration_create_viterbi_track_data(profit_matrix_list: list):
     start_list_index_vec_dict, start_list_value_vec_dict = _process_calculate_best_cell_track(profit_matrix_list) # 2D array list
 
 
-
-
-
     store_dict: dict = {}
+    frame_cell_occupation_vec_list_dict: dict = derive_frame_cell_occupation_vec_list(profit_matrix_list, store_dict)
     for track_idx, value_ab_vec_list in start_list_value_vec_dict.items():
         index_ab_vec_list: list = start_list_index_vec_dict[track_idx]
         start_frame_idx: int = 0
@@ -524,6 +550,7 @@ def _iteration_create_viterbi_track_data(profit_matrix_list: list):
         # track_list: list = _find_one_cell_1(index_ab_vec_list, value_ab_vec_list, track_idx)
 
         store_dict[track_idx] = track_list
+        frame_cell_occupation_vec_list_dict: dict = derive_frame_cell_occupation_vec_list(profit_matrix_list, store_dict)
 
     # store_dict = _find_1(start_list_index_vec_dict, start_list_value_vec_dict)
 
