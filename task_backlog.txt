@@ -1,7 +1,6 @@
 todo:
-combine _find and _find_iter
 cell_occupation_vec_dict function
-algorithm to cut track
+algorithm to delete and reconnect track
 
 
 
@@ -11,3 +10,4 @@ algorithm to cut track
 completed:
 multi-thread
 individual _find cell track function
+combine _find and _find_iter
