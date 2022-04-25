@@ -538,13 +538,13 @@ def derive_frame_cell_occupation_vec_list(profit_matrix_list: np.array, track_tu
 def _iteration_create_viterbi_track_data(profit_matrix_list: list):
     all_cell_track_dict: dict = {}
 
-    start_list_index_vec_dict, start_list_value_vec_dict = _process_calculate_best_cell_track(profit_matrix_list) # 2D array list
+    track_index_vec_list_dict, track_value_vec_list_dict = _process_calculate_best_cell_track(profit_matrix_list) # 2D array list
 
 
     store_dict: dict = {}
     frame_cell_occupation_vec_list_dict: dict = derive_frame_cell_occupation_vec_list(profit_matrix_list, store_dict)
-    for track_idx, value_ab_vec_list in start_list_value_vec_dict.items():
-        index_ab_vec_list: list = start_list_index_vec_dict[track_idx]
+    for track_idx, value_ab_vec_list in track_value_vec_list_dict.items():
+        index_ab_vec_list: list = track_index_vec_list_dict[track_idx]
         start_frame_idx: int = 0
         track_list: list = _find_iter_one_track(index_ab_vec_list, value_ab_vec_list, start_frame_idx, track_idx)
         # track_list: list = _find_one_cell_1(index_ab_vec_list, value_ab_vec_list, track_idx)
@@ -552,7 +552,7 @@ def _iteration_create_viterbi_track_data(profit_matrix_list: list):
         store_dict[track_idx] = track_list
         frame_cell_occupation_vec_list_dict: dict = derive_frame_cell_occupation_vec_list(profit_matrix_list, store_dict)
 
-    # store_dict = _find_1(start_list_index_vec_dict, start_list_value_vec_dict)
+    # store_dict = _find_1(track_index_vec_list_dict, track_value_vec_list_dict)
 
 
     cut_threshold: float = 0.01
@@ -618,19 +618,22 @@ def _iteration_create_viterbi_track_data(profit_matrix_list: list):
 
 
 
-    # print("len(start_list_index_vec_dict), len(store_dict), len(short_track_list_dict), len(all_track_dict)",
-    #       len(start_list_index_vec_dict), len(store_dict), len(short_track_list_dict), len(all_track_dict))
+    # print("len(track_index_vec_list_dict), len(store_dict), len(short_track_list_dict), len(all_track_dict)",
+    #       len(track_index_vec_list_dict), len(store_dict), len(short_track_list_dict), len(all_track_dict))
 
     return all_cell_track_dict
 
 
 
-#loop each node on first frame to find the optimal path using probabilty multiply
-def _process_calculate_best_cell_track(profit_mtx_list: list, merge_above_threshold:float=1.0, split_below_threshold:float=1.0):   # former method _process
+def _process_calculate_single_best_cell_track(profit_mtx_list: list, merge_above_threshold:float=1.0, split_below_threshold:float=1.0):   # former method _process
     # print("_process_1")
 
-    start_list_index_vec_dict: int = defaultdict(list)
-    start_list_value_vec_dict: int = defaultdict(list)
+    start_list_index_vec_list_dict: int = defaultdict(list)
+    start_list_value_vec_list_dict: int = defaultdict(list)
+
+    start_list_index_vec_list: list = []
+    start_list_value_vec_list: list = []
+
 
     linkage_strategy: str = "viterbi"
 
@@ -647,10 +650,85 @@ def _process_calculate_best_cell_track(profit_mtx_list: list, merge_above_thresh
 
 
 
-    frame_num_cell_idx_occupation_vec_dict: dict = {}
+    # frame_num_cell_idx_occupation_vec_dict: dict = {}
+    # for frame_num in range(1, total_frame):
+    #     total_cell_in_frame_num: int = profit_mtx_list[frame_num].shape[0]
+    #     frame_num_cell_idx_occupation_vec_dict[frame_num] = [False for idx in range(0, total_cell_in_frame_num)]
+
+
+    to_skip_cell_idx_list: list = []
+    for cell_idx_frame_idx_tuple in cell_idx_frame_num_tuple_list:
+        cell_idx = cell_idx_frame_idx_tuple[0]
+        frame_num = cell_idx_frame_idx_tuple[1]
+
+        if cell_idx in to_skip_cell_idx_list:
+            continue
+
+        if frame_num == 1:
+            single_cell_vec = first_frame_mtx[cell_idx]
+        elif frame_num > 1:
+            # print("next_frame_num", next_frame_num)
+            frame_idx: int = frame_num-2
+            single_cell_vec = start_list_value_vec_list_dict[cell_idx][frame_idx]
+        else:
+            raise Exception()
+
+
+        single_cell_mtx: np.array = single_cell_vec.reshape(single_cell_vec.shape[0], 1)
+
+        total_cell_in_next_frame: int = profit_mtx_list[frame_num].shape[1]
+        single_cell_mtx = np.repeat(single_cell_mtx, total_cell_in_next_frame, axis=1)
+
+        last_layer_all_probability_mtx: np.array = single_cell_mtx * profit_mtx_list[frame_num]
+
+
+        index_ab_vec = np.argmax(last_layer_all_probability_mtx, axis=0)
+        # value_ab_vec = np.max(last_layer_all_probability_mtx, axis=0)
+        value_ab_vec = obtain_matrix_value_by_index_list(last_layer_all_probability_mtx, index_ab_vec)
+
+        if ( np.all(value_ab_vec == 0) ):
+            # print(">> np.all(value_ab_vec == 0); break")
+            to_skip_cell_idx_list.append(cell_idx)
+            continue
+            # break
+
+        start_list_index_vec_list_dict[cell_idx].append(index_ab_vec)
+        start_list_value_vec_list_dict[cell_idx].append(value_ab_vec)
+
+
+
+
+    return start_list_index_vec_list_dict, start_list_value_vec_list_dict
+
+
+
+
+
+
+#loop each node on first frame to find the optimal path using probabilty multiply
+def _process_calculate_best_cell_track(profit_mtx_list: list, merge_above_threshold:float=1.0, split_below_threshold:float=1.0):   # former method _process
+    # print("_process_1")
+
+    start_list_index_vec_dict: int = defaultdict(list)
+    start_list_value_vec_dict: int = defaultdict(list)
+
+    #loop each row on first prob matrix. return the maximum value and index through all the frames, the first prob matrix in profit_matrix_list is a matrix (2D array)
+    first_frame_mtx: np.array = profit_mtx_list[0]
+    total_cell_in_first_frame: int = first_frame_mtx.shape[0]
+
+    cell_idx_frame_num_tuple_list: list = []
+    total_frame: int = len(profit_mtx_list)
     for frame_num in range(1, total_frame):
-        total_cell_in_frame_num: int = profit_mtx_list[frame_num].shape[0]
-        frame_num_cell_idx_occupation_vec_dict[frame_num] = [False for idx in range(0, total_cell_in_frame_num)]
+        for cell_idx in range(0, total_cell_in_first_frame):
+            cell_idx_frame_idx_tuple: tuple = (cell_idx, frame_num)
+            cell_idx_frame_num_tuple_list.append(cell_idx_frame_idx_tuple)
+
+
+
+    # frame_num_cell_idx_occupation_vec_dict: dict = {}
+    # for frame_num in range(1, total_frame):
+    #     total_cell_in_frame_num: int = profit_mtx_list[frame_num].shape[0]
+    #     frame_num_cell_idx_occupation_vec_dict[frame_num] = [False for idx in range(0, total_cell_in_frame_num)]
 
 
     to_skip_cell_idx_list: list = []
