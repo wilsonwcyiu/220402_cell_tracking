@@ -1349,10 +1349,10 @@ def derive_index_ab_vec(processing_cell_idx: int,
                         frame_cell_occupation_vec_list_dict: dict,
                         merge_above_threshold: float):
 
-    index_ab_vec: list = []
+    total_cell_next_frame: int = last_layer_all_probability_mtx.shape[1]
+    index_ab_vec: list = [None] * total_cell_next_frame
     to_redo_cell_idx_list: list = []
 
-    total_cell_next_frame: int = last_layer_all_probability_mtx.shape[1]
     for next_frame_cell_idx in range(total_cell_next_frame):
         cell_score_list = last_layer_all_probability_mtx[:, next_frame_cell_idx]
         best_idx: int = np.argmax(cell_score_list)
@@ -1362,17 +1362,22 @@ def derive_index_ab_vec(processing_cell_idx: int,
                 current_cell_probability: float = profit_mtx_list[frame_num][processing_cell_idx][best_idx]
                 other_cell_probability: float = profit_mtx_list[frame_num][next_frame_cell_idx][best_idx]
 
+
                 if current_cell_probability > merge_above_threshold and other_cell_probability > merge_above_threshold:
                     print("both cell merge together")
+                    index_ab_vec[next_frame_cell_idx] = best_idx
 
                 elif current_cell_probability < merge_above_threshold and other_cell_probability > merge_above_threshold:
                     print("current_cell_probability merge to other cell")
+                    raise Exception("TBC")
 
                 elif current_cell_probability > merge_above_threshold and other_cell_probability < merge_above_threshold:
                     print("redo trajectory for other_cell ")
+                    raise Exception("TBC")
 
                 elif current_cell_probability > merge_above_threshold and other_cell_probability < merge_above_threshold:
                     print("??? have to define what to do")
+                    raise Exception("TBC")
 
 
 
