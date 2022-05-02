@@ -655,16 +655,14 @@ def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_thresho
             # index_ab_vec = np.argmax(last_layer_all_probability_mtx, axis=0)
             # value_ab_vec = np.max(last_layer_all_probability_mtx, axis=0)
 
-
-
-            index_ab_vec = find_best_track(handling_cell_idx,
-                                           last_layer_all_probability_mtx,
-                                           profit_mtx_list,
-                                           frame_num,
-                                           frame_cell_occupation_vec_list_dict,
-                                           merge_above_threshold)
+            index_ab_vec, value_ab_vec = find_best_track(handling_cell_idx,
+                                                       last_layer_all_probability_mtx,
+                                                       profit_mtx_list,
+                                                       frame_num,
+                                                       frame_cell_occupation_vec_list_dict,
+                                                       merge_above_threshold)
             # print("index_ab_vec", index_ab_vec)
-            value_ab_vec = obtain_matrix_value_by_index_list(last_layer_all_probability_mtx, index_ab_vec)
+            # value_ab_vec = obtain_matrix_value_by_index_list(last_layer_all_probability_mtx, index_ab_vec)
 
             if ( np.all(value_ab_vec == 0) ):
                 to_skip_cell_idx_list.append(handling_cell_idx)
@@ -1212,16 +1210,16 @@ def _mask_1(short_track_list_dict: dict, profit_matrix_list: list):
 
 
 
-def obtain_matrix_value_by_index_list(mtx: np.array, index_value_list: list, axis=0):
+def obtain_matrix_value_by_index_list(last_layer_all_probability_mtx: np.array, index_value_list: list, axis=0):
     if axis == 0:
-        num_of_col: int = mtx.shape[1]
+        num_of_col: int = last_layer_all_probability_mtx.shape[1]
         is_valid: bool = (num_of_col == len(index_value_list))
         if not is_valid:
             raise Exception("num_of_col != len(index_value_list)")
 
         result_list: list = []
         for idx, index_value in enumerate(index_value_list):
-            result_list.append(mtx[index_value][idx])
+            result_list.append(last_layer_all_probability_mtx[index_value][idx])
 
         return np.array(result_list)
 
@@ -1325,6 +1323,7 @@ def find_best_track(processing_cell_idx: int,
 
     total_cell_slot_next_frame: int = last_layer_all_probability_mtx.shape[1]
     index_ab_vec: list = [None] * total_cell_slot_next_frame
+    value_ab_vec: list = [None] * total_cell_slot_next_frame
 
     for next_frame_cell_slot in range(total_cell_slot_next_frame):
         best_idx: int = 0
@@ -1368,8 +1367,9 @@ def find_best_track(processing_cell_idx: int,
 
 
         index_ab_vec[next_frame_cell_slot] = best_idx
+        value_ab_vec[next_frame_cell_slot] = best_score
 
-    return index_ab_vec
+    return index_ab_vec, np.array(value_ab_vec)
 
 
 
