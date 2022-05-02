@@ -1407,7 +1407,7 @@ def find_best_track(handling_cell_idx: int,
                         best_score = slot_connection_score
 
                     elif handling_cell_probability < merge_above_threshold and occupied_cell_probability < merge_above_threshold:
-                        print(f"??? have to define what to do (For now, let both cell share the same cell slot ). {is_new_connection_score_higher} {np.round(best_score, 20)}, {np.round(occupied_cell_probability, 20)} ; {handling_cell_idx}vs{occupied_cell_idx}")
+                        print(f"??? have to define what to do (For now, let both cell share the same cell slot ). {is_new_connection_score_higher} {np.round(slot_connection_score, 20)}, {np.round(occupied_cell_probability, 20)} ; {handling_cell_idx}vs{occupied_cell_idx}")
 
                         best_idx = cell_slot_idx
                         best_score = slot_connection_score
