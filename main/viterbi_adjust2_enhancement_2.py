@@ -506,42 +506,30 @@ def create_prof_matrix_excel(series: str, one_series_img_list, excel_output_dir_
 
 
 
-def derive_frame_cell_occupation_vec_list(profit_matrix_list: np.array, track_tuple_list_dict: dict):
-    frame_cell_occupation_vec_list_dict: dict = {}
+def derive_frame_num_cell_slot_id_occupation_tuple_vec_dict(profit_matrix_list: np.array, track_tuple_list_dict: dict):
+    frame_num_cell_slot_idx_occupation_tuple_vec_dict: dict = {}
 
-    # initiate frame_cell_occupation_vec_list_dict
+    # initiate frame_num_cell_slot_idx_occupation_tuple_vec_dict
     for idx, profit_matrix in enumerate(profit_matrix_list):
-        frame_num: int = idx + 1
-        total_cell: int = profit_matrix.shape[0]
-        frame_cell_occupation_vec_list_dict[frame_num] = [False] * total_cell
-
-        is_last_frame: bool = (idx == len(profit_matrix_list)-1)
-        if is_last_frame:
-            total_cell = profit_matrix.shape[1]
-            frame_cell_occupation_vec_list_dict[idx + 2] = [False] * total_cell
+        frame_num: int = idx + 2
+        total_cell: int = profit_matrix.shape[1]
+        frame_num_cell_slot_idx_occupation_tuple_vec_dict[frame_num] = [()] * total_cell
 
 
     # assign True to cell that is occupied
-    for track_tuple_list in track_tuple_list_dict.values():
-        for idx, track_tuple in enumerate(track_tuple_list):
-            frame_num: int = idx + 1
-            occupied_cell_idx: int = track_tuple[0]
+    for cell_idx, track_tuple_list in track_tuple_list_dict.items():
+        for track_idx, track_tuple in enumerate(track_tuple_list):
+            frame_num: int = track_tuple[1] + 1
 
-            # frame_cell_occupation_vec_list_dict[frame_num][occupied_cell_idx] = True
-            #
-            # for frame_num, data_list in frame_cell_occupation_vec_list_dict.items():
-            #
-            #
-            #
-            #
-            #
-            # frame_cell_occupation_vec_list_dict[frame_idx][occupied_cell_idx] = True
-            #
-            # for frame_idx, data_list in frame_cell_occupation_vec_list_dict.items():
+            if frame_num == 1:
+                continue
 
+            occupied_cell_slot_idx: int = track_tuple[0]
 
+            # syntax to add cell_idx to tuple
+            frame_num_cell_slot_idx_occupation_tuple_vec_dict[frame_num][occupied_cell_slot_idx] += (cell_idx,)
 
-    return frame_cell_occupation_vec_list_dict
+    return frame_num_cell_slot_idx_occupation_tuple_vec_dict
 
 
 
@@ -641,12 +629,13 @@ def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_thresho
 
     to_skip_cell_idx_list: list = []
     total_frame: int = len(profit_mtx_list)
-    frame_cell_occupation_vec_list_dict: dict = derive_frame_cell_occupation_vec_list(profit_mtx_list, store_dict)
+    frame_cell_occupation_vec_list_dict: dict = derive_frame_num_cell_slot_id_occupation_tuple_vec_dict(profit_mtx_list, store_dict)
     to_handle_cell_idx_list: list = [cell_idx for cell_idx in range(0, total_cell_in_first_frame)]
 
+    print(f"handling_cell_idx:", end='')
     while len(to_handle_cell_idx_list) != 0:
         handling_cell_idx: int = to_handle_cell_idx_list[0]
-        print(f"handling_cell_idx: {handling_cell_idx}")
+        print(f"{handling_cell_idx}, ", end='')
 
         for frame_num in range(2, total_frame):
             start_list_value_idx: int = frame_num - 3
@@ -699,8 +688,10 @@ def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_thresho
                 to_handle_cell_idx_list.append(to_redo_trajectory_cell_idx)
 
             to_handle_cell_idx_list.sort()
-            frame_cell_occupation_vec_list_dict = derive_frame_cell_occupation_vec_list(profit_mtx_list, store_dict)
 
+            frame_cell_occupation_vec_list_dict = derive_frame_num_cell_slot_id_occupation_tuple_vec_dict(profit_mtx_list, store_dict)
+
+    print("  --> finish")
 
     return store_dict
 
@@ -1329,7 +1320,7 @@ def find_best_track(processing_cell_idx: int,
                     last_layer_all_probability_mtx: np.array,
                     profit_mtx_list: list,
                     frame_num: int,
-                    frame_num_cell_idx_occupation_tuple_list_dict: dict,
+                    frame_num_cell_slot_idx_occupation_tuple_list_dict: dict,
                     merge_above_threshold: float):
 
     total_cell_slot_next_frame: int = last_layer_all_probability_mtx.shape[1]
@@ -1345,7 +1336,7 @@ def find_best_track(processing_cell_idx: int,
             if not is_new_connection_score_higher:
                 continue
 
-            cell_idx_occupied_tuple: tuple = frame_num_cell_idx_occupation_tuple_list_dict[frame_num][cell_slot_idx]
+            cell_idx_occupied_tuple: tuple = frame_num_cell_slot_idx_occupation_tuple_list_dict[frame_num][cell_slot_idx]
             has_cell_occupation: bool = (cell_idx_occupied_tuple is not None)
             has_cell_occupation = False
 

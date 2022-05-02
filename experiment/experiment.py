@@ -4,7 +4,55 @@ import sys
 
 
 def main():
-    method_13()
+    method_16()
+
+
+def method_17():
+    a = ('x', 'y')
+    a += ('z',)
+    print(a)
+
+
+
+def method_16():
+    data_list = [()] * 3
+    data_list[1] += (2,)
+    print(data_list)
+
+    tmp_list = list(data_list[0])
+    tmp_list.append(123)
+    data_list[0] = tuple(tmp_list)
+
+    # tmp_list = list(data_list[0])
+    # tmp_list.append(456)
+    # data_list[0] = tuple(tmp_list)
+    print(data_list)
+
+    print(len(data_list[0]))
+
+
+def method_15():
+    mtx_1 = np.array([ [0, 1],
+                       [2, 3],
+                       [4, 5]])
+    print(mtx_1[0:2, 0])
+
+
+def method_14():
+    test_arr = np.array([[1, 2], [3, 4], [5, 6]])
+    col_arr = test_arr[:, 0]
+    print(type(col_arr))
+    print(col_arr.shape)
+    print(col_arr)
+
+
+c = 1 # global variable
+def add():
+    # global c
+    c = c + 2 # increment c by 2
+    print(c)
+
+
 
 
 def method_13():
