@@ -615,8 +615,7 @@ def _iteration_create_viterbi_track_data(profit_matrix_list: list):
 
 
 #loop each node on first frame to find the optimal path using probabilty multiply
-def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_threshold:float=0.0, split_below_threshold:float=1.0):   # former method _process
-    # print("_process_1")
+def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_threshold:float=8.0):
     store_dict: dict = {}
 
     start_list_index_vec_list_dict: int = defaultdict(list)
@@ -680,6 +679,36 @@ def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_thresho
         if handling_cell_idx not in to_skip_cell_idx_list:
             start_frame_idx: int = 0
             track_list: list = _find_iter_one_track(start_list_index_vec_list_dict[handling_cell_idx], start_list_value_vec_list_dict[handling_cell_idx], start_frame_idx, handling_cell_idx)
+
+
+
+
+            track_value_list: list = []
+            for track_tuple in track_list:
+                frame_idx: int = track_tuple[1]
+
+                if frame_idx < 2: continue
+
+                cell_path_idx: int = track_tuple[0]
+                frame_num: int = frame_idx + 1
+                start_list_value_idx: int = frame_num - 3
+
+                value = start_list_value_vec_list_dict[handling_cell_idx][start_list_value_idx][cell_path_idx]
+                track_value_list.append(round(value, 20))
+
+                if value <= 0:
+                    print(value <= 0)
+                    raise Exception("value <= 0")
+
+            print(f"{handling_cell_idx}: {track_value_list}")
+
+            import time
+            time.sleep(2)
+
+
+
+
+
             store_dict[handling_cell_idx] = track_list
 
             # to_redo_trajectory_cell_idx_list = derive_to_redo_track_list()
@@ -1316,6 +1345,7 @@ def viterbi_flow(series: str, segmentation_folder: str, all_segmented_filename_l
     # viterbi_result_dict[identifier] = final_result_list
 
 
+
 def find_best_track(handling_cell_idx: int,
                     last_layer_all_probability_mtx: np.array,
                     profit_mtx_list: list,
@@ -1347,20 +1377,15 @@ def find_best_track(handling_cell_idx: int,
                 best_score = slot_connection_score
 
             elif has_cell_occupation:
-                # raise Exception("TBC")
-
                 start_list_value_idx: int = handling_frame_num - 3
 
-                if handling_frame_num == 2:
-                    handling_cell_probability: float = profit_mtx_list[0][handling_cell_idx][cell_slot_idx]
-                elif handling_frame_num > 2:
-                    handling_cell_probability: float = start_list_value_vec_list_dict[handling_cell_idx][start_list_value_idx][cell_slot_idx]
+                if handling_frame_num == 2:     handling_cell_probability: float = profit_mtx_list[0][handling_cell_idx][cell_slot_idx]
+                elif handling_frame_num > 2:    handling_cell_probability: float = start_list_value_vec_list_dict[handling_cell_idx][start_list_value_idx][cell_slot_idx]
 
                 for occupied_cell_idx in occupied_cell_idx_tuple:
-                    if handling_frame_num == 2:
-                        occupied_cell_probability: float = profit_mtx_list[0][occupied_cell_idx][cell_slot_idx]
-                    elif handling_frame_num > 2:
-                        occupied_cell_probability: float = start_list_value_vec_list_dict[occupied_cell_idx][start_list_value_idx][cell_slot_idx]
+                    if handling_frame_num == 2:     occupied_cell_probability: float = profit_mtx_list[0][occupied_cell_idx][cell_slot_idx]
+                    elif handling_frame_num > 2:    occupied_cell_probability: float = start_list_value_vec_list_dict[occupied_cell_idx][start_list_value_idx][cell_slot_idx]
+
 
 
                     if handling_cell_probability > merge_above_threshold and occupied_cell_probability > merge_above_threshold:
@@ -1382,7 +1407,7 @@ def find_best_track(handling_cell_idx: int,
                         best_score = slot_connection_score
 
                     elif handling_cell_probability < merge_above_threshold and occupied_cell_probability < merge_above_threshold:
-                        print("??? have to define what to do (For now, let both cell share the same cell slot )")
+                        print(f"??? have to define what to do (For now, let both cell share the same cell slot ). {is_new_connection_score_higher} {np.round(best_score, 20)}, {np.round(occupied_cell_probability, 20)} ; {handling_cell_idx}vs{occupied_cell_idx}")
 
                         best_idx = cell_slot_idx
                         best_score = slot_connection_score
