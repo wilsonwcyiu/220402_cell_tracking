@@ -637,6 +637,14 @@ def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_thresho
         handling_cell_idx: int = to_handle_cell_idx_list[0]
         print(f"{handling_cell_idx}, ", end='')
 
+        # debug
+        if to_handle_cell_idx_list in start_list_index_vec_list_dict[handling_cell_idx]:
+            if len(start_list_index_vec_list_dict[handling_cell_idx]) != 0:
+                print(len(start_list_value_vec_list_dict[handling_cell_idx]))
+                print("handling_cell_idx", handling_cell_idx)
+                raise Exception("start_list_index_vec_list_dict[handling_cell_idx]) != 0")
+
+
         for frame_num in range(2, total_frame):
 
 
@@ -684,15 +692,26 @@ def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_thresho
         if handling_cell_idx not in to_skip_cell_idx_list:
             start_frame_idx: int = 0
 
+
+
+
+
+            # debug
             if handling_cell_idx == 4 and frame_idx == 118:
                 print("debug")
                 print(start_list_value_vec_list_dict[handling_cell_idx][116])
 
-            track_list: list = _find_iter_one_track(start_list_index_vec_list_dict[handling_cell_idx], start_list_value_vec_list_dict[handling_cell_idx], start_frame_idx, handling_cell_idx)
 
 
 
+            track_list: list = _find_iter_one_track(start_list_index_vec_list_dict[handling_cell_idx],
+                                                    start_list_value_vec_list_dict[handling_cell_idx],
+                                                    start_frame_idx,
+                                                    handling_cell_idx)
 
+
+
+            # debug
             track_value_list: list = []
             for track_tuple in track_list:
                 frame_idx: int = track_tuple[1]
@@ -703,9 +722,13 @@ def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_thresho
                 frame_num: int = frame_idx + 1
                 start_list_value_idx: int = frame_num - 3
 
-                start_list_value_vec_list = start_list_value_vec_list_dict[handling_cell_idx]
-                start_list_value_vec = start_list_value_vec_list[start_list_value_idx]
-                value = start_list_value_vec[cell_path_idx]
+                if len(start_list_value_vec_list_dict[handling_cell_idx]) > total_frame:
+                    print(len(start_list_value_vec_list_dict[handling_cell_idx]))
+                    print("handling_cell_idx", handling_cell_idx)
+                    print("total_frame", total_frame)
+                    raise Exception("len(start_list_value_vec_list_dict[handling_cell_idx]) > total_frame")
+
+                value = start_list_value_vec_list_dict[handling_cell_idx][start_list_value_idx][cell_path_idx]
                 track_value_list.append(value)
 # removed round(20 and see if value<=0 still appears)
 
@@ -736,7 +759,6 @@ def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_thresho
                 del store_dict[to_redo_cell_idx]
                 del start_list_index_vec_list_dict[to_redo_cell_idx]
                 del start_list_value_vec_list_dict[to_redo_cell_idx]
-
                 to_handle_cell_idx_list.append(to_redo_cell_idx)
 
                 # print("to_redo_cell_idx", to_redo_cell_idx)
@@ -1468,7 +1490,7 @@ if __name__ == '__main__':
 
     input_series_list = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
                          'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
-    # input_series_list = ['S19']
+    input_series_list = ['S10']
 
     #all tracks shorter than DELTA_TIME are false postives and not included in tracks
     result_list = []
