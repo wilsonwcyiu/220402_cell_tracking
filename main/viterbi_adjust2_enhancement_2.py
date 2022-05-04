@@ -5,6 +5,7 @@ Created on Tue Sep 28 09:31:51 2021
 @author: 13784
 """
 import os
+from decimal import Decimal
 from os import listdir
 from os.path import join, basename
 import numpy as np
@@ -615,7 +616,7 @@ def _iteration_create_viterbi_track_data(profit_matrix_list: list):
 
 
 #loop each node on first frame to find the optimal path using probabilty multiply
-def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_threshold:float=8.0):
+def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_threshold:Decimal=Decimal(0.5)):
     store_dict: dict = {}
 
     start_list_index_vec_list_dict: int = defaultdict(list)
@@ -637,6 +638,8 @@ def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_thresho
         print(f"{handling_cell_idx}, ", end='')
 
         for frame_num in range(2, total_frame):
+
+
             start_list_value_idx: int = frame_num - 3
             profit_mtx_idx: int = frame_num - 1
 
@@ -653,14 +656,16 @@ def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_thresho
 
             # index_ab_vec = np.argmax(last_layer_all_probability_mtx, axis=0)
             # value_ab_vec = np.max(last_layer_all_probability_mtx, axis=0)
-
+            adjusted_merge_above_threshold: Decimal = Decimal(merge_above_threshold) ** Decimal(frame_num)
+            print("adjusted_merge_above_threshold", adjusted_merge_above_threshold, frame_num)
             index_ab_vec, value_ab_vec, to_redo_cell_idx_list = find_best_track(handling_cell_idx,
                                                                                    last_layer_all_probability_mtx,
                                                                                    profit_mtx_list,
                                                                                    frame_num,
                                                                                    frame_cell_occupation_vec_list_dict,
-                                                                                   merge_above_threshold,
+                                                                                   adjusted_merge_above_threshold,
                                                                                    start_list_value_vec_list_dict)
+
             # print("after find_best_track")
             # print("index_ab_vec", index_ab_vec)
             # value_ab_vec = obtain_matrix_value_by_index_list(last_layer_all_probability_mtx, index_ab_vec)
@@ -678,6 +683,11 @@ def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_thresho
 
         if handling_cell_idx not in to_skip_cell_idx_list:
             start_frame_idx: int = 0
+
+            if handling_cell_idx == 4 and frame_idx == 118:
+                print("debug")
+                print(start_list_value_vec_list_dict[handling_cell_idx][116])
+
             track_list: list = _find_iter_one_track(start_list_index_vec_list_dict[handling_cell_idx], start_list_value_vec_list_dict[handling_cell_idx], start_frame_idx, handling_cell_idx)
 
 
@@ -693,17 +703,27 @@ def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_thresho
                 frame_num: int = frame_idx + 1
                 start_list_value_idx: int = frame_num - 3
 
-                value = start_list_value_vec_list_dict[handling_cell_idx][start_list_value_idx][cell_path_idx]
-                track_value_list.append(round(value, 20))
+                start_list_value_vec_list = start_list_value_vec_list_dict[handling_cell_idx]
+                start_list_value_vec = start_list_value_vec_list[start_list_value_idx]
+                value = start_list_value_vec[cell_path_idx]
+                track_value_list.append(value)
+# removed round(20 and see if value<=0 still appears)
 
                 if value <= 0:
                     print(value <= 0)
+                    print(len(track_value_list))
+                    print(track_value_list)
+                    print("handling_cell_idx", handling_cell_idx)
+                    print("track_tuple", track_tuple)
+                    print("start_list_value_vec_list_dict[handling_cell_idx][start_list_value_idx]", start_list_value_vec_list_dict[handling_cell_idx][start_list_value_idx])
+
+                    time.sleep(2)
                     raise Exception("value <= 0")
+                    # inspect why 0 value is being chosen
 
-            print(f"{handling_cell_idx}: {track_value_list}")
 
-            import time
-            time.sleep(2)
+            # print(f"{handling_cell_idx}: {track_value_list}")
+            # time.sleep(2)
 
 
 
@@ -714,7 +734,12 @@ def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_thresho
             # to_redo_trajectory_cell_idx_list = derive_to_redo_track_list()
             for to_redo_cell_idx in to_redo_cell_idx_list:
                 del store_dict[to_redo_cell_idx]
+                del start_list_index_vec_list_dict[to_redo_cell_idx]
+                del start_list_value_vec_list_dict[to_redo_cell_idx]
+
                 to_handle_cell_idx_list.append(to_redo_cell_idx)
+
+                # print("to_redo_cell_idx", to_redo_cell_idx)
 
             to_handle_cell_idx_list.sort()
 
@@ -1389,7 +1414,7 @@ def find_best_track(handling_cell_idx: int,
 
 
                     if handling_cell_probability > merge_above_threshold and occupied_cell_probability > merge_above_threshold:
-                        print("let both cell share the same cell slot")
+                        # print(f"let both cell share the same cell slot; {merge_above_threshold}; {np.round(slot_connection_score, 20)}, {np.round(occupied_cell_probability, 20)} ; {handling_cell_idx}vs{occupied_cell_idx}")
                         if not is_new_connection_score_higher:
                             raise Exception("not is_new_connection_score_higher")
 
@@ -1397,20 +1422,25 @@ def find_best_track(handling_cell_idx: int,
                         best_score = slot_connection_score
 
                     elif handling_cell_probability < merge_above_threshold and occupied_cell_probability > merge_above_threshold:
-                        print("handling_cell_probability merge to other cell")
+                        pass
+                        # print(f"handling_cell_probability merge to other cell; {merge_above_threshold}; {np.round(slot_connection_score, 20)}, {np.round(occupied_cell_probability, 20)} ; {handling_cell_idx}vs{occupied_cell_idx}")
 
                     elif handling_cell_probability > merge_above_threshold and occupied_cell_probability < merge_above_threshold:
-                        print(f"redo trajectory of occupied_cell_idx {occupied_cell_idx}")
+                        # print(f"redo trajectory of occupied_cell_idx {occupied_cell_idx}; {merge_above_threshold}; {np.round(slot_connection_score, 20)}, {np.round(occupied_cell_probability, 20)} ; {handling_cell_idx}vs{occupied_cell_idx}")
                         to_redo_cell_idx_set.add(occupied_cell_idx)
 
                         best_idx = cell_slot_idx
                         best_score = slot_connection_score
 
+                        # time.sleep(2)
+
                     elif handling_cell_probability < merge_above_threshold and occupied_cell_probability < merge_above_threshold:
-                        print(f"??? have to define what to do (For now, let both cell share the same cell slot ). {is_new_connection_score_higher} {np.round(slot_connection_score, 20)}, {np.round(occupied_cell_probability, 20)} ; {handling_cell_idx}vs{occupied_cell_idx}")
+                        # print(f"??? have to define what to do (For now, let both cell share the same cell slot ). {merge_above_threshold}; {np.round(slot_connection_score, 20)}, {np.round(occupied_cell_probability, 20)} ; {handling_cell_idx}vs{occupied_cell_idx}")
 
                         best_idx = cell_slot_idx
                         best_score = slot_connection_score
+
+                        # time.sleep(2)
 
                     else:
                         raise Exception("else")
@@ -1438,7 +1468,7 @@ if __name__ == '__main__':
 
     input_series_list = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
                          'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
-    # input_series_list = ['S01']
+    # input_series_list = ['S19']
 
     #all tracks shorter than DELTA_TIME are false postives and not included in tracks
     result_list = []
