@@ -619,8 +619,8 @@ def _iteration_create_viterbi_track_data(profit_matrix_list: list):
 def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_threshold:Decimal=Decimal(0)):
     store_dict: dict = {}
 
-    start_list_index_vec_list_dict: int = defaultdict(list)
-    start_list_value_vec_list_dict: int = defaultdict(list)
+    start_list_index_vec_list_dict: list = defaultdict(list)
+    start_list_value_vec_list_dict: list = defaultdict(list)
 
     #loop each row on first prob matrix. return the maximum value and index through all the frames, the first prob matrix in profit_matrix_list is a matrix (2D array)
     first_frame_mtx: np.array = profit_mtx_list[0]
