@@ -616,7 +616,7 @@ def _iteration_create_viterbi_track_data(profit_matrix_list: list):
 
 
 #loop each node on first frame to find the optimal path using probabilty multiply
-def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_threshold:Decimal=Decimal(0.5)):
+def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_threshold:Decimal=Decimal(0)):
     store_dict: dict = {}
 
     start_list_index_vec_list_dict: int = defaultdict(list)
@@ -1490,7 +1490,7 @@ if __name__ == '__main__':
 
     input_series_list = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
                          'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
-    input_series_list = ['S10']
+    # input_series_list = ['S10']
 
     #all tracks shorter than DELTA_TIME are false postives and not included in tracks
     result_list = []
