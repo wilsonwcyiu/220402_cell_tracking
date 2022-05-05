@@ -119,16 +119,20 @@ def _find_iter_one_track(frame_num_cell_slot_idx_best_index_vec_dict: dict,
 
     track_data_list: list = []
 
-    max_frame_num: int = np.max(list(frame_num_cell_slot_idx_best_value_vec_dict.keys()))
-    min_frame_num: int = np.min(list(frame_num_cell_slot_idx_best_value_vec_dict.keys()))
+    last_frame_num: int = np.max(list(frame_num_cell_slot_idx_best_value_vec_dict.keys()))
+    first_frame_num: int = np.min(list(frame_num_cell_slot_idx_best_value_vec_dict.keys()))
 
-    last_frame_num = max_frame_num
-    first_frame_num = min_frame_num
+    last_frame_idx: int = last_frame_num - 1
 
-    last_frame_idx: int = max_frame_num - 1
 
-    current_maximize_index = np.argmax(frame_num_cell_slot_idx_best_value_vec_dict[last_frame_num])
-    previous_maximize_index = frame_num_cell_slot_idx_best_index_vec_dict[last_frame_num][current_maximize_index]
+
+
+    current_maximize_index: int = np.argmax(frame_num_cell_slot_idx_best_value_vec_dict[last_frame_num])
+
+
+
+
+    previous_maximize_index: int = frame_num_cell_slot_idx_best_index_vec_dict[last_frame_num][current_maximize_index]
 
     track_data_list.append((current_maximize_index, last_frame_idx, previous_maximize_index))
 
@@ -137,16 +141,13 @@ def _find_iter_one_track(frame_num_cell_slot_idx_best_index_vec_dict: dict,
         reversed_frame_idx = reversed_frame_num - 1
 
         current_maximize_index = previous_maximize_index
+        previous_maximize_index = frame_num_cell_slot_idx_best_index_vec_dict[reversed_frame_num][current_maximize_index]
 
-        previous_maximize_index_1 = frame_num_cell_slot_idx_best_index_vec_dict[reversed_frame_num][current_maximize_index]
-
-        track_data_list.append((current_maximize_index, reversed_frame_idx, previous_maximize_index_1))
-
-        previous_maximize_index = previous_maximize_index_1
+        track_data_list.append((current_maximize_index, reversed_frame_idx, previous_maximize_index))
 
 
     if len(frame_num_cell_slot_idx_best_value_vec_dict) > 1:
-        track_data_list.append((previous_maximize_index_1, start_frame_idx + 1, track_cell_idx))
+        track_data_list.append((previous_maximize_index, start_frame_idx + 1, track_cell_idx))
         track_data_list.append((track_cell_idx, start_frame_idx + 0, -1))
 
     elif len(frame_num_cell_slot_idx_best_value_vec_dict) == 1:
@@ -1615,7 +1616,7 @@ if __name__ == '__main__':
 
         all_prof_mat_list_dict: dict = {}
         for series in existing_series_list:
-            print(f"working on series: {series}")
+            print(f"working on series: {series}", end="\t")
 
             async_result = pool.apply_async(viterbi_flow, (series, segmentation_folder, all_segmented_filename_list, output_folder,)) # tuple of args for foo
             thread_list.append(async_result)
@@ -1627,7 +1628,7 @@ if __name__ == '__main__':
 
     else:
         for series in existing_series_list:
-            print(f"working on series: {series}")
+            print(f"working on series: {series}", end="\t")
             final_result_list = viterbi_flow(series, segmentation_folder, all_segmented_filename_list, output_folder)
             viterbi_result_dict[series] = final_result_list
 
