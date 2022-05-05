@@ -638,7 +638,7 @@ def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_thresho
         print(f"{handling_cell_idx}, ", end='')
 
         # debug
-        if to_handle_cell_idx_list in start_list_index_vec_list_dict[handling_cell_idx]:
+        if handling_cell_idx in start_list_index_vec_list_dict[handling_cell_idx]:
             if len(start_list_index_vec_list_dict[handling_cell_idx]) != 0:
                 print(len(start_list_value_vec_list_dict[handling_cell_idx]))
                 print("handling_cell_idx", handling_cell_idx)
