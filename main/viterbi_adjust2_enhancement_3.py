@@ -148,11 +148,11 @@ def _find_iter_one_track(frame_num_cell_slot_idx_best_index_vec_dict: dict,
 
     if len(frame_num_cell_slot_idx_best_value_vec_dict) > 1:
         track_data_list.append((previous_maximize_index, start_frame_idx + 1, track_cell_idx))
-        track_data_list.append((track_cell_idx, start_frame_idx + 0, -1))
+        track_data_list.append((track_cell_idx, start_frame_idx, -1))
 
     elif len(frame_num_cell_slot_idx_best_value_vec_dict) == 1:
         track_data_list.append((previous_maximize_index, start_frame_idx + 1, track_cell_idx))
-        track_data_list.append((track_cell_idx, start_frame_idx + 0, -1))
+        track_data_list.append((track_cell_idx, start_frame_idx, -1))
 
 
     list.reverse(track_data_list)
