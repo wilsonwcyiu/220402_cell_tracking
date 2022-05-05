@@ -133,14 +133,14 @@ def _find_iter_one_track(frame_num_cell_slot_idx_best_index_vec_dict: dict,
     track_data_list.append((current_maximize_index, last_frame_idx, previous_maximize_index))
 
 
-    for reversed_frame_num in range(last_frame_num-1, first_frame_num-1, -1): #119 to 2
+    for reversed_frame_num in range(last_frame_num-1, first_frame_num-1, -1): #119 to 3
         reversed_frame_idx = reversed_frame_num - 1
 
-        current_maximize_index_ = previous_maximize_index
+        current_maximize_index = previous_maximize_index
 
-        previous_maximize_index_1 = frame_num_cell_slot_idx_best_index_vec_dict[reversed_frame_num][current_maximize_index_]
+        previous_maximize_index_1 = frame_num_cell_slot_idx_best_index_vec_dict[reversed_frame_num][current_maximize_index]
 
-        track_data_list.append((current_maximize_index_, reversed_frame_idx, previous_maximize_index_1))
+        track_data_list.append((current_maximize_index, reversed_frame_idx, previous_maximize_index_1))
 
         previous_maximize_index = previous_maximize_index_1
 
