@@ -62,34 +62,114 @@ def _find(start_list_index, start_list_value):
 
 
 #find the best track start from current frame, and current node based on dict which returned from _process_iter
-def _find_iter_one_track(frame_num_cell_slot_idx_best_index_vec_dict: list,
-                         frame_num_cell_slot_idx_best_value_vec_dict: list,
+def _find_iter_one_track(frame_num_cell_slot_idx_best_index_vec_dict: dict,
+                         frame_num_cell_slot_idx_best_value_vec_dict: dict,
                          start_frame_idx: int,
                          track_cell_idx: int):
 
     track_data_list: list = []
 
-    current_step = len(frame_num_cell_slot_idx_best_value_vec_dict) - 1
 
-    current_maximize_index = np.argmax(frame_num_cell_slot_idx_best_value_vec_dict[current_step])
-    previous_maximize_index = frame_num_cell_slot_idx_best_index_vec_dict[current_step][current_maximize_index]
+    current_frame_idx = len(frame_num_cell_slot_idx_best_value_vec_dict) - 1
+    max_frame_num: int = np.max(list(frame_num_cell_slot_idx_best_value_vec_dict.keys()))
+    min_frame_num: int = np.min(list(frame_num_cell_slot_idx_best_value_vec_dict.keys()))
+    total_frame: int = (max_frame_num - min_frame_num) + 1
 
-    frame_num: int = start_frame_idx + current_step + 2
-    track_data_list.append((current_maximize_index, frame_num, previous_maximize_index))
+    last_frame_num: int = np.max(list(frame_num_cell_slot_idx_best_value_vec_dict.keys()))
 
-    for frame_idx in range(len(frame_num_cell_slot_idx_best_value_vec_dict) - 1):
+    current_frame_idx = last_frame_num - 1
+    current_frame_num = last_frame_num
+
+
+    current_maximize_index = np.argmax(frame_num_cell_slot_idx_best_value_vec_dict[current_frame_num])
+    previous_maximize_index = frame_num_cell_slot_idx_best_index_vec_dict[current_frame_num][current_maximize_index]
+
+    # next_frame_num: int = start_frame_idx + current_frame_idx + 2
+    track_data_list.append((current_maximize_index, current_frame_idx, previous_maximize_index))
+
+    for _ in range(total_frame - 1):
         current_maximize_index_ = previous_maximize_index
-        previous_maximize_index_1 = frame_num_cell_slot_idx_best_index_vec_dict[current_step - frame_idx - 1][current_maximize_index_]
-        track_data_list.append((current_maximize_index_, start_frame_idx + current_step + 1 - frame_idx, previous_maximize_index_1))
+        # print(current_frame_idx - idx - 1, current_maximize_index_)
+        # next_frame_num : int = current_frame_idx - idx - 1
+
+        current_frame_idx: int = current_frame_idx - 1
+        current_frame_num = current_frame_idx + 1
+        # next_frame_num : int = current_frame_num - 1
+
+        # print("qwgg", current_frame_num, current_frame_idx, next_frame_num)
+
+        previous_maximize_index_1 = frame_num_cell_slot_idx_best_index_vec_dict[current_frame_num][current_maximize_index_]
+        # track_frame_idx: int = start_frame_idx + current_frame_idx + 1 - idx
+        track_data_list.append((current_maximize_index_, current_frame_idx, previous_maximize_index_1))
         previous_maximize_index = previous_maximize_index_1
+
+
+    # current_frame_idx = len(frame_num_cell_slot_idx_best_value_vec_dict) - 1
+    # total_frame: int = len(frame_num_cell_slot_idx_best_value_vec_dict)
+    # last_frame_num: int = np.max(list(frame_num_cell_slot_idx_best_value_vec_dict.keys())) - 1
+    # current_frame_idx = last_frame_num
+    #
+    # current_maximize_index = np.argmax(frame_num_cell_slot_idx_best_value_vec_dict[current_frame_idx])
+    # previous_maximize_index = frame_num_cell_slot_idx_best_index_vec_dict[current_frame_idx][current_maximize_index]
+    #
+    # next_frame_num: int = start_frame_idx + current_frame_idx + 2
+    # track_data_list.append((current_maximize_index, next_frame_num, previous_maximize_index))
+    #
+    # for idx in range(total_frame - 1):
+    #     current_maximize_index_ = previous_maximize_index
+    #     # print(current_frame_idx - idx - 1, current_maximize_index_)
+    #     # next_frame_num : int = current_frame_idx - idx - 1
+    #     next_frame_num : int = current_frame_idx - idx
+    #     previous_maximize_index_1 = frame_num_cell_slot_idx_best_index_vec_dict[next_frame_num][current_maximize_index_]
+    #     # track_frame_idx: int = start_frame_idx + current_frame_idx + 1 - idx
+    #     track_frame_idx: int = start_frame_idx + current_frame_idx + 2 - idx
+    #     track_data_list.append((current_maximize_index_, track_frame_idx, previous_maximize_index_1))
+    #     previous_maximize_index = previous_maximize_index_1
 
 
     if len(frame_num_cell_slot_idx_best_value_vec_dict) > 1:
         track_data_list.append((previous_maximize_index_1, start_frame_idx + 1, track_cell_idx))
         track_data_list.append((track_cell_idx, start_frame_idx + 0, -1))
+
     elif len(frame_num_cell_slot_idx_best_value_vec_dict) == 1:
         track_data_list.append((previous_maximize_index, start_frame_idx + 1, track_cell_idx))
         track_data_list.append((track_cell_idx, start_frame_idx + 0, -1))
+
+
+    # for values in store_dict.values():
+    list.reverse(track_data_list)
+
+    return track_data_list
+
+
+
+
+#find the best track start from current frame, and current node based on dict which returned from _process_iter
+def _find_iter_one_track_version1(start_list_index_vec_list: list, start_list_value_vec_list: list, start_frame_idx: int, track_idx: int):
+
+    track_data_list: list = []
+
+    current_step = len(start_list_value_vec_list) - 1
+
+    current_maximize_index = np.argmax(start_list_value_vec_list[current_step])
+    previous_maximize_index = start_list_index_vec_list[current_step][current_maximize_index]
+
+    frame_num: int = start_frame_idx + current_step + 2
+    track_data_list.append((current_maximize_index, frame_num, previous_maximize_index))
+
+    for frame_idx in range(len(start_list_value_vec_list)-1):
+        current_maximize_index_ = previous_maximize_index
+        previous_maximize_index_1 = start_list_index_vec_list[current_step - frame_idx - 1][current_maximize_index_]
+        track_data_list.append((current_maximize_index_, start_frame_idx + current_step + 1 - frame_idx, previous_maximize_index_1))
+        previous_maximize_index = previous_maximize_index_1
+
+
+    if len(start_list_value_vec_list) > 1:
+        track_data_list.append((previous_maximize_index_1, start_frame_idx + 1, track_idx))
+        track_data_list.append((track_idx, start_frame_idx + 0, -1))
+    elif len(start_list_value_vec_list) == 1:
+        track_data_list.append((previous_maximize_index, start_frame_idx + 1, track_idx))
+        track_data_list.append((track_idx, start_frame_idx + 0, -1))
     else:
         raise Exception()
 
@@ -97,7 +177,6 @@ def _find_iter_one_track(frame_num_cell_slot_idx_best_index_vec_dict: list,
     list.reverse(track_data_list)
 
     return track_data_list
-
 
 
 # #find the best track start from current frame, and current node based on dict which returned from _process_iter
@@ -525,6 +604,9 @@ def derive_frame_num_cell_slot_id_occupation_tuple_vec_dict(profit_matrix_list: 
         for track_idx, track_tuple in enumerate(track_tuple_list):
             frame_num: int = track_tuple[1] + 1
 
+            # if frame_num > 120:
+            #     print("debug")
+
             if frame_num == 1:
                 continue
 
@@ -593,7 +675,7 @@ def _iteration_create_viterbi_track_data(profit_matrix_list: list):
             new_store_dict: dict = {}
             for cell_idx, start_list_value_vec_list in next_list_value_vec_list_dict.items():
                 start_list_index_vec_list: list = next_list_index_vec_list_dict[cell_idx]
-                track_list: list = _find_iter_one_track(start_list_index_vec_list, start_list_value_vec_list, profit_matrix_idx, cell_row_idx)
+                track_list: list = _find_iter_one_track_version1(start_list_index_vec_list, start_list_value_vec_list, profit_matrix_idx, cell_row_idx)
                 new_store_dict[cell_idx] = track_list
 
 
@@ -631,7 +713,7 @@ def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_thresho
 
 
     to_skip_cell_idx_list: list = []
-    total_frame: int = len(profit_mtx_list)
+    total_frame: int = len(profit_mtx_list) + 1
     frame_cell_occupation_vec_list_dict: dict = derive_frame_num_cell_slot_id_occupation_tuple_vec_dict(profit_mtx_list, store_dict)
     to_handle_cell_idx_list: list = [cell_idx for cell_idx in range(0, total_cell_in_first_frame)]
 
@@ -687,8 +769,9 @@ def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_thresho
                 break
 
             else:
-                cell_idx_frame_num_cell_slot_idx_best_index_vec_dict_dict[handling_cell_idx][frame_num] = index_ab_vec
-                cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict[handling_cell_idx][frame_num] = value_ab_vec
+                next_frame_num: int = frame_num + 1
+                cell_idx_frame_num_cell_slot_idx_best_index_vec_dict_dict[handling_cell_idx][next_frame_num] = index_ab_vec
+                cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict[handling_cell_idx][next_frame_num] = value_ab_vec
 
         to_handle_cell_idx_list.remove(handling_cell_idx)
 
@@ -712,7 +795,8 @@ def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_thresho
 
                 cell_path_idx: int = track_tuple[0]
                 frame_num: int = frame_idx + 1
-                start_list_value_idx: int = frame_num - 3
+                # start_list_value_idx: int = frame_num - 3
+                start_list_value_idx: int = frame_num
 
                 if len(cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict[handling_cell_idx]) > total_frame:
                     print(len(cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict[handling_cell_idx]))
@@ -720,7 +804,12 @@ def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_thresho
                     print("total_frame", total_frame)
                     raise Exception("len(cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict[handling_cell_idx]) > total_frame")
 
-                value = cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict[handling_cell_idx][start_list_value_idx][cell_path_idx]
+                cell_idx_frame_num_cell_slot_idx_best_value_vec_dict = cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict[handling_cell_idx]
+
+                # print("qwf", cell_idx_frame_num_cell_slot_idx_best_value_vec_dict.keys())
+                if start_list_value_idx > 120:
+                    print("debug")
+                value = cell_idx_frame_num_cell_slot_idx_best_value_vec_dict[start_list_value_idx][cell_path_idx]
                 track_value_list.append(value)
 # removed round(20 and see if value<=0 still appears)
 
