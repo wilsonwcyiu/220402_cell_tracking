@@ -114,6 +114,9 @@ def _find(start_list_index, start_list_value):
 #find the best track start from current frame, and current node based on dict which returned from _process_iter
 def _find_iter_one_track(frame_num_cell_slot_idx_best_index_vec_dict: dict,
                          frame_num_cell_slot_idx_best_value_vec_dict: dict,
+                         cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict: dict,
+                         frame_cell_occupation_vec_list_dict: dict,
+                         merge_above_threshold: Decimal,
                          start_frame_idx: int,
                          track_cell_idx: int):
 
@@ -126,8 +129,61 @@ def _find_iter_one_track(frame_num_cell_slot_idx_best_index_vec_dict: dict,
 
 
 
+    current_maximize_index: int = None
+    current_maximize_value: float = 0
+    frame_num_cell_slot_idx_best_value_vec: list = frame_num_cell_slot_idx_best_value_vec_dict[last_frame_num]
+    to_redo_cell_idx_set: set = set()
+    for cell_slot_idx, cell_slot_probability_value in enumerate(frame_num_cell_slot_idx_best_value_vec):
+        is_new_value_higher: bool = (cell_slot_probability_value > current_maximize_value)
 
-    current_maximize_index: int = np.argmax(frame_num_cell_slot_idx_best_value_vec_dict[last_frame_num])
+        if not is_new_value_higher:
+            continue
+
+        occupied_cell_idx_tuple: tuple = frame_cell_occupation_vec_list_dict[last_frame_num][cell_slot_idx]
+        has_cell_occupation: bool = ( len(occupied_cell_idx_tuple) != 0 )
+
+        if not has_cell_occupation:
+            current_maximize_index = cell_slot_idx
+            current_maximize_value = cell_slot_probability_value
+
+        elif has_cell_occupation:
+            for occupied_cell_idx in occupied_cell_idx_tuple:
+                # print("vrbvf", occupied_cell_idx, last_frame_num, cell_slot_idx)
+                occupied_cell_probability: float = cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict[occupied_cell_idx][last_frame_num][cell_slot_idx]
+
+                if cell_slot_probability_value > merge_above_threshold and occupied_cell_probability > merge_above_threshold:
+                    # print(f"let both cell share the same cell slot; {merge_above_threshold}; {np.round(slot_connection_score, 20)}, {np.round(occupied_cell_probability, 20)} ; {handling_cell_idx}vs{occupied_cell_idx}")
+                    current_maximize_index = cell_slot_idx
+                    current_maximize_value = cell_slot_probability_value
+
+                elif cell_slot_probability_value < merge_above_threshold and occupied_cell_probability > merge_above_threshold:
+                    pass
+                    # print(f"handling_cell_probability merge to other cell; {merge_above_threshold}; {np.round(slot_connection_score, 20)}, {np.round(occupied_cell_probability, 20)} ; {handling_cell_idx}vs{occupied_cell_idx}")
+
+                elif cell_slot_probability_value > merge_above_threshold and occupied_cell_probability < merge_above_threshold:
+                    # print(f"redo trajectory of occupied_cell_idx {occupied_cell_idx}; {merge_above_threshold}; {np.round(slot_connection_score, 20)}, {np.round(occupied_cell_probability, 20)} ; {handling_cell_idx}vs{occupied_cell_idx}")
+                    to_redo_cell_idx_set.add(occupied_cell_idx)
+                    # may not be final track, handle at find track
+
+                    current_maximize_index = cell_slot_idx
+                    current_maximize_value = cell_slot_probability_value
+
+                    # time.sleep(2)
+
+                elif cell_slot_probability_value < merge_above_threshold and occupied_cell_probability < merge_above_threshold:
+                    # print(f"??? have to define what to do (For now, let both cell share the same cell slot ). {merge_above_threshold}; {np.round(slot_connection_score, 20)}, {np.round(occupied_cell_probability, 20)} ; {handling_cell_idx}vs{occupied_cell_idx}")
+
+                    current_maximize_index = cell_slot_idx
+                    current_maximize_value = cell_slot_probability_value
+
+
+                else:
+                    print("sdgberbee")
+                    print(cell_slot_probability_value, occupied_cell_probability, merge_above_threshold)
+                    raise Exception("else")
+
+
+    # current_maximize_index: int = np.argmax(frame_num_cell_slot_idx_best_value_vec_dict[last_frame_num])
 
 
 
@@ -137,7 +193,7 @@ def _find_iter_one_track(frame_num_cell_slot_idx_best_index_vec_dict: dict,
     track_data_list.append((current_maximize_index, last_frame_idx, previous_maximize_index))
 
 
-    for reversed_frame_num in range(last_frame_num-1, first_frame_num-1, -1): #119 to 3
+    for reversed_frame_num in range(last_frame_num-1, first_frame_num-1, -1): #119 to 3 for total_frames = 120
         reversed_frame_idx = reversed_frame_num - 1
 
         current_maximize_index = previous_maximize_index
@@ -146,18 +202,18 @@ def _find_iter_one_track(frame_num_cell_slot_idx_best_index_vec_dict: dict,
         track_data_list.append((current_maximize_index, reversed_frame_idx, previous_maximize_index))
 
 
-    if len(frame_num_cell_slot_idx_best_value_vec_dict) > 1:
-        track_data_list.append((previous_maximize_index, start_frame_idx + 1, track_cell_idx))
-        track_data_list.append((track_cell_idx, start_frame_idx, -1))
+    # if len(frame_num_cell_slot_idx_best_value_vec_dict) > 1:
+    track_data_list.append((previous_maximize_index, start_frame_idx + 1, track_cell_idx))
+    track_data_list.append((track_cell_idx, start_frame_idx, -1))
 
-    elif len(frame_num_cell_slot_idx_best_value_vec_dict) == 1:
-        track_data_list.append((previous_maximize_index, start_frame_idx + 1, track_cell_idx))
-        track_data_list.append((track_cell_idx, start_frame_idx, -1))
+    # elif len(frame_num_cell_slot_idx_best_value_vec_dict) == 1:
+    #     track_data_list.append((previous_maximize_index, start_frame_idx + 1, track_cell_idx))
+    #     track_data_list.append((track_cell_idx, start_frame_idx, -1))
 
 
     list.reverse(track_data_list)
 
-    return track_data_list
+    return track_data_list, list(to_redo_cell_idx_set)
 
 
 
@@ -768,7 +824,7 @@ def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_thresho
             # index_ab_vec = np.argmax(last_layer_all_probability_mtx, axis=0)
             # value_ab_vec = np.max(last_layer_all_probability_mtx, axis=0)
             adjusted_merge_above_threshold: Decimal = Decimal(merge_above_threshold) ** Decimal(frame_num)
-            index_ab_vec, value_ab_vec, to_redo_cell_idx_list = find_best_track(handling_cell_idx,
+            index_ab_vec, value_ab_vec, bug_to_redo_cell_idx_list = find_best_track(handling_cell_idx,
                                                                                    last_layer_all_probability_mtx,
                                                                                    profit_mtx_list,
                                                                                    frame_num,
@@ -795,10 +851,13 @@ def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_thresho
         if handling_cell_idx not in to_skip_cell_idx_list:
             start_frame_idx: int = 0
 
-            track_list: list = _find_iter_one_track(cell_idx_frame_num_cell_slot_idx_best_index_vec_dict_dict[handling_cell_idx],
-                                                    cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict[handling_cell_idx],
-                                                    start_frame_idx,
-                                                    handling_cell_idx)
+            track_list, to_redo_cell_idx_list = _find_iter_one_track(cell_idx_frame_num_cell_slot_idx_best_index_vec_dict_dict[handling_cell_idx],
+                                                                    cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict[handling_cell_idx],
+                                                                     cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict,
+                                                                    frame_cell_occupation_vec_list_dict,
+                                                                    merge_above_threshold,
+                                                                    start_frame_idx,
+                                                                    handling_cell_idx)
 
 
 
@@ -1550,7 +1609,8 @@ def find_best_track(handling_cell_idx: int,
 
                     elif handling_cell_probability > merge_above_threshold and occupied_cell_probability < merge_above_threshold:
                         # print(f"redo trajectory of occupied_cell_idx {occupied_cell_idx}; {merge_above_threshold}; {np.round(slot_connection_score, 20)}, {np.round(occupied_cell_probability, 20)} ; {handling_cell_idx}vs{occupied_cell_idx}")
-                        to_redo_cell_idx_set.add(occupied_cell_idx)
+                        # to_redo_cell_idx_set.add(occupied_cell_idx)
+                        # may not be final track, handle at find track
 
                         best_idx = cell_slot_idx
                         best_score = slot_connection_score
