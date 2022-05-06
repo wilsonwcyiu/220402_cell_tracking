@@ -151,16 +151,16 @@ def _find_iter_one_track(frame_num_cell_slot_idx_best_index_vec_dict: dict,
                 occupied_cell_probability: float = cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict[occupied_cell_idx][last_frame_num][cell_slot_idx]
 
                 if cell_slot_probability_value > merge_above_threshold and occupied_cell_probability > merge_above_threshold:
-                    # print(f"let both cell share the same cell slot; {merge_above_threshold}; {np.round(slot_connection_score, 20)}, {np.round(occupied_cell_probability, 20)} ; {handling_cell_idx}vs{occupied_cell_idx}")
+                    print(f"let both cell share the same cell slot; {merge_above_threshold}; {np.round(cell_slot_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {cell_slot_idx}vs{occupied_cell_idx}")
                     current_maximize_index = cell_slot_idx
                     current_maximize_value = cell_slot_probability_value
 
                 elif cell_slot_probability_value < merge_above_threshold and occupied_cell_probability > merge_above_threshold:
+                    print(f"handling_cell_probability merge to other cell; {merge_above_threshold}; {np.round(cell_slot_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {cell_slot_idx}vs{occupied_cell_idx}")
                     pass
-                    # print(f"handling_cell_probability merge to other cell; {merge_above_threshold}; {np.round(slot_connection_score, 20)}, {np.round(occupied_cell_probability, 20)} ; {handling_cell_idx}vs{occupied_cell_idx}")
 
                 elif cell_slot_probability_value > merge_above_threshold and occupied_cell_probability < merge_above_threshold:
-                    # print(f"redo trajectory of occupied_cell_idx {occupied_cell_idx}; {merge_above_threshold}; {np.round(slot_connection_score, 20)}, {np.round(occupied_cell_probability, 20)} ; {handling_cell_idx}vs{occupied_cell_idx}")
+                    print(f"redo trajectory of occupied_cell_idx {occupied_cell_idx}; {merge_above_threshold}; {np.round(cell_slot_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {cell_slot_idx}vs{occupied_cell_idx}")
                     to_redo_cell_idx_set.add(occupied_cell_idx)
                     # may not be final track, handle at find track
 
@@ -170,7 +170,7 @@ def _find_iter_one_track(frame_num_cell_slot_idx_best_index_vec_dict: dict,
                     # time.sleep(2)
 
                 elif cell_slot_probability_value < merge_above_threshold and occupied_cell_probability < merge_above_threshold:
-                    # print(f"??? have to define what to do (For now, let both cell share the same cell slot ). {merge_above_threshold}; {np.round(slot_connection_score, 20)}, {np.round(occupied_cell_probability, 20)} ; {handling_cell_idx}vs{occupied_cell_idx}")
+                    print(f"??? have to define what to do (For now, let both cell share the same cell slot ). {merge_above_threshold}; {np.round(cell_slot_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {cell_slot_idx}vs{occupied_cell_idx}")
 
                     current_maximize_index = cell_slot_idx
                     current_maximize_value = cell_slot_probability_value
@@ -773,7 +773,7 @@ def _iteration_create_viterbi_track_data(profit_matrix_list: list):
 
 
 #loop each node on first frame to find the optimal path using probabilty multiply
-def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_threshold:Decimal=Decimal(0)):
+def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_threshold:Decimal=Decimal(0.5)):
     store_dict: dict = {}
 
     cell_idx_frame_num_cell_slot_idx_best_index_vec_dict_dict: dict = defaultdict(dict)
@@ -789,7 +789,7 @@ def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_thresho
     frame_cell_occupation_vec_list_dict: dict = derive_frame_num_cell_slot_id_occupation_tuple_vec_dict(profit_mtx_list, store_dict)
     to_handle_cell_idx_list: list = [cell_idx for cell_idx in range(0, total_cell_in_first_frame)]
 
-    print(f"handling_cell_idx:", end='')
+    print(f"handling_cell_idx: ", end='')
     while len(to_handle_cell_idx_list) != 0:
         handling_cell_idx: int = to_handle_cell_idx_list[0]
         print(f"{handling_cell_idx}, ", end='')
@@ -823,7 +823,7 @@ def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_thresho
             # index_ab_vec = np.argmax(last_layer_all_probability_mtx, axis=0)
             # value_ab_vec = np.max(last_layer_all_probability_mtx, axis=0)
             adjusted_merge_above_threshold: Decimal = Decimal(merge_above_threshold) ** Decimal(frame_num)
-            index_ab_vec, value_ab_vec, bug_to_redo_cell_idx_list = find_best_track(handling_cell_idx,
+            index_ab_vec, value_ab_vec, toRemove_to_redo_cell_idx_list = find_best_track(handling_cell_idx,
                                                                                    last_layer_all_probability_mtx,
                                                                                    profit_mtx_list,
                                                                                    frame_num,
@@ -852,13 +852,14 @@ def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_thresho
 
             track_list, to_redo_cell_idx_list = _find_iter_one_track(cell_idx_frame_num_cell_slot_idx_best_index_vec_dict_dict[handling_cell_idx],
                                                                     cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict[handling_cell_idx],
-                                                                     cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict,
+                                                                    cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict,
                                                                     frame_cell_occupation_vec_list_dict,
-                                                                    merge_above_threshold,
+                                                                    adjusted_merge_above_threshold,
                                                                     start_frame_idx,
                                                                     handling_cell_idx)
 
-
+            if len(to_redo_cell_idx_list) > 0:
+                print("fqwv", "to_redo_cell_idx_list", to_redo_cell_idx_list)
 
             # debug
             track_value_list: list = []
@@ -1675,7 +1676,7 @@ if __name__ == '__main__':
 
         all_prof_mat_list_dict: dict = {}
         for series in existing_series_list:
-            print(f"working on series: {series}", end="\t")
+            print(f"working on series: {series}. ", end="\t")
 
             async_result = pool.apply_async(viterbi_flow, (series, segmentation_folder, all_segmented_filename_list, output_folder,)) # tuple of args for foo
             thread_list.append(async_result)
