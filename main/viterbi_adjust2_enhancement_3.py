@@ -148,7 +148,6 @@ def _find_iter_one_track(frame_num_cell_slot_idx_best_index_vec_dict: dict,
 
         elif has_cell_occupation:
             for occupied_cell_idx in occupied_cell_idx_tuple:
-                # print("vrbvf", occupied_cell_idx, last_frame_num, cell_slot_idx)
                 occupied_cell_probability: float = cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict[occupied_cell_idx][last_frame_num][cell_slot_idx]
 
                 if cell_slot_probability_value > merge_above_threshold and occupied_cell_probability > merge_above_threshold:
