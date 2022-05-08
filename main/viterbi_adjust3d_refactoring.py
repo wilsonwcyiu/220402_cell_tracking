@@ -107,7 +107,7 @@ def cell_tracking_core_flow(series: str, segmentation_folder: str, all_segmented
 
     segmented_filename_list: list = derive_segmented_filename_list_by_series(series, all_segmented_filename_list)
 
-    prof_mat_list: list = derive_prof_matrix_list(segmentation_folder, output_folder, series, segmented_filename_list)
+    prof_mat_list: list = deprecate_derive_prof_matrix_list(segmentation_folder, output_folder, series, segmented_filename_list)
 
     if is_create_excel:
         save_prof_matrix_to_excel(series, prof_mat_list, excel_output_dir_path="d:/tmp/")
@@ -827,7 +827,7 @@ def derive_frame_num_cell_slot_id_occupation_tuple_vec_dict(profit_matrix_list: 
 
 
 
-def derive_prof_matrix_list(segmentation_folder_path: str, output_folder_path: str, series: str, segmented_filename_list):
+def deprecate_derive_prof_matrix_list(segmentation_folder_path: str, output_folder_path: str, series: str, segmented_filename_list):
     prof_mat_list = []
 
     #get the first image (frame 0) and label the cells:
@@ -836,10 +836,10 @@ def derive_prof_matrix_list(segmentation_folder_path: str, output_folder_path: s
     label_img = measure.label(img, background=0, connectivity=1)
     cellnb_img = np.max(label_img)
 
-    for framenb in range(1, len(segmented_filename_list)):
-        # for framenb in range(0, len(segmented_filename_list)):
+    for frame_num in range(1, len(segmented_filename_list)):
+        # for frame_num in range(0, len(segmented_filename_list)):
         # get next frame and number of cells next frame
-        img_next = plt.imread(segmentation_folder_path + '/' + segmented_filename_list[framenb])
+        img_next = plt.imread(segmentation_folder_path + '/' + segmented_filename_list[frame_num])
 
         label_img_next = measure.label(img_next, background=0, connectivity=1)
         cellnb_img_next = np.max(label_img_next)
@@ -850,7 +850,7 @@ def derive_prof_matrix_list(segmentation_folder_path: str, output_folder_path: s
         #loop through all combinations of cells in this and the next frame
         for cellnb_i in range(cellnb_img):
             #cellnb i + 1 because cellnumbering in output files starts from 1
-            cell_i_filename = "mother_" + segmented_filename_list[framenb][:-4] + "_Cell" + str(cellnb_i + 1).zfill(2) + ".png"
+            cell_i_filename = "mother_" + segmented_filename_list[frame_num][:-4] + "_Cell" + str(cellnb_i + 1).zfill(2) + ".png"
             cell_i = plt.imread(output_folder_path + series + '/' + cell_i_filename)
             #predictions are for each cell in curr img
             cell_i_props = measure.regionprops(label_img_next, intensity_image=cell_i) #label_img_next是二值图像为255，无intensity。需要与output中的预测的细胞一一对应，预测细胞有intensity
@@ -865,6 +865,47 @@ def derive_prof_matrix_list(segmentation_folder_path: str, output_folder_path: s
         label_img = label_img_next
 
     return prof_mat_list
+
+
+
+def derive_frame_num_prof_matrix_dict(segmentation_folder_path: str, output_folder_path: str, series: str, segmented_filename_list):
+    frame_num_prof_matrix_dict: dict = {}
+
+    #get the first image (frame 0) and label the cells:
+    img = plt.imread(segmentation_folder_path + segmented_filename_list[0])
+
+    label_img = measure.label(img, background=0, connectivity=1)
+    cellnb_img = np.max(label_img)
+
+    for frame_num in range(1, len(segmented_filename_list)):
+        # for frame_num in range(0, len(segmented_filename_list)):
+        # get next frame and number of cells next frame
+        img_next = plt.imread(segmentation_folder_path + '/' + segmented_filename_list[frame_num])
+
+        label_img_next = measure.label(img_next, background=0, connectivity=1)
+        cellnb_img_next = np.max(label_img_next)
+
+        #create empty dataframe for element of profit matrix C
+        prof_mat = np.zeros( (cellnb_img, cellnb_img_next), dtype=float)
+
+        #loop through all combinations of cells in this and the next frame
+        for cellnb_i in range(cellnb_img):
+            #cellnb i + 1 because cellnumbering in output files starts from 1
+            cell_i_filename = "mother_" + segmented_filename_list[frame_num][:-4] + "_Cell" + str(cellnb_i + 1).zfill(2) + ".png"
+            cell_i = plt.imread(output_folder_path + series + '/' + cell_i_filename)
+            #predictions are for each cell in curr img
+            cell_i_props = measure.regionprops(label_img_next, intensity_image=cell_i) #label_img_next是二值图像为255，无intensity。需要与output中的预测的细胞一一对应，预测细胞有intensity
+            for cellnb_j in range(cellnb_img_next):
+                #calculate profit score from mean intensity neural network output in segmented cell area
+                prof_mat[cellnb_i, cellnb_j] = cell_i_props[cellnb_j].mean_intensity         #得到填充矩阵size = max(cellnb_img, cellnb_img_next)：先用预测的每一个细胞的mean_intensity填满cellnb_img, cellnb_img_next行和列
+
+        frame_num_prof_matrix_dict[frame_num] = prof_mat
+
+        #make next frame current frame
+        cellnb_img = cellnb_img_next
+        label_img = label_img_next
+
+    return frame_num_prof_matrix_dict
 
 
 
