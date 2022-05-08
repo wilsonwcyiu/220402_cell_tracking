@@ -65,7 +65,6 @@ def main():
         pool = ThreadPool(processes=8)
         thread_list: list = []
 
-        all_prof_mat_list_dict: dict = {}
         for series in existing_series_list:
             print(f"working on series: {series}. ", end="\t")
 
@@ -84,8 +83,6 @@ def main():
             viterbi_result_dict[series] = final_result_list
 
 
-
-
     print("save_track_dictionary")
     save_track_dictionary(viterbi_result_dict, save_dir + "viterbi_results_dict.pkl")
 
@@ -99,101 +96,7 @@ def main():
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# #loop each node on first frame to find the optimal path using probabilty multiply
-# def _process_and_find_calculate_best_cell_track(profit_mtx_list: list, merge_above_threshold:float=1.0, split_below_threshold:float=1.0):   # former method _process
-#     # print("_process_1")
-#     store_dict = defaultdict(list)
-#
-#     start_list_index_vec_dict: int = defaultdict(list)
-#     start_list_value_vec_dict: int = defaultdict(list)
-#
-#     #loop each row on first prob matrix. return the maximum value and index through all the frames, the first prob matrix in profit_matrix_list is a matrix (2D array)
-#     first_frame_mtx: np.array = profit_mtx_list[0]
-#     total_cell_in_first_frame: int = first_frame_mtx.shape[0]
-#
-#     cell_idx_frame_num_tuple_list: list = []
-#     total_frame: int = len(profit_mtx_list)
-#     for cell_idx in range(0, total_cell_in_first_frame):
-#         for frame_num in range(1, total_frame):
-#             cell_idx_frame_idx_tuple: tuple = (cell_idx, frame_num)
-#             cell_idx_frame_num_tuple_list.append(cell_idx_frame_idx_tuple)
-#
-#
-#
-#     frame_num_cell_idx_occupation_vec_dict: dict = {}
-#     for frame_num in range(1, total_frame):
-#         total_cell_in_frame_num: int = profit_mtx_list[frame_num].shape[0]
-#         frame_num_cell_idx_occupation_vec_dict[frame_num] = [False for idx in range(0, total_cell_in_frame_num)]
-#
-#
-#     to_skip_cell_idx_list: list = []
-#     for cell_idx_frame_idx_tuple in cell_idx_frame_num_tuple_list:
-#         cell_idx = cell_idx_frame_idx_tuple[0]
-#         frame_num = cell_idx_frame_idx_tuple[1]
-#
-#         if cell_idx in to_skip_cell_idx_list:
-#             continue
-#
-#         if frame_num == 1:
-#             single_cell_vec = first_frame_mtx[cell_idx]
-#         elif frame_num > 1:
-#             # print("next_frame_num", next_frame_num)
-#             frame_idx: int = frame_num-2
-#             single_cell_vec = start_list_value_vec_dict[cell_idx][frame_idx]
-#         else:
-#             raise Exception()
-#
-#
-#         single_cell_mtx: np.array = single_cell_vec.reshape(single_cell_vec.shape[0], 1)
-#
-#         total_cell_in_next_frame: int = profit_mtx_list[frame_num].shape[1]
-#         single_cell_mtx = np.repeat(single_cell_mtx, total_cell_in_next_frame, axis=1)
-#
-#         last_layer_all_probability_mtx: np.array = single_cell_mtx * profit_mtx_list[frame_num]
-#
-#         index_ab_vec = np.argmax(last_layer_all_probability_mtx, axis=0)
-#         # value_ab_vec = np.max(last_layer_all_probability_mtx, axis=0)
-#         value_ab_vec = obtain_matrix_value_by_index_list(last_layer_all_probability_mtx, index_ab_vec)
-#
-#         if ( np.all(value_ab_vec == 0) ):
-#             to_skip_cell_idx_list.append(cell_idx)
-#             continue
-#
-#         start_list_index_vec_dict[cell_idx].append(index_ab_vec)
-#         start_list_value_vec_dict[cell_idx].append(value_ab_vec)
-#
-#     return start_list_index_vec_dict, start_list_value_vec_dict
-
-
-
-
-
-
-
-
-def flow_function_start_label():
+def __________flow_function_start_label():
     raise Exception("for labeling only")
 
 
@@ -202,16 +105,12 @@ def flow_function_start_label():
 def _iteration_create_viterbi_track_data(profit_matrix_list: list):
     all_cell_track_dict: dict = {}
 
-    # track_index_vec_list_dict, track_value_vec_list_dict = _process_calculate_best_cell_track(profit_matrix_list) # 2D array list
     store_dict: dict = _process_and_find_best_cell_track(profit_matrix_list) # 2D array list
 
     cut_threshold: float = 0.01
     short_track_list_dict = _cut_1(store_dict, cut_threshold, profit_matrix_list)   # filter out cells that does not make sense (e.g. too low probability)
 
     all_cell_track_dict.update(short_track_list_dict)
-
-
-    # return all_cell_track_dict
 
 
     count_dict = {}
@@ -359,7 +258,7 @@ def cell_tracking_core_flow(series: str, segmentation_folder: str, all_segmented
 
 
 
-def component_function_start_label():
+def __________component_function_start_label():
     raise Exception("for labeling only")
 
 
@@ -609,7 +508,7 @@ def _process_calculate_best_cell_track(profit_mtx_list: list, merge_above_thresh
 
 
 
-def unit_function_start_label():
+def __________unit_function_start_label():
     raise Exception("for labeling only")
 
 
@@ -1124,7 +1023,7 @@ def derive_best_track(handling_cell_idx: int,
 
 
 
-def common_function_start_label():
+def __________common_function_start_label():
     raise Exception("for labeling only")
 
 
