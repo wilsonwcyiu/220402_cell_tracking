@@ -193,7 +193,7 @@ def main():
 
 
 
-def flow_function_start():
+def flow_function_start_label():
     raise Exception("for labeling only")
 
 
@@ -359,7 +359,7 @@ def cell_tracking_core_flow(series: str, segmentation_folder: str, all_segmented
 
 
 
-def component_function_start():
+def component_function_start_label():
     raise Exception("for labeling only")
 
 
@@ -609,7 +609,7 @@ def _process_calculate_best_cell_track(profit_mtx_list: list, merge_above_thresh
 
 
 
-def unit_function_start():
+def unit_function_start_label():
     raise Exception("for labeling only")
 
 
@@ -1124,7 +1124,7 @@ def derive_best_track(handling_cell_idx: int,
 
 
 
-def common_function_start():
+def common_function_start_label():
     raise Exception("for labeling only")
 
 
