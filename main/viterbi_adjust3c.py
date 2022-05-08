@@ -830,7 +830,7 @@ def _iteration_create_viterbi_track_data(profit_matrix_list: list):
 
 
 #loop each node on first frame to find the optimal path using probabilty multiply
-def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_threshold:Decimal=Decimal(0.5)):
+def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_threshold:Decimal=Decimal(0)):
     store_dict: dict = {}
 
     cell_idx_frame_num_cell_slot_idx_best_index_vec_dict_dict: dict = defaultdict(dict)
