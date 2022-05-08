@@ -30,6 +30,7 @@ from multiprocessing.pool import ThreadPool
 
 
 def main():
+
     folder_path: str = 'D:/viterbi linkage/dataset/'
 
     segmentation_folder = folder_path + 'segmentation_unet_seg//'
@@ -108,11 +109,13 @@ def cell_tracking_core_flow(series: str, segmentation_folder: str, all_segmented
     segmented_filename_list: list = derive_segmented_filename_list_by_series(series, all_segmented_filename_list)
 
     prof_mat_list: list = deprecate_derive_prof_matrix_list(segmentation_folder, output_folder, series, segmented_filename_list)
+    frame_num_prof_matrix_dict: dict = derive_frame_num_prof_matrix_dict(segmentation_folder, output_folder, series, segmented_filename_list)
 
     if is_create_excel:
-        save_prof_matrix_to_excel(series, prof_mat_list, excel_output_dir_path="d:/tmp/")
+        save_prof_matrix_to_excel(series, frame_num_prof_matrix_dict, excel_output_dir_path="d:/tmp/")
 
-    all_track_dict = execute_cell_tracking_task(prof_mat_list)
+    start_frame_num: int = 1
+    all_track_dict = execute_cell_tracking_task(prof_mat_list, frame_num_prof_matrix_dict, start_frame_num)
 
 
     count_dict = {}
@@ -195,12 +198,12 @@ def __________component_function_start_label():
 
 
 #start from first frame and loop the unvisited nodes in the other frames
-def execute_cell_tracking_task(profit_matrix_list: list, cut_threshold:float=0.01):
+def execute_cell_tracking_task(profit_matrix_list: list, frame_num_prof_matrix_dict: dict, start_frame_num: int, cut_threshold:float=0.01):
     all_cell_idx_track_list_dict: dict = {}
 
-    cell_idx_track_list_dict: dict = _process_and_find_best_cell_track(profit_matrix_list) # 2D array list
+    cell_idx_track_list_dict: dict = _process_and_find_best_cell_track(frame_num_prof_matrix_dict, start_frame_num) # 2D array list
 
-    cell_idx_short_track_list_dict = _cut_1(cell_idx_track_list_dict, cut_threshold, profit_matrix_list)   # filter out cells that does not make sense (e.g. too low probability)
+    cell_idx_short_track_list_dict = _cut_1(cell_idx_track_list_dict, cut_threshold, frame_num_prof_matrix_dict)   # filter out cells that does not make sense (e.g. too low probability)
     all_cell_idx_track_list_dict.update(cell_idx_short_track_list_dict)
 
 
@@ -218,17 +221,18 @@ def execute_cell_tracking_task(profit_matrix_list: list, cut_threshold:float=0.0
     ## handle new cells that enter the image
     ##
     max_id_in_dict: int = len(all_cell_idx_track_list_dict)           # dict key is cell idx
-    mask_transition_group_mtx = _mask_1(cell_idx_short_track_list_dict, profit_matrix_list)
+    mask_transition_group_mtx_list: list = _mask_1(cell_idx_short_track_list_dict, frame_num_prof_matrix_dict)
 
-    total_step: int = len(profit_matrix_list)
-    for profit_matrix_idx in range(1, total_step):
-        for cell_row_idx in range(profit_matrix_list[profit_matrix_idx].shape[0]):  #skip all nodes which are already passed
+    # total_step: int = len(profit_matrix_list)
+    last_frame_num: int = np.max(list(frame_num_prof_matrix_dict.keys()))
+    for frame_num in range(2, last_frame_num):
+        profit_matrix_idx = frame_num - 1
+        for cell_row_idx in range(frame_num_prof_matrix_dict[frame_num].shape[0]):  #skip all nodes which are already passed
 
-            is_old_call: bool = (mask_transition_group_mtx[profit_matrix_idx][cell_row_idx] == True)
+            is_old_call: bool = (mask_transition_group_mtx_list[profit_matrix_idx][cell_row_idx] == True)
 
             if is_old_call:
                 continue
-
 
             new_transition_group_list_ = profit_matrix_list[profit_matrix_idx:]
 
@@ -250,7 +254,7 @@ def execute_cell_tracking_task(profit_matrix_list: list, cut_threshold:float=0.0
 
             new_short_Tracks = _cut_iter(new_store_dict, cut_threshold, new_transition_group_list, profit_matrix_idx)
 
-            mask_transition_group_mtx = _mask_update(new_short_Tracks, mask_transition_group_mtx)
+            mask_transition_group_mtx_list = _mask_update(new_short_Tracks, mask_transition_group_mtx_list)
             for ke, val in new_short_Tracks.items():
                 all_cell_idx_track_list_dict[max_id_in_dict + ke + 1] = val
 
@@ -260,20 +264,21 @@ def execute_cell_tracking_task(profit_matrix_list: list, cut_threshold:float=0.0
 
 
 
-def save_prof_matrix_to_excel(series: str, one_series_img_list, excel_output_dir_path: str):
+def save_prof_matrix_to_excel(series: str, frame_num_prof_matrix_dict, excel_output_dir_path: str):
     import pandas as pd
-    num_of_segementation_img: int = len(one_series_img_list)
+    # num_of_segementation_img: int = len(frame_num_prof_matrix_dict)
 
     file_name: str = f"series_{series}.xlsx"
     filepath = excel_output_dir_path + file_name;
     writer = pd.ExcelWriter(filepath, engine='xlsxwriter') #pip install xlsxwriter
 
 
-    for seg_img_idx in range(0, num_of_segementation_img):
-        tmp_array: np.arrays = one_series_img_list[seg_img_idx]
+    # for seg_img_idx in range(0, num_of_segementation_img):
+    for frame_num, prof_matrix in frame_num_prof_matrix_dict.items():
+        tmp_array: np.arrays = frame_num_prof_matrix_dict[frame_num]
 
         df = pd.DataFrame (tmp_array)
-        sheet_name: str = "frame_1" if seg_img_idx == 0 else str(seg_img_idx+1)
+        sheet_name: str = "frame_1" if frame_num == 1 else str(frame_num+1)
         df.to_excel(writer, sheet_name=sheet_name, index=True)
 
     writer.save()
@@ -281,23 +286,27 @@ def save_prof_matrix_to_excel(series: str, one_series_img_list, excel_output_dir
 
 
 #loop each node on first frame to find the optimal path using probabilty multiply
-def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_threshold:Decimal=Decimal(0)):
+def _process_and_find_best_cell_track(frame_num_prof_matrix_dict: dict, start_frame_num: int, merge_above_threshold:Decimal=Decimal(0)):
     cell_idx_track_list_dict: dict = {}
+    # cell_id_track_list_dict: dict = {}
 
     cell_idx_frame_num_cell_slot_idx_best_index_vec_dict_dict: dict = defaultdict(dict)
     cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict: dict = defaultdict(dict)
 
     #loop each row on first prob matrix. return the maximum value and index through all the frames, the first prob matrix in profit_matrix_list is a matrix (2D array)
-    first_frame_mtx: np.array = profit_mtx_list[0]
+    first_frame_mtx: np.array = frame_num_prof_matrix_dict[start_frame_num]
     total_cell_in_first_frame: int = first_frame_mtx.shape[0]
 
 
     to_skip_cell_idx_list: list = []
-    total_frame: int = len(profit_mtx_list) + 1
-    frame_cell_occupation_vec_list_dict: dict = derive_frame_num_cell_slot_id_occupation_tuple_vec_dict(profit_mtx_list, cell_idx_track_list_dict)
+    last_frame_num: int = np.max(list(frame_num_prof_matrix_dict.keys()))
+    total_frame: int = (last_frame_num - start_frame_num) + 1
+    frame_cell_occupation_vec_list_dict: dict = derive_frame_num_cell_slot_id_occupation_tuple_vec_dict(frame_num_prof_matrix_dict, cell_idx_track_list_dict)
     to_handle_cell_idx_list: list = [cell_idx for cell_idx in range(0, total_cell_in_first_frame)]
 
     print(f"handling_cell_idx: ", end='')
+    second_frame: int = start_frame_num + 1
+
     while len(to_handle_cell_idx_list) != 0:
         handling_cell_idx: int = to_handle_cell_idx_list[0]
         print(f"{handling_cell_idx}, ", end='')
@@ -312,17 +321,16 @@ def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_thresho
 
         for frame_num in range(2, total_frame):
             start_list_value_idx: int = frame_num
-            profit_mtx_idx: int = frame_num - 1
 
-            if  frame_num == 2:  last_layer_cell_vec = first_frame_mtx[handling_cell_idx]
-            elif frame_num > 2:  last_layer_cell_vec = cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict[handling_cell_idx][start_list_value_idx]
+            if  frame_num == second_frame:  last_layer_cell_vec = first_frame_mtx[handling_cell_idx]
+            elif frame_num > second_frame:  last_layer_cell_vec = cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict[handling_cell_idx][start_list_value_idx]
 
             last_layer_cell_vec = last_layer_cell_vec.reshape(last_layer_cell_vec.shape[0], 1)
 
-            total_cell_in_next_frame: int = profit_mtx_list[profit_mtx_idx].shape[1]
+            total_cell_in_next_frame: int = frame_num_prof_matrix_dict[frame_num].shape[1]
             last_layer_cell_mtx: np.array = np.repeat(last_layer_cell_vec, total_cell_in_next_frame, axis=1)
 
-            last_layer_all_probability_mtx: np.array = last_layer_cell_mtx * profit_mtx_list[profit_mtx_idx]
+            last_layer_all_probability_mtx: np.array = last_layer_cell_mtx * frame_num_prof_matrix_dict[frame_num]
 
 
             # index_ab_vec = np.argmax(last_layer_all_probability_mtx, axis=0)
@@ -330,11 +338,12 @@ def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_thresho
             adjusted_merge_above_threshold: Decimal = Decimal(merge_above_threshold) ** Decimal(frame_num)
             index_ab_vec, value_ab_vec = derive_best_track_of_all_cell_slots(handling_cell_idx,
                                                                              last_layer_all_probability_mtx,
-                                                                             profit_mtx_list,
+                                                                             frame_num_prof_matrix_dict,
                                                                              frame_num,
                                                                              frame_cell_occupation_vec_list_dict,
                                                                              adjusted_merge_above_threshold,
-                                                                             cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict)
+                                                                             cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict,
+                                                                             start_frame_num)
 
 
             if ( np.all(value_ab_vec == 0) ):
@@ -370,7 +379,7 @@ def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_thresho
 
             to_handle_cell_idx_list.sort()
 
-            frame_cell_occupation_vec_list_dict = derive_frame_num_cell_slot_id_occupation_tuple_vec_dict(profit_mtx_list, cell_idx_track_list_dict)
+            frame_cell_occupation_vec_list_dict = derive_frame_num_cell_slot_id_occupation_tuple_vec_dict(frame_num_prof_matrix_dict, cell_idx_track_list_dict)
 
     print("  --> finish")
 
@@ -712,14 +721,12 @@ def derive_segmented_filename_list_by_series(series: str, segmented_filename_lis
 
 # after got tracks which started from first frame, check if there are very lower prob between each two cells, then truncate it.
 # store_dict, threshold, profit_matrix_list
-def _cut_1(original_track_dict: dict, threshold: float, profit_matrix_list: list):
+def _cut_1(original_track_dict: dict, threshold: float, frame_num_prof_matrix_dict: dict):
     short_track_list_dict: dict = {}
 
 
     is_first_cell_id_not_zero: bool = list(original_track_dict.keys())[0] != 0
     if is_first_cell_id_not_zero:
-        # print("is_first_cell_id_not_zero", is_first_cell_id_not_zero)
-        # raise Exception("investigate")
         for miss_key in range(list(original_track_dict.keys())[0]):
             short_track_list = []
             short_track_list.append((miss_key,0, -1))
@@ -729,12 +736,14 @@ def _cut_1(original_track_dict: dict, threshold: float, profit_matrix_list: list
     for cell_id, track_content_list in original_track_dict.items():
         short_track_list = []
         for index in range(len(original_track_dict[cell_id]) - 1):
-            current_frame = original_track_dict[cell_id][index][1]
+            frame_idx = original_track_dict[cell_id][index][1]
+            frame_num: int = frame_idx + 1
 
             current_node = original_track_dict[cell_id][index][0]
             next_node = original_track_dict[cell_id][index + 1][0]
 
-            weight_between_nodes = profit_matrix_list[current_frame][current_node][next_node]
+            # weight_between_nodes = profit_matrix_list[frame_idx][current_node][next_node]
+            weight_between_nodes = frame_num_prof_matrix_dict[frame_num][current_node][next_node]
             if (weight_between_nodes > threshold):
                 short_track_list.append(original_track_dict[cell_id][index])
             else:
@@ -757,12 +766,13 @@ def _cut_1(original_track_dict: dict, threshold: float, profit_matrix_list: list
 
 
 #after got all tracks start from first frame, define a mask matrix. all the nodes which are passed by any tracks are labels as True
-def _mask_1(short_track_list_dict: dict, profit_matrix_list: list):
+def _mask_1(short_track_list_dict: dict, frame_num_prof_matrix_dict: dict):
     # print("_mask_1")
     mask_frame_cell_id_list: list = []      #list list that stores [frame_id][cell_id]
 
     # initialize the transition group with all False
-    for profit_matrix in profit_matrix_list:
+    for profit_matrix in frame_num_prof_matrix_dict.values():
+    # for profit_matrix in profit_matrix_list:
         num_of_cell: int = profit_matrix.shape[0]
         mask_frame_cell_id_list.append(np.array([False for i in range(num_of_cell)]))
 
@@ -797,14 +807,14 @@ def derive_matrix_value_by_index_list(last_layer_all_probability_mtx: np.array, 
 
 
 
-def derive_frame_num_cell_slot_id_occupation_tuple_vec_dict(profit_matrix_list: np.array, track_tuple_list_dict: dict):
+def derive_frame_num_cell_slot_id_occupation_tuple_vec_dict(frame_num_prof_matrix_dict: dict, track_tuple_list_dict: dict):
     frame_num_cell_slot_idx_occupation_tuple_vec_dict: dict = {}
 
     # initiate frame_num_cell_slot_idx_occupation_tuple_vec_dict
-    for idx, profit_matrix in enumerate(profit_matrix_list):
-        frame_num: int = idx + 2
+    for frame_num, profit_matrix in frame_num_prof_matrix_dict.items():
+        next_frame_num: int = frame_num + 1
         total_cell: int = profit_matrix.shape[1]
-        frame_num_cell_slot_idx_occupation_tuple_vec_dict[frame_num] = [()] * total_cell
+        frame_num_cell_slot_idx_occupation_tuple_vec_dict[next_frame_num] = [()] * total_cell
 
 
     # assign True to cell that is occupied
@@ -812,15 +822,11 @@ def derive_frame_num_cell_slot_id_occupation_tuple_vec_dict(profit_matrix_list: 
         for track_idx, track_tuple in enumerate(track_tuple_list):
             frame_num: int = track_tuple[1] + 1
 
-            # if frame_num > 120:
-            #     print("debug")
-
             if frame_num == 1:
                 continue
 
             occupied_cell_slot_idx: int = track_tuple[0]
 
-            # syntax to add cell_idx to tuple
             frame_num_cell_slot_idx_occupation_tuple_vec_dict[frame_num][occupied_cell_slot_idx] += (cell_idx,)
 
     return frame_num_cell_slot_idx_occupation_tuple_vec_dict
@@ -911,15 +917,17 @@ def derive_frame_num_prof_matrix_dict(segmentation_folder_path: str, output_fold
 
 def derive_best_track_of_all_cell_slots(handling_cell_idx: int,
                                         last_layer_all_probability_mtx: np.array,
-                                        profit_mtx_list: list,
+                                        frame_num_prof_matrix_dict: dict,
                                         handling_frame_num: int,
                                         frame_num_cell_slot_idx_occupation_tuple_list_dict: dict,
                                         merge_above_threshold: float,
-                                        cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict: dict):
+                                        cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict: dict,
+                                        start_frame_num: int):
 
     total_cell_slot_next_frame: int = last_layer_all_probability_mtx.shape[1]
     index_ab_vec: list = [None] * total_cell_slot_next_frame
     value_ab_vec: list = [None] * total_cell_slot_next_frame
+    second_frame: int = start_frame_num + 1
 
     for next_frame_cell_slot_idx in range(total_cell_slot_next_frame):
         best_idx: int = 0
@@ -942,12 +950,13 @@ def derive_best_track_of_all_cell_slots(handling_cell_idx: int,
                 # start_list_value_idx: int = handling_frame_num - 3
                 start_list_value_idx: int = handling_frame_num
 
-                if handling_frame_num == 2:     handling_cell_probability: float = profit_mtx_list[0][handling_cell_idx][cell_slot_idx]
-                elif handling_frame_num > 2:    handling_cell_probability: float = cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict[handling_cell_idx][start_list_value_idx][cell_slot_idx]
+
+                if handling_frame_num == second_frame:     handling_cell_probability: float = frame_num_prof_matrix_dict[start_frame_num][handling_cell_idx][cell_slot_idx]
+                elif handling_frame_num > second_frame:    handling_cell_probability: float = cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict[handling_cell_idx][start_list_value_idx][cell_slot_idx]
 
                 for occupied_cell_idx in occupied_cell_idx_tuple:
-                    if handling_frame_num == 2:     occupied_cell_probability: float = profit_mtx_list[0][occupied_cell_idx][cell_slot_idx]
-                    elif handling_frame_num > 2:    occupied_cell_probability: float = cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict[occupied_cell_idx][start_list_value_idx][cell_slot_idx]
+                    if handling_frame_num == second_frame:     occupied_cell_probability: float = frame_num_prof_matrix_dict[start_frame_num][occupied_cell_idx][cell_slot_idx]
+                    elif handling_frame_num > second_frame:    occupied_cell_probability: float = cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict[occupied_cell_idx][start_list_value_idx][cell_slot_idx]
 
 
 
@@ -991,6 +1000,17 @@ def derive_best_track_of_all_cell_slots(handling_cell_idx: int,
         value_ab_vec[next_frame_cell_slot_idx] = best_score
 
     return index_ab_vec, np.array(value_ab_vec)
+
+
+def __________object_start_label():
+    raise Exception("for labeling only")
+
+
+class CellId():
+    def __init__(self, frame_num: int, node_idx: int):
+        self.frame_num = frame_num
+        self.node_idx = node_idx
+
 
 
 
