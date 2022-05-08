@@ -196,17 +196,17 @@ def __________component_function_start_label():
 
 #start from first frame and loop the unvisited nodes in the other frames
 def execute_cell_tracking_task(profit_matrix_list: list, cut_threshold:float=0.01):
-    all_cell_track_dict: dict = {}
+    all_cell_idx_track_list_dict: dict = {}
 
-    store_dict: dict = _process_and_find_best_cell_track(profit_matrix_list) # 2D array list
+    cell_idx_track_list_dict: dict = _process_and_find_best_cell_track(profit_matrix_list) # 2D array list
 
-    short_track_list_dict = _cut_1(store_dict, cut_threshold, profit_matrix_list)   # filter out cells that does not make sense (e.g. too low probability)
-    all_cell_track_dict.update(short_track_list_dict)
+    cell_idx_short_track_list_dict = _cut_1(cell_idx_track_list_dict, cut_threshold, profit_matrix_list)   # filter out cells that does not make sense (e.g. too low probability)
+    all_cell_idx_track_list_dict.update(cell_idx_short_track_list_dict)
 
 
 
     count_dict = {}
-    for key, value_tuple_list in all_cell_track_dict.items():
+    for key, value_tuple_list in all_cell_idx_track_list_dict.items():
         seq_length = len(value_tuple_list)
         if seq_length not in count_dict:
             count_dict[seq_length] = 0
@@ -217,8 +217,8 @@ def execute_cell_tracking_task(profit_matrix_list: list, cut_threshold:float=0.0
     ##
     ## handle new cells that enter the image
     ##
-    max_id_in_dict: int = len(all_cell_track_dict)           # dict key is cell idx
-    mask_transition_group_mtx = _mask_1(short_track_list_dict, profit_matrix_list)
+    max_id_in_dict: int = len(all_cell_idx_track_list_dict)           # dict key is cell idx
+    mask_transition_group_mtx = _mask_1(cell_idx_short_track_list_dict, profit_matrix_list)
 
     total_step: int = len(profit_matrix_list)
     for profit_matrix_idx in range(1, total_step):
@@ -252,11 +252,11 @@ def execute_cell_tracking_task(profit_matrix_list: list, cut_threshold:float=0.0
 
             mask_transition_group_mtx = _mask_update(new_short_Tracks, mask_transition_group_mtx)
             for ke, val in new_short_Tracks.items():
-                all_cell_track_dict[max_id_in_dict + ke + 1] = val
+                all_cell_idx_track_list_dict[max_id_in_dict + ke + 1] = val
 
-            max_id_in_dict = len(all_cell_track_dict)
+            max_id_in_dict = len(all_cell_idx_track_list_dict)
 
-    return all_cell_track_dict
+    return all_cell_idx_track_list_dict
 
 
 
@@ -282,7 +282,7 @@ def save_prof_matrix_to_excel(series: str, one_series_img_list, excel_output_dir
 
 #loop each node on first frame to find the optimal path using probabilty multiply
 def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_threshold:Decimal=Decimal(0)):
-    store_dict: dict = {}
+    cell_idx_track_list_dict: dict = {}
 
     cell_idx_frame_num_cell_slot_idx_best_index_vec_dict_dict: dict = defaultdict(dict)
     cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict: dict = defaultdict(dict)
@@ -294,7 +294,7 @@ def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_thresho
 
     to_skip_cell_idx_list: list = []
     total_frame: int = len(profit_mtx_list) + 1
-    frame_cell_occupation_vec_list_dict: dict = derive_frame_num_cell_slot_id_occupation_tuple_vec_dict(profit_mtx_list, store_dict)
+    frame_cell_occupation_vec_list_dict: dict = derive_frame_num_cell_slot_id_occupation_tuple_vec_dict(profit_mtx_list, cell_idx_track_list_dict)
     to_handle_cell_idx_list: list = [cell_idx for cell_idx in range(0, total_cell_in_first_frame)]
 
     print(f"handling_cell_idx: ", end='')
@@ -352,85 +352,29 @@ def _process_and_find_best_cell_track(profit_mtx_list: list, merge_above_thresho
         if handling_cell_idx not in to_skip_cell_idx_list:
             start_frame_idx: int = 0
 
-            track_list, to_redo_cell_idx_list = _find_iter_one_track(cell_idx_frame_num_cell_slot_idx_best_index_vec_dict_dict[handling_cell_idx],
-                                                                     cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict[handling_cell_idx],
-                                                                     cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict,
-                                                                     frame_cell_occupation_vec_list_dict,
-                                                                     merge_above_threshold,
-                                                                     start_frame_idx,
-                                                                     handling_cell_idx)
+            cell_track_list, to_redo_cell_idx_list = derive_cell_idx_best_track(cell_idx_frame_num_cell_slot_idx_best_index_vec_dict_dict[handling_cell_idx],
+                                                                               cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict[handling_cell_idx],
+                                                                               cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict,
+                                                                               frame_cell_occupation_vec_list_dict,
+                                                                               merge_above_threshold,
+                                                                               start_frame_idx,
+                                                                               handling_cell_idx)
 
-            if len(to_redo_cell_idx_list) > 0:
-                print("fqwv", "to_redo_cell_idx_list", to_redo_cell_idx_list)
+            cell_idx_track_list_dict[handling_cell_idx] = cell_track_list
 
-            # debug
-            track_value_list: list = []
-            for track_tuple in track_list:
-                frame_idx: int = track_tuple[1]
-
-                if frame_idx < 2: continue
-
-                cell_path_idx: int = track_tuple[0]
-                frame_num: int = frame_idx + 1
-                # start_list_value_idx: int = frame_num - 3
-                start_list_value_idx: int = frame_num
-
-                if len(cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict[handling_cell_idx]) > total_frame:
-                    print(len(cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict[handling_cell_idx]))
-                    print("handling_cell_idx", handling_cell_idx)
-                    print("total_frame", total_frame)
-                    raise Exception("len(cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict[handling_cell_idx]) > total_frame")
-
-                cell_idx_frame_num_cell_slot_idx_best_value_vec_dict = cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict[handling_cell_idx]
-
-                # print("qwf", cell_idx_frame_num_cell_slot_idx_best_value_vec_dict.keys())
-                if start_list_value_idx > total_frame:
-                    print("debug")
-                    raise Exception("debug")
-
-
-                value = cell_idx_frame_num_cell_slot_idx_best_value_vec_dict[start_list_value_idx][cell_path_idx]
-                track_value_list.append(value)
-                # removed round(20 and see if value<=0 still appears)
-
-                if value <= 0:
-                    print(value <= 0)
-                    print(len(track_value_list))
-                    print(track_value_list)
-                    print("handling_cell_idx", handling_cell_idx)
-                    print("track_tuple", track_tuple)
-                    print("cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict[handling_cell_idx][start_list_value_idx]", cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict[handling_cell_idx][start_list_value_idx])
-
-                    time.sleep(2)
-                    raise Exception("value <= 0")
-                    # inspect why 0 value is being chosen
-
-
-            # print(f"{handling_cell_idx}: {track_value_list}")
-            # time.sleep(2)
-
-
-
-
-
-            store_dict[handling_cell_idx] = track_list
-
-            # to_redo_trajectory_cell_idx_list = derive_to_redo_track_list()
             for to_redo_cell_idx in to_redo_cell_idx_list:
-                del store_dict[to_redo_cell_idx]
+                del cell_idx_track_list_dict[to_redo_cell_idx]
                 del cell_idx_frame_num_cell_slot_idx_best_index_vec_dict_dict[to_redo_cell_idx]
                 del cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict[to_redo_cell_idx]
                 to_handle_cell_idx_list.append(to_redo_cell_idx)
 
-                # print("to_redo_cell_idx", to_redo_cell_idx)
-
             to_handle_cell_idx_list.sort()
 
-            frame_cell_occupation_vec_list_dict = derive_frame_num_cell_slot_id_occupation_tuple_vec_dict(profit_mtx_list, store_dict)
+            frame_cell_occupation_vec_list_dict = derive_frame_num_cell_slot_id_occupation_tuple_vec_dict(profit_mtx_list, cell_idx_track_list_dict)
 
     print("  --> finish")
 
-    return store_dict
+    return cell_idx_track_list_dict
 
 
 
@@ -505,16 +449,16 @@ def __________unit_function_start_label():
 
 
 
-#find the best track start from current frame, and current node based on dict which returned from _process_iter
-def _find_iter_one_track(frame_num_cell_slot_idx_best_index_vec_dict: dict,
-                         frame_num_cell_slot_idx_best_value_vec_dict: dict,
-                         cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict: dict,
-                         frame_cell_occupation_vec_list_dict: dict,
-                         merge_above_threshold: Decimal,
-                         start_frame_idx: int,
-                         handling_cell_idx: int):
+# _find_iter: find the best track start from current frame, and current node based on dict which returned from _process_iter
+def derive_cell_idx_best_track(frame_num_cell_slot_idx_best_index_vec_dict: dict,
+                               frame_num_cell_slot_idx_best_value_vec_dict: dict,
+                               cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict: dict,
+                               frame_cell_occupation_vec_list_dict: dict,
+                               merge_above_threshold: Decimal,
+                               start_frame_idx: int,
+                               handling_cell_idx: int):
 
-    track_data_list: list = []
+    cell_track_list: list = []
 
     last_frame_num: int = np.max(list(frame_num_cell_slot_idx_best_value_vec_dict.keys()))
     second_frame_num: int = np.min(list(frame_num_cell_slot_idx_best_value_vec_dict.keys()))
@@ -579,7 +523,7 @@ def _find_iter_one_track(frame_num_cell_slot_idx_best_index_vec_dict: dict,
 
     previous_maximize_index: int = frame_num_cell_slot_idx_best_index_vec_dict[last_frame_num][current_maximize_index]
 
-    track_data_list.append((current_maximize_index, last_frame_idx, previous_maximize_index))
+    cell_track_list.append((current_maximize_index, last_frame_idx, previous_maximize_index))
 
 
     # check if this is working fine
@@ -589,7 +533,7 @@ def _find_iter_one_track(frame_num_cell_slot_idx_best_index_vec_dict: dict,
         current_maximize_index = previous_maximize_index
         previous_maximize_index = frame_num_cell_slot_idx_best_index_vec_dict[reversed_frame_num][current_maximize_index]
 
-        track_data_list.append((current_maximize_index, reversed_frame_idx, previous_maximize_index))
+        cell_track_list.append((current_maximize_index, reversed_frame_idx, previous_maximize_index))
 
 
         threshold_exponential = float(reversed_frame_num - 2)
@@ -629,17 +573,17 @@ def _find_iter_one_track(frame_num_cell_slot_idx_best_index_vec_dict: dict,
 
 
     # if len(frame_num_cell_slot_idx_best_value_vec_dict) > 1:
-    track_data_list.append((previous_maximize_index, start_frame_idx + 1, handling_cell_idx))
-    track_data_list.append((handling_cell_idx, start_frame_idx, -1))
+    cell_track_list.append((previous_maximize_index, start_frame_idx + 1, handling_cell_idx))
+    cell_track_list.append((handling_cell_idx, start_frame_idx, -1))
 
     # elif len(frame_num_cell_slot_idx_best_value_vec_dict) == 1:
-    #     track_data_list.append((previous_maximize_index, start_frame_idx + 1, track_cell_idx))
-    #     track_data_list.append((track_cell_idx, start_frame_idx, -1))
+    #     cell_track_list.append((previous_maximize_index, start_frame_idx + 1, track_cell_idx))
+    #     cell_track_list.append((track_cell_idx, start_frame_idx, -1))
 
 
-    list.reverse(track_data_list)
+    list.reverse(cell_track_list)
 
-    return track_data_list, list(to_redo_cell_idx_set)
+    return cell_track_list, list(to_redo_cell_idx_set)
 
 
 
@@ -892,14 +836,9 @@ def derive_prof_matrix_list(segmentation_folder_path: str, output_folder_path: s
     label_img = measure.label(img, background=0, connectivity=1)
     cellnb_img = np.max(label_img)
 
-    # print(series, len(segmented_filename_list))
-
-    # bug fix? need output file     #FileNotFoundError: [Errno 2] No such file or directory: 'D:/viterbi linkage/dataset/output_unet_seg_finetune//S01/mother_190621_++1_S01_frame001_Cell01.png'
-    # it is actually a prediction
-
     for framenb in range(1, len(segmented_filename_list)):
         # for framenb in range(0, len(segmented_filename_list)):
-        #get next frame and number of cells next frame
+        # get next frame and number of cells next frame
         img_next = plt.imread(segmentation_folder_path + '/' + segmented_filename_list[framenb])
 
         label_img_next = measure.label(img_next, background=0, connectivity=1)
