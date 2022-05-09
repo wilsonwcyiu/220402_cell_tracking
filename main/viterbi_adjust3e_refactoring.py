@@ -273,21 +273,17 @@ def execute_cell_tracking_task(profit_matrix_list: list, frame_num_prof_matrix_d
 #loop each node on first frame to find the optimal path using probabilty multiply
 def _process_and_find_best_cell_track(to_handle_cell_id_list: list, frame_num_prof_matrix_dict: dict, start_frame_num: int, merge_above_threshold:Decimal=Decimal(0)):
     cell_idx_track_list_dict: dict = {}
-    # cell_id_track_list_dict: dict = {}
 
     cell_idx_frame_num_cell_slot_idx_best_index_vec_dict_dict: dict = defaultdict(dict)
     cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict: dict = defaultdict(dict)
 
     #loop each row on first prob matrix. return the maximum value and index through all the frames, the first prob matrix in profit_matrix_list is a matrix (2D array)
     first_frame_mtx: np.array = frame_num_prof_matrix_dict[start_frame_num]
-    total_cell_in_first_frame: int = first_frame_mtx.shape[0]
-
 
     to_skip_cell_id_list: list = []
     last_frame_num: int = np.max(list(frame_num_prof_matrix_dict.keys()))
-    total_frame: int = (last_frame_num - start_frame_num) + 1
+    # total_frame: int = (last_frame_num - start_frame_num) + 1
     frame_cell_occupation_vec_list_dict: dict = derive_frame_num_cell_slot_id_occupation_tuple_vec_dict(frame_num_prof_matrix_dict, cell_idx_track_list_dict)
-    # to_handle_cell_id_list: list = [cell_idx for cell_idx in range(0, total_cell_in_first_frame)]
 
     print(f"handling_cell_idx: ", end='')
     second_frame: int = start_frame_num + 1
@@ -296,8 +292,6 @@ def _process_and_find_best_cell_track(to_handle_cell_id_list: list, frame_num_pr
         handling_cell_id: CellId = to_handle_cell_id_list[0]
         handling_cell_idx: int = handling_cell_id.cell_idx
 
-    # while len(to_handle_cell_id_list) != 0:
-    #     handling_cell_idx: int = to_handle_cell_id_list[0]
         print(f"{handling_cell_idx}, ", end='')
 
         # debug
@@ -308,7 +302,7 @@ def _process_and_find_best_cell_track(to_handle_cell_id_list: list, frame_num_pr
                 raise Exception("cell_idx_frame_num_cell_slot_idx_best_index_vec_dict_dict[handling_cell_idx]) != 0")
 
 
-        for frame_num in range(2, total_frame):
+        for frame_num in range(second_frame, last_frame_num):
             start_list_value_idx: int = frame_num
 
             if  frame_num == second_frame:  last_layer_cell_vec = first_frame_mtx[handling_cell_idx]
@@ -569,11 +563,11 @@ def derive_cell_idx_best_track(frame_num_cell_slot_idx_best_index_vec_dict: dict
 
                 if handling_cell_probability > last_frame_adjusted_threshold and occupied_cell_probability > last_frame_adjusted_threshold:
                     # print(f"let both cell share the same cell slot; {last_frame_adjusted_threshold}; {np.round(cell_slot_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {cell_slot_idx}vs{occupied_cell_idx}")
-                    print("s", end='')
+                    # print("s", end='')
                     pass
                 elif handling_cell_probability < last_frame_adjusted_threshold and occupied_cell_probability > last_frame_adjusted_threshold:
                     # print(f"handling_cell_probability merge to other cell; {last_frame_adjusted_threshold}; {np.round(cell_slot_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {cell_slot_idx}vs{occupied_cell_idx}")
-                    print("o", end='')
+                    # print("o", end='')
                     pass
                 elif handling_cell_probability > last_frame_adjusted_threshold and occupied_cell_probability < last_frame_adjusted_threshold:
                     print("vwavb", f"redo trajectory of occupied_cell_idx {occupied_cell_idx}; {last_frame_adjusted_threshold}; {np.round(cell_slot_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {cell_slot_idx}vs{occupied_cell_idx}")
@@ -582,7 +576,7 @@ def derive_cell_idx_best_track(frame_num_cell_slot_idx_best_index_vec_dict: dict
                     to_redo_cell_id_set.add(CellId(start_frame_num, occupied_cell_idx))
                 elif handling_cell_probability < last_frame_adjusted_threshold and occupied_cell_probability < last_frame_adjusted_threshold:
                     # print(f"??? have to define what to do (For now, let both cell share the same cell slot ). {last_frame_adjusted_threshold}; {np.round(cell_slot_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {cell_slot_idx}vs{occupied_cell_idx}")
-                    print("s1", end='')
+                    # print("s1", end='')
                     pass
                 else:
                     print("vebj")
