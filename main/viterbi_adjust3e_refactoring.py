@@ -454,7 +454,7 @@ def __________unit_function_start_label():
 # _find_iter: find the best track start from current frame, and current node based on dict which returned from _process_iter
 def derive_final_best_track(frame_num_node_idx_best_index_list_dict: dict,
                             frame_num_node_idx_best_value_list_dict: dict,
-                            cell_idx_frame_num_node_idx_best_value_list_dict_dict: dict,
+                            cell_id_frame_num_node_idx_best_value_list_dict_dict: dict,
                             frame_cell_occupation_vec_list_dict: dict,
                             merge_above_threshold: Decimal,
                             handling_cell_id):           # CellId
@@ -491,7 +491,7 @@ def derive_final_best_track(frame_num_node_idx_best_index_list_dict: dict,
         elif has_cell_occupation:
             for occupied_cell_id in occupied_cell_id_list:
                 occupied_cell_idx = occupied_cell_id.cell_idx
-                occupied_cell_probability: float = cell_idx_frame_num_node_idx_best_value_list_dict_dict[occupied_cell_idx][last_frame_num][node_idx]
+                occupied_cell_probability: float = cell_id_frame_num_node_idx_best_value_list_dict_dict[occupied_cell_idx][last_frame_num][node_idx]
 
                 if node_probability_value > last_frame_adjusted_threshold and occupied_cell_probability > last_frame_adjusted_threshold:
                     # print(f"let both cell share the same node; {last_frame_adjusted_threshold}; {np.round(node_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {node_idx}vs{occupied_cell_idx}")
@@ -551,8 +551,8 @@ def derive_final_best_track(frame_num_node_idx_best_index_list_dict: dict,
         if has_cell_occupation:
             for occupied_cell_id in occupied_cell_id_list:
                 occupied_cell_idx: int = occupied_cell_id.cell_idx
-                occupied_cell_probability: float = cell_idx_frame_num_node_idx_best_value_list_dict_dict[occupied_cell_idx][reversed_frame_num][current_maximize_index]
-                handling_cell_probability: float = cell_idx_frame_num_node_idx_best_value_list_dict_dict[handling_cell_idx][reversed_frame_num][current_maximize_index]
+                occupied_cell_probability: float = cell_id_frame_num_node_idx_best_value_list_dict_dict[occupied_cell_idx][reversed_frame_num][current_maximize_index]
+                handling_cell_probability: float = cell_id_frame_num_node_idx_best_value_list_dict_dict[handling_cell_idx][reversed_frame_num][current_maximize_index]
 
                 if handling_cell_probability > last_frame_adjusted_threshold and occupied_cell_probability > last_frame_adjusted_threshold:
                     # print(f"let both cell share the same node; {last_frame_adjusted_threshold}; {np.round(node_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {node_idx}vs{occupied_cell_idx}")
