@@ -27,7 +27,7 @@ from collections import defaultdict
 import time
 from multiprocessing.pool import ThreadPool
 
-from main.viterbi_adjust3e_refactoring import CellId
+# from main.viterbi_adjust3e_refactoring import CellId
 
 
 def main():
@@ -466,7 +466,7 @@ def derive_cell_idx_best_track(frame_num_cell_slot_idx_best_index_vec_dict: dict
                                cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict: dict,
                                frame_cell_occupation_vec_list_dict: dict,
                                merge_above_threshold: Decimal,
-                               handling_cell_id: CellId):
+                               handling_cell_id):           # CellId
 
     handling_cell_idx: int = handling_cell_id.cell_idx
     cell_track_list: list = []
@@ -950,7 +950,7 @@ def derive_frame_num_prof_matrix_dict(segmentation_folder_path: str, output_fold
 
 
 
-def derive_best_track_of_all_cell_slots(handling_cell_id: CellId,
+def derive_best_track_of_all_cell_slots(handling_cell_id,  # CellId
                                         last_layer_all_probability_mtx: np.array,
                                         frame_num_prof_matrix_dict: dict,
                                         handling_frame_num: int,
