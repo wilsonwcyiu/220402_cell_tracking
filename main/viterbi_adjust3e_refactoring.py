@@ -29,7 +29,6 @@ from multiprocessing.pool import ThreadPool
 
 
 
-
 def main():
 
     folder_path: str = 'D:/viterbi linkage/dataset/'
@@ -115,8 +114,7 @@ def cell_tracking_core_flow(series: str, segmentation_folder: str, all_segmented
     if is_create_excel:
         save_prof_matrix_to_excel(series, frame_num_prof_matrix_dict, excel_output_dir_path="d:/tmp/")
 
-    start_frame_num: int = 1
-    all_track_dict = execute_cell_tracking_task(prof_mat_list, frame_num_prof_matrix_dict, start_frame_num)
+    all_track_dict = execute_cell_tracking_task(prof_mat_list, frame_num_prof_matrix_dict)
 
 
     count_dict = {}
@@ -199,9 +197,10 @@ def __________component_function_start_label():
 
 
 #start from first frame and loop the unvisited nodes in the other frames
-def execute_cell_tracking_task(profit_matrix_list: list, frame_num_prof_matrix_dict: dict, start_frame_num: int, cut_threshold:float=0.01):
+def execute_cell_tracking_task(profit_matrix_list: list, frame_num_prof_matrix_dict: dict, cut_threshold:float=0.01):
     all_cell_idx_track_list_dict: dict = {}
 
+    start_frame_num: int = 1
     first_frame_mtx: np.array = frame_num_prof_matrix_dict[start_frame_num]
     total_cell_in_first_frame: int = first_frame_mtx.shape[0]
     to_handle_cell_id_list: list = [CellId(1, cell_idx) for cell_idx in range(0, total_cell_in_first_frame)]
@@ -286,7 +285,6 @@ def _process_and_find_best_cell_track(to_handle_cell_id_list: list, frame_num_pr
 
     print(f"handling_cell_idx: ", end='')
 
-
     while len(to_handle_cell_id_list) != 0:
         handling_cell_id: CellId = to_handle_cell_id_list[0]
         handling_cell_idx: int = handling_cell_id.cell_idx
@@ -294,7 +292,6 @@ def _process_and_find_best_cell_track(to_handle_cell_id_list: list, frame_num_pr
 
         start_frame_num: int = handling_cell_id.start_frame_num
         second_frame: int = start_frame_num + 1
-
 
 
         # debug
@@ -322,14 +319,13 @@ def _process_and_find_best_cell_track(to_handle_cell_id_list: list, frame_num_pr
             # index_ab_vec = np.argmax(last_layer_all_probability_mtx, axis=0)
             # value_ab_vec = np.max(last_layer_all_probability_mtx, axis=0)
             adjusted_merge_above_threshold: Decimal = Decimal(merge_above_threshold) ** Decimal(frame_num)
-            index_ab_vec, value_ab_vec = derive_best_track_of_all_cell_slots(handling_cell_idx,
+            index_ab_vec, value_ab_vec = derive_best_track_of_all_cell_slots(handling_cell_id,
                                                                              last_layer_all_probability_mtx,
                                                                              frame_num_prof_matrix_dict,
                                                                              frame_num,
                                                                              frame_cell_occupation_vec_list_dict,
                                                                              adjusted_merge_above_threshold,
                                                                              cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict,
-                                                                             start_frame_num,
                                                                              cell_idx_track_list_dict)
 
 
@@ -953,15 +949,17 @@ def derive_frame_num_prof_matrix_dict(segmentation_folder_path: str, output_fold
 
 
 
-def derive_best_track_of_all_cell_slots(handling_cell_idx: int,
+def derive_best_track_of_all_cell_slots(handling_cell_id,
                                         last_layer_all_probability_mtx: np.array,
                                         frame_num_prof_matrix_dict: dict,
                                         handling_frame_num: int,
                                         frame_num_cell_slot_idx_occupation_tuple_list_dict: dict,
                                         merge_above_threshold: float,
                                         cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict: dict,
-                                        start_frame_num: int,
                                         cell_idx_track_list_dict):
+
+    handling_cell_idx: int = handling_cell_id.cell_idx
+    start_frame_num: int = handling_cell_id.start_frame_num
 
     total_cell_slot_next_frame: int = last_layer_all_probability_mtx.shape[1]
     index_ab_vec: list = [None] * total_cell_slot_next_frame
