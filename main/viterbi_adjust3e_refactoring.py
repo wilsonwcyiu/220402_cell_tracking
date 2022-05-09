@@ -283,7 +283,7 @@ def _process_and_find_best_cell_track(to_handle_cell_id_list: list, frame_num_pr
     to_skip_cell_id_list: list = []
     last_frame_num: int = np.max(list(frame_num_prof_matrix_dict.keys()))
     # total_frame: int = (last_frame_num - start_frame_num) + 1
-    frame_cell_occupation_vec_list_dict: dict = derive_frame_num_cell_slot_id_occupation_tuple_vec_dict(frame_num_prof_matrix_dict, cell_idx_track_list_dict)
+    frame_cell_occupation_vec_list_dict: dict = derive_frame_num_cell_slot_id_occupation_list_list_dict(frame_num_prof_matrix_dict, cell_idx_track_list_dict)
 
     print(f"handling_cell_idx: ", end='')
     second_frame: int = start_frame_num + 1
@@ -326,7 +326,8 @@ def _process_and_find_best_cell_track(to_handle_cell_id_list: list, frame_num_pr
                                                                              frame_cell_occupation_vec_list_dict,
                                                                              adjusted_merge_above_threshold,
                                                                              cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict,
-                                                                             start_frame_num)
+                                                                             start_frame_num,
+                                                                             cell_idx_track_list_dict)
 
 
             if ( np.all(value_ab_vec == 0) ):
@@ -363,7 +364,7 @@ def _process_and_find_best_cell_track(to_handle_cell_id_list: list, frame_num_pr
 
             to_handle_cell_id_list.sort(key=cmp_to_key(compare_cell_id))
 
-            frame_cell_occupation_vec_list_dict = derive_frame_num_cell_slot_id_occupation_tuple_vec_dict(frame_num_prof_matrix_dict, cell_idx_track_list_dict)
+            frame_cell_occupation_vec_list_dict = derive_frame_num_cell_slot_id_occupation_list_list_dict(frame_num_prof_matrix_dict, cell_idx_track_list_dict)
 
     print("  --> finish")
 
@@ -490,15 +491,16 @@ def derive_cell_idx_best_track(frame_num_cell_slot_idx_best_index_vec_dict: dict
         if not is_new_value_higher:
             continue
 
-        occupied_cell_idx_tuple: tuple = frame_cell_occupation_vec_list_dict[last_frame_num][cell_slot_idx]
-        has_cell_occupation: bool = ( len(occupied_cell_idx_tuple) != 0 )
+        occupied_cell_id_list: tuple = frame_cell_occupation_vec_list_dict[last_frame_num][cell_slot_idx]
+        has_cell_occupation: bool = ( len(occupied_cell_id_list) != 0 )
 
         if not has_cell_occupation:
             current_maximize_index = cell_slot_idx
             current_maximize_value = cell_slot_probability_value
 
         elif has_cell_occupation:
-            for occupied_cell_idx in occupied_cell_idx_tuple:
+            for occupied_cell_id in occupied_cell_id_list:
+                occupied_cell_idx = occupied_cell_id.cell_idx
                 occupied_cell_probability: float = cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict[occupied_cell_idx][last_frame_num][cell_slot_idx]
 
                 if cell_slot_probability_value > last_frame_adjusted_threshold and occupied_cell_probability > last_frame_adjusted_threshold:
@@ -553,11 +555,12 @@ def derive_cell_idx_best_track(frame_num_cell_slot_idx_best_index_vec_dict: dict
 
 
         ### add redo track here
-        occupied_cell_idx_tuple: tuple = frame_cell_occupation_vec_list_dict[reversed_frame_num][current_maximize_index]
-        has_cell_occupation: bool = ( len(occupied_cell_idx_tuple) != 0 )
+        occupied_cell_id_list: tuple = frame_cell_occupation_vec_list_dict[reversed_frame_num][current_maximize_index]
+        has_cell_occupation: bool = ( len(occupied_cell_id_list) != 0 )
 
         if has_cell_occupation:
-            for occupied_cell_idx in occupied_cell_idx_tuple:
+            for occupied_cell_id in occupied_cell_id_list:
+                occupied_cell_idx: int = occupied_cell_id.cell_idx
                 occupied_cell_probability: float = cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict[occupied_cell_idx][reversed_frame_num][current_maximize_index]
                 handling_cell_probability: float = cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict[handling_cell_idx][reversed_frame_num][current_maximize_index]
 
@@ -811,7 +814,7 @@ def derive_matrix_value_by_index_list(last_layer_all_probability_mtx: np.array, 
 
 
 
-def derive_frame_num_cell_slot_id_occupation_tuple_vec_dict(frame_num_prof_matrix_dict: dict, track_tuple_list_dict: dict):
+def deprecated_derive_frame_num_cell_slot_id_occupation_tuple_vec_dict(frame_num_prof_matrix_dict: dict, track_tuple_list_dict: dict):
     frame_num_cell_slot_idx_occupation_tuple_vec_dict: dict = {}
 
     # initiate frame_num_cell_slot_idx_occupation_tuple_vec_dict
@@ -832,6 +835,34 @@ def derive_frame_num_cell_slot_id_occupation_tuple_vec_dict(frame_num_prof_matri
             occupied_cell_slot_idx: int = track_tuple[0]
 
             frame_num_cell_slot_idx_occupation_tuple_vec_dict[frame_num][occupied_cell_slot_idx] += (cell_idx,)
+
+    return frame_num_cell_slot_idx_occupation_tuple_vec_dict
+
+
+
+def derive_frame_num_cell_slot_id_occupation_list_list_dict(frame_num_prof_matrix_dict: dict, track_tuple_list_dict: dict):
+    frame_num_cell_slot_idx_occupation_tuple_vec_dict: dict = {}
+
+    # initiate frame_num_cell_slot_idx_occupation_tuple_vec_dict
+    for frame_num, profit_matrix in frame_num_prof_matrix_dict.items():
+        next_frame_num: int = frame_num + 1
+        total_cell: int = profit_matrix.shape[1]
+        frame_num_cell_slot_idx_occupation_tuple_vec_dict[next_frame_num] = [[] for _ in range(total_cell)]
+
+
+    for cell_idx, track_tuple_list in track_tuple_list_dict.items():
+        start_frame_idx: int = track_tuple_list[0][1]
+        start_frame_num: int = start_frame_idx + 1
+        for track_idx, track_tuple in enumerate(track_tuple_list):
+            frame_num: int = track_tuple[1] + 1
+
+            if frame_num == start_frame_num:
+                continue
+
+            occupied_cell_slot_idx: int = track_tuple[0]
+
+            occupied_cell_id: CellId = CellId(start_frame_num, cell_idx)
+            frame_num_cell_slot_idx_occupation_tuple_vec_dict[frame_num][occupied_cell_slot_idx].append(occupied_cell_id)
 
     return frame_num_cell_slot_idx_occupation_tuple_vec_dict
 
@@ -926,7 +957,8 @@ def derive_best_track_of_all_cell_slots(handling_cell_idx: int,
                                         frame_num_cell_slot_idx_occupation_tuple_list_dict: dict,
                                         merge_above_threshold: float,
                                         cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict: dict,
-                                        start_frame_num: int):
+                                        start_frame_num: int,
+                                        cell_idx_track_list_dict):
 
     total_cell_slot_next_frame: int = last_layer_all_probability_mtx.shape[1]
     index_ab_vec: list = [None] * total_cell_slot_next_frame
@@ -943,8 +975,8 @@ def derive_best_track_of_all_cell_slots(handling_cell_idx: int,
             if not is_new_connection_score_higher:
                 continue
 
-            occupied_cell_idx_tuple: tuple = frame_num_cell_slot_idx_occupation_tuple_list_dict[handling_frame_num][cell_slot_idx]
-            has_cell_occupation: bool = (len(occupied_cell_idx_tuple) > 0)
+            occupied_cell_id_list: list = frame_num_cell_slot_idx_occupation_tuple_list_dict[handling_frame_num][cell_slot_idx]
+            has_cell_occupation: bool = (len(occupied_cell_id_list) > 0)
 
             if (not has_cell_occupation) and is_new_connection_score_higher:
                 best_idx = cell_slot_idx
@@ -958,10 +990,10 @@ def derive_best_track_of_all_cell_slots(handling_cell_idx: int,
                 if handling_frame_num == second_frame:     handling_cell_probability: float = frame_num_prof_matrix_dict[start_frame_num][handling_cell_idx][cell_slot_idx]
                 elif handling_frame_num > second_frame:    handling_cell_probability: float = cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict[handling_cell_idx][start_list_value_idx][cell_slot_idx]
 
-                for occupied_cell_idx in occupied_cell_idx_tuple:
+                for occupied_cell_id in occupied_cell_id_list:
+                    occupied_cell_idx: int = occupied_cell_id.cell_idx
                     if handling_frame_num == second_frame:     occupied_cell_probability: float = frame_num_prof_matrix_dict[start_frame_num][occupied_cell_idx][cell_slot_idx]
                     elif handling_frame_num > second_frame:    occupied_cell_probability: float = cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict[occupied_cell_idx][start_list_value_idx][cell_slot_idx]
-
 
 
                     if handling_cell_probability > merge_above_threshold and occupied_cell_probability > merge_above_threshold:
@@ -995,6 +1027,14 @@ def derive_best_track_of_all_cell_slots(handling_cell_idx: int,
                         # time.sleep(2)
 
                     else:
+                        print("handling_frame_num", handling_frame_num)
+
+                        for slot_idx, frame_num_cell_slot_idx_occupation_tuple_list in enumerate(frame_num_cell_slot_idx_occupation_tuple_list_dict[handling_frame_num]):
+                            for frame_num_cell_slot_idx_occupation_tuple in enumerate(frame_num_cell_slot_idx_occupation_tuple_list):
+                                print(slot_idx, ":", frame_num_cell_slot_idx_occupation_tuple)
+
+                        # print("frame_num_cell_slot_idx_occupation_tuple_list_dict", frame_num_cell_slot_idx_occupation_tuple_list_dict[handling_frame_num])
+                        print(cell_idx_track_list_dict[0])
                         print("sdgberb")
                         print(handling_cell_probability, occupied_cell_probability, merge_above_threshold)
                         raise Exception("else")
@@ -1008,6 +1048,7 @@ def derive_best_track_of_all_cell_slots(handling_cell_idx: int,
 
 def __________object_start_label():
     raise Exception("for labeling only")
+
 
 
 class CellId():
