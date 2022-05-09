@@ -6,6 +6,7 @@ Created on Tue Sep 28 09:31:51 2021
 """
 import os
 from decimal import Decimal
+from functools import cmp_to_key
 from os import listdir
 from os.path import join, basename
 import numpy as np
@@ -201,7 +202,11 @@ def __________component_function_start_label():
 def execute_cell_tracking_task(profit_matrix_list: list, frame_num_prof_matrix_dict: dict, start_frame_num: int, cut_threshold:float=0.01):
     all_cell_idx_track_list_dict: dict = {}
 
-    cell_idx_track_list_dict: dict = _process_and_find_best_cell_track(frame_num_prof_matrix_dict, start_frame_num) # 2D array list
+    first_frame_mtx: np.array = frame_num_prof_matrix_dict[start_frame_num]
+    total_cell_in_first_frame: int = first_frame_mtx.shape[0]
+    to_handle_cell_id_list: list = [CellId(1, cell_idx) for cell_idx in range(0, total_cell_in_first_frame)]
+
+    cell_idx_track_list_dict: dict = _process_and_find_best_cell_track(to_handle_cell_id_list, frame_num_prof_matrix_dict, start_frame_num) # 2D array list
 
     cell_idx_short_track_list_dict = _cut_1(cell_idx_track_list_dict, cut_threshold, frame_num_prof_matrix_dict)   # filter out cells that does not make sense (e.g. too low probability)
     all_cell_idx_track_list_dict.update(cell_idx_short_track_list_dict)
@@ -264,29 +269,9 @@ def execute_cell_tracking_task(profit_matrix_list: list, frame_num_prof_matrix_d
 
 
 
-def save_prof_matrix_to_excel(series: str, frame_num_prof_matrix_dict, excel_output_dir_path: str):
-    import pandas as pd
-    # num_of_segementation_img: int = len(frame_num_prof_matrix_dict)
-
-    file_name: str = f"series_{series}.xlsx"
-    filepath = excel_output_dir_path + file_name;
-    writer = pd.ExcelWriter(filepath, engine='xlsxwriter') #pip install xlsxwriter
-
-
-    # for seg_img_idx in range(0, num_of_segementation_img):
-    for frame_num, prof_matrix in frame_num_prof_matrix_dict.items():
-        tmp_array: np.arrays = frame_num_prof_matrix_dict[frame_num]
-
-        df = pd.DataFrame (tmp_array)
-        sheet_name: str = "frame_1" if frame_num == 1 else str(frame_num+1)
-        df.to_excel(writer, sheet_name=sheet_name, index=True)
-
-    writer.save()
-
-
 
 #loop each node on first frame to find the optimal path using probabilty multiply
-def _process_and_find_best_cell_track(frame_num_prof_matrix_dict: dict, start_frame_num: int, merge_above_threshold:Decimal=Decimal(0)):
+def _process_and_find_best_cell_track(to_handle_cell_id_list: list, frame_num_prof_matrix_dict: dict, start_frame_num: int, merge_above_threshold:Decimal=Decimal(0)):
     cell_idx_track_list_dict: dict = {}
     # cell_id_track_list_dict: dict = {}
 
@@ -298,17 +283,21 @@ def _process_and_find_best_cell_track(frame_num_prof_matrix_dict: dict, start_fr
     total_cell_in_first_frame: int = first_frame_mtx.shape[0]
 
 
-    to_skip_cell_idx_list: list = []
+    to_skip_cell_id_list: list = []
     last_frame_num: int = np.max(list(frame_num_prof_matrix_dict.keys()))
     total_frame: int = (last_frame_num - start_frame_num) + 1
     frame_cell_occupation_vec_list_dict: dict = derive_frame_num_cell_slot_id_occupation_tuple_vec_dict(frame_num_prof_matrix_dict, cell_idx_track_list_dict)
-    to_handle_cell_idx_list: list = [cell_idx for cell_idx in range(0, total_cell_in_first_frame)]
+    # to_handle_cell_id_list: list = [cell_idx for cell_idx in range(0, total_cell_in_first_frame)]
 
     print(f"handling_cell_idx: ", end='')
     second_frame: int = start_frame_num + 1
 
-    while len(to_handle_cell_idx_list) != 0:
-        handling_cell_idx: int = to_handle_cell_idx_list[0]
+    while len(to_handle_cell_id_list) != 0:
+        handling_cell_id: CellId = to_handle_cell_id_list[0]
+        handling_cell_idx: int = handling_cell_id.cell_idx
+
+    # while len(to_handle_cell_id_list) != 0:
+    #     handling_cell_idx: int = to_handle_cell_id_list[0]
         print(f"{handling_cell_idx}, ", end='')
 
         # debug
@@ -347,7 +336,7 @@ def _process_and_find_best_cell_track(frame_num_prof_matrix_dict: dict, start_fr
 
 
             if ( np.all(value_ab_vec == 0) ):
-                to_skip_cell_idx_list.append(handling_cell_idx)
+                to_skip_cell_id_list.append(handling_cell_id)
                 break
 
             else:
@@ -355,13 +344,13 @@ def _process_and_find_best_cell_track(frame_num_prof_matrix_dict: dict, start_fr
                 cell_idx_frame_num_cell_slot_idx_best_index_vec_dict_dict[handling_cell_idx][next_frame_num] = index_ab_vec
                 cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict[handling_cell_idx][next_frame_num] = value_ab_vec
 
-        to_handle_cell_idx_list.remove(handling_cell_idx)
+        to_handle_cell_id_list.remove(handling_cell_id)
 
 
-        if handling_cell_idx not in to_skip_cell_idx_list:
+        if handling_cell_id not in to_skip_cell_id_list:
             start_frame_idx: int = 0
 
-            cell_track_list, to_redo_cell_idx_list = derive_cell_idx_best_track(cell_idx_frame_num_cell_slot_idx_best_index_vec_dict_dict[handling_cell_idx],
+            cell_track_list, to_redo_cell_id_list = derive_cell_idx_best_track(cell_idx_frame_num_cell_slot_idx_best_index_vec_dict_dict[handling_cell_idx],
                                                                                cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict[handling_cell_idx],
                                                                                cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict,
                                                                                frame_cell_occupation_vec_list_dict,
@@ -371,13 +360,14 @@ def _process_and_find_best_cell_track(frame_num_prof_matrix_dict: dict, start_fr
 
             cell_idx_track_list_dict[handling_cell_idx] = cell_track_list
 
-            for to_redo_cell_idx in to_redo_cell_idx_list:
+            for to_redo_cell_id in to_redo_cell_id_list:
+                to_redo_cell_idx: int = to_redo_cell_id.cell_idx
                 del cell_idx_track_list_dict[to_redo_cell_idx]
                 del cell_idx_frame_num_cell_slot_idx_best_index_vec_dict_dict[to_redo_cell_idx]
                 del cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict[to_redo_cell_idx]
-                to_handle_cell_idx_list.append(to_redo_cell_idx)
+                to_handle_cell_id_list.append(to_redo_cell_idx)
 
-            to_handle_cell_idx_list.sort()
+            to_handle_cell_id_list.sort(key=cmp_to_key(compare_cell_id))
 
             frame_cell_occupation_vec_list_dict = derive_frame_num_cell_slot_id_occupation_tuple_vec_dict(frame_num_prof_matrix_dict, cell_idx_track_list_dict)
 
@@ -449,6 +439,24 @@ def _process_calculate_best_cell_track(profit_mtx_list: list, merge_above_thresh
 
 
 
+def save_prof_matrix_to_excel(series: str, frame_num_prof_matrix_dict, excel_output_dir_path: str):
+    import pandas as pd
+    # num_of_segementation_img: int = len(frame_num_prof_matrix_dict)
+
+    file_name: str = f"series_{series}.xlsx"
+    filepath = excel_output_dir_path + file_name;
+    writer = pd.ExcelWriter(filepath, engine='xlsxwriter') #pip install xlsxwriter
+
+
+    # for seg_img_idx in range(0, num_of_segementation_img):
+    for frame_num, prof_matrix in frame_num_prof_matrix_dict.items():
+        tmp_array: np.arrays = frame_num_prof_matrix_dict[frame_num]
+
+        df = pd.DataFrame (tmp_array)
+        sheet_name: str = "frame_1" if frame_num == 1 else str(frame_num+1)
+        df.to_excel(writer, sheet_name=sheet_name, index=True)
+
+    writer.save()
 
 
 
@@ -478,7 +486,7 @@ def derive_cell_idx_best_track(frame_num_cell_slot_idx_best_index_vec_dict: dict
     current_maximize_index: int = None
     current_maximize_value: float = 0
     frame_num_cell_slot_idx_best_value_vec: list = frame_num_cell_slot_idx_best_value_vec_dict[last_frame_num]
-    to_redo_cell_idx_set: set = set()
+    to_redo_cell_id_set: set = set()
     threshold_exponential: float = float(total_frame - 2)
     last_frame_adjusted_threshold: Decimal = Decimal(merge_above_threshold) ** (Decimal(threshold_exponential))
 
@@ -510,7 +518,8 @@ def derive_cell_idx_best_track(frame_num_cell_slot_idx_best_index_vec_dict: dict
 
                 elif cell_slot_probability_value > last_frame_adjusted_threshold and occupied_cell_probability < last_frame_adjusted_threshold:
                     print(f"redo trajectory of occupied_cell_idx {occupied_cell_idx}; {last_frame_adjusted_threshold}; {np.round(cell_slot_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {cell_slot_idx}vs{occupied_cell_idx}")
-                    to_redo_cell_idx_set.add(occupied_cell_idx)
+                    start_frame_num: int = 1
+                    to_redo_cell_id_set.add(CellId(start_frame_num, occupied_cell_idx))
                     # may not be final track, handle at find track
 
                     current_maximize_index = cell_slot_idx
@@ -569,7 +578,8 @@ def derive_cell_idx_best_track(frame_num_cell_slot_idx_best_index_vec_dict: dict
                 elif handling_cell_probability > last_frame_adjusted_threshold and occupied_cell_probability < last_frame_adjusted_threshold:
                     print("vwavb", f"redo trajectory of occupied_cell_idx {occupied_cell_idx}; {last_frame_adjusted_threshold}; {np.round(cell_slot_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {cell_slot_idx}vs{occupied_cell_idx}")
                     # time.sleep(5)
-                    to_redo_cell_idx_set.add(occupied_cell_idx)
+                    start_frame_num: int = 1
+                    to_redo_cell_id_set.add(CellId(start_frame_num, occupied_cell_idx))
                 elif handling_cell_probability < last_frame_adjusted_threshold and occupied_cell_probability < last_frame_adjusted_threshold:
                     # print(f"??? have to define what to do (For now, let both cell share the same cell slot ). {last_frame_adjusted_threshold}; {np.round(cell_slot_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {cell_slot_idx}vs{occupied_cell_idx}")
                     print("s1", end='')
@@ -592,7 +602,7 @@ def derive_cell_idx_best_track(frame_num_cell_slot_idx_best_index_vec_dict: dict
 
     list.reverse(cell_track_list)
 
-    return cell_track_list, list(to_redo_cell_idx_set)
+    return cell_track_list, list(to_redo_cell_id_set)
 
 
 
@@ -1007,10 +1017,33 @@ def __________object_start_label():
 
 
 class CellId():
-    def __init__(self, frame_num: int, node_idx: int):
-        self.frame_num = frame_num
-        self.node_idx = node_idx
+    def __init__(self, start_frame_num: int, cell_idx: int):
+        self.start_frame_num = start_frame_num
+        self.cell_idx = cell_idx
 
+
+    def __str__(self):
+        return f"frame_num: {self.start_frame_num}; cell_idx: {self.cell_idx}"
+
+
+    def __eq__(self, other):
+        if self.start_frame_num == other.start_frame_num and self.cell_idx == other.cell_idx:
+            return True
+
+        return False
+
+    def __hash__(self):
+        return hash((self.start_frame_num, self.cell_idx))
+
+
+def compare_cell_id(cell_1, cell_2):
+    if cell_1.start_frame_num == cell_2.start_frame_num:
+        if cell_1.cell_idx < cell_2.cell_idx:           return -1
+        elif cell_1.cell_idx > cell_2.cell_idx:         return 1
+        else:                                           raise Exception("cell_1.node_idx == cell_2.node_idx")
+
+    if cell_1.start_frame_num < cell_2.start_frame_num:            return -1
+    elif cell_1.start_frame_num > cell_2.start_frame_num:          return 1
 
 
 
