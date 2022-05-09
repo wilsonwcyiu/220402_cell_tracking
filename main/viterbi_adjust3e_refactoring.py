@@ -27,6 +27,7 @@ from collections import defaultdict
 import time
 from multiprocessing.pool import ThreadPool
 
+from main.viterbi_adjust3e_refactoring import CellId
 
 
 def main():
@@ -247,7 +248,7 @@ def execute_cell_tracking_task(profit_matrix_list: list, frame_num_prof_matrix_d
 
 
             # new_store_dict: dict = _process_and_find_best_cell_track(new_transition_group_list)
-            next_list_index_vec_list_dict, next_list_value_vec_list_dict = _process_calculate_best_cell_track(new_transition_group_list)
+            next_list_index_vec_list_dict, next_list_value_vec_list_dict = _process_best_cell_track(new_transition_group_list)
 
             new_store_dict: dict = {}
             for cell_idx, start_list_value_vec_list in next_list_value_vec_list_dict.items():
@@ -349,8 +350,7 @@ def _process_and_find_best_cell_track(to_handle_cell_id_list: list, frame_num_pr
                                                                                cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict,
                                                                                frame_cell_occupation_vec_list_dict,
                                                                                merge_above_threshold,
-                                                                               start_frame_idx,
-                                                                               handling_cell_idx)
+                                                                               handling_cell_id)
 
             cell_idx_track_list_dict[handling_cell_idx] = cell_track_list
 
@@ -372,7 +372,7 @@ def _process_and_find_best_cell_track(to_handle_cell_id_list: list, frame_num_pr
 
 
 #loop each node on first frame to find the optimal path using probabilty multiply
-def _process_calculate_best_cell_track(profit_mtx_list: list, merge_above_threshold:float=1.0, split_below_threshold:float=1.0):   # former method _process
+def _process_best_cell_track(profit_mtx_list: list, merge_above_threshold:float=1.0, split_below_threshold:float=1.0):   # former method _process
     # print("_process_1")
 
     start_list_index_vec_dict: int = defaultdict(list)
@@ -466,9 +466,9 @@ def derive_cell_idx_best_track(frame_num_cell_slot_idx_best_index_vec_dict: dict
                                cell_idx_frame_num_cell_slot_idx_best_value_vec_dict_dict: dict,
                                frame_cell_occupation_vec_list_dict: dict,
                                merge_above_threshold: Decimal,
-                               start_frame_idx: int,
-                               handling_cell_idx: int):
+                               handling_cell_id: CellId):
 
+    handling_cell_idx: int = handling_cell_id.cell_idx
     cell_track_list: list = []
 
     last_frame_num: int = np.max(list(frame_num_cell_slot_idx_best_value_vec_dict.keys()))
@@ -588,6 +588,7 @@ def derive_cell_idx_best_track(frame_num_cell_slot_idx_best_index_vec_dict: dict
 
 
     # if len(frame_num_cell_slot_idx_best_value_vec_dict) > 1:
+    start_frame_idx: int = handling_cell_id.start_frame_num - 1
     cell_track_list.append((previous_maximize_index, start_frame_idx + 1, handling_cell_idx))
     cell_track_list.append((handling_cell_idx, start_frame_idx, -1))
 
@@ -949,7 +950,7 @@ def derive_frame_num_prof_matrix_dict(segmentation_folder_path: str, output_fold
 
 
 
-def derive_best_track_of_all_cell_slots(handling_cell_id,
+def derive_best_track_of_all_cell_slots(handling_cell_id: CellId,
                                         last_layer_all_probability_mtx: np.array,
                                         frame_num_prof_matrix_dict: dict,
                                         handling_frame_num: int,
