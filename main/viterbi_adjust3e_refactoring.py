@@ -336,8 +336,7 @@ def _process_and_find_best_cell_track(to_handle_cell_id_list: list, frame_num_pr
 
 
         if handling_cell_id not in to_skip_cell_id_list:
-            cell_track_list, to_redo_cell_id_list = derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict[handling_cell_idx],
-                                                                            cell_id_frame_num_node_idx_best_value_list_dict_dict[handling_cell_idx],
+            cell_track_list, to_redo_cell_id_list = derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict,
                                                                             cell_id_frame_num_node_idx_best_value_list_dict_dict,
                                                                             frame_num_node_idx_cell_id_occupation_list_list_dict,
                                                                             merge_above_threshold,
@@ -452,12 +451,15 @@ def __________unit_function_start_label():
 
 
 # _find_iter: find the best track start from current frame, and current node based on dict which returned from _process_iter
-def derive_final_best_track(frame_num_node_idx_best_index_list_dict: dict,
-                            frame_num_node_idx_best_value_list_dict: dict,
+def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict: dict,
                             cell_id_frame_num_node_idx_best_value_list_dict_dict: dict,
                             frame_cell_occupation_vec_list_dict: dict,
                             merge_above_threshold: Decimal,
                             handling_cell_id):           # CellId
+
+    handling_cell_idx = handling_cell_id.cell_idx
+    frame_num_node_idx_best_index_list_dict: dict = cell_id_frame_num_node_idx_best_index_list_dict_dict[handling_cell_idx]
+    frame_num_node_idx_best_value_list_dict: dict = cell_id_frame_num_node_idx_best_value_list_dict_dict[handling_cell_idx]
 
     handling_cell_idx: int = handling_cell_id.cell_idx
     cell_track_list: list = []
