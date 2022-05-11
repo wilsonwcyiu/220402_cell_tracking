@@ -264,27 +264,6 @@ def execute_cell_tracking_task(profit_matrix_list: list, frame_num_prof_matrix_d
 
 
 
-def save_prof_matrix_to_excel(series: str, frame_num_prof_matrix_dict, excel_output_dir_path: str):
-    import pandas as pd
-    # num_of_segementation_img: int = len(frame_num_prof_matrix_dict)
-
-    file_name: str = f"series_{series}.xlsx"
-    filepath = excel_output_dir_path + file_name;
-    writer = pd.ExcelWriter(filepath, engine='xlsxwriter') #pip install xlsxwriter
-
-
-    # for seg_img_idx in range(0, num_of_segementation_img):
-    for frame_num, prof_matrix in frame_num_prof_matrix_dict.items():
-        tmp_array: np.arrays = frame_num_prof_matrix_dict[frame_num]
-
-        df = pd.DataFrame (tmp_array)
-        sheet_name: str = "frame_1" if frame_num == 1 else str(frame_num+1)
-        df.to_excel(writer, sheet_name=sheet_name, index=True)
-
-    writer.save()
-
-
-
 #loop each node on first frame to find the optimal path using probabilty multiply
 def _process_and_find_best_cell_track(frame_num_prof_matrix_dict: dict, start_frame_num: int, merge_above_threshold:Decimal=Decimal(0)):
     cell_idx_track_list_dict: dict = {}
@@ -448,6 +427,25 @@ def _process_calculate_best_cell_track(profit_mtx_list: list, merge_above_thresh
     return start_list_index_vec_dict, start_list_value_vec_dict
 
 
+
+def save_prof_matrix_to_excel(series: str, frame_num_prof_matrix_dict, excel_output_dir_path: str):
+    import pandas as pd
+    # num_of_segementation_img: int = len(frame_num_prof_matrix_dict)
+
+    file_name: str = f"series_{series}.xlsx"
+    filepath = excel_output_dir_path + file_name;
+    writer = pd.ExcelWriter(filepath, engine='xlsxwriter') #pip install xlsxwriter
+
+
+    # for seg_img_idx in range(0, num_of_segementation_img):
+    for frame_num, prof_matrix in frame_num_prof_matrix_dict.items():
+        tmp_array: np.arrays = frame_num_prof_matrix_dict[frame_num]
+
+        df = pd.DataFrame (tmp_array)
+        sheet_name: str = "frame_1" if frame_num == 1 else str(frame_num+1)
+        df.to_excel(writer, sheet_name=sheet_name, index=True)
+
+    writer.save()
 
 
 
@@ -1007,9 +1005,9 @@ def __________object_start_label():
 
 
 class CellId():
-    def __init__(self, frame_num: int, node_idx: int):
+    def __init__(self, frame_num: int, cell_idx: int):
         self.frame_num = frame_num
-        self.node_idx = node_idx
+        self.cell_idx = cell_idx
 
 
 
