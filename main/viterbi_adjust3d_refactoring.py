@@ -507,7 +507,7 @@ def derive_cell_idx_best_track(frame_num_cell_slot_idx_best_index_vec_dict: dict
                     pass
 
                 elif cell_slot_probability_value > last_frame_adjusted_threshold and occupied_cell_probability < last_frame_adjusted_threshold:
-                    print(f"redo trajectory of occupied_cell_idx {occupied_cell_idx}; {last_frame_adjusted_threshold}; {np.round(cell_slot_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {cell_slot_idx}vs{occupied_cell_idx}")
+                    print("w4grw", f"redo trajectory of occupied_cell_idx {occupied_cell_idx}; {last_frame_adjusted_threshold}; {np.round(cell_slot_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {cell_slot_idx}vs{occupied_cell_idx}")
                     to_redo_cell_idx_set.add(occupied_cell_idx)
                     # may not be final track, handle at find track
 
@@ -565,7 +565,7 @@ def derive_cell_idx_best_track(frame_num_cell_slot_idx_best_index_vec_dict: dict
                     # print("o", end='')
                     pass
                 elif handling_cell_probability > last_frame_adjusted_threshold and occupied_cell_probability < last_frame_adjusted_threshold:
-                    print("vwavb", f"redo trajectory of occupied_cell_idx {occupied_cell_idx}; {last_frame_adjusted_threshold}; {np.round(cell_slot_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {cell_slot_idx}vs{occupied_cell_idx}")
+                    print("\nvwavb", f"redo trajectory of occupied_cell_idx {occupied_cell_idx}; {last_frame_adjusted_threshold}; {np.round(cell_slot_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {cell_slot_idx}vs{occupied_cell_idx}; frame_num: {reversed_frame_num}")
                     # time.sleep(5)
                     to_redo_cell_idx_set.add(occupied_cell_idx)
                 elif handling_cell_probability < last_frame_adjusted_threshold and occupied_cell_probability < last_frame_adjusted_threshold:
