@@ -118,16 +118,6 @@ def cell_tracking_core_flow(series: str, segmentation_folder: str, all_segmented
     all_track_dict = execute_cell_tracking_task(prof_mat_list, frame_num_prof_matrix_dict)
 
 
-    # track_length_count_dict = {}
-    # for track_list_list in all_track_dict.values():
-    #     seq_length = len(track_list_list)
-    #
-    #     if seq_length not in track_length_count_dict:
-    #         track_length_count_dict[seq_length] = 0
-    #
-    #     track_length_count_dict[seq_length] += 1
-
-
     track_list_list = []
     fix_flow: int = 2
     if fix_flow == 1:
@@ -281,8 +271,7 @@ def _process_and_find_best_cell_track(to_handle_cell_id_list: list, frame_num_pr
                                                                                 handling_frame_num,
                                                                                 frame_num_node_idx_cell_id_occupation_list_list_dict,
                                                                                 adjusted_merge_above_threshold,
-                                                                                cell_id_frame_num_node_idx_best_value_list_dict_dict,
-                                                                                cell_id_track_list_dict)
+                                                                                cell_id_frame_num_node_idx_best_value_list_dict_dict)
 
             if ( np.all(value_ab_vec == 0) ):
                 to_skip_cell_id_list.append(handling_cell_id)
@@ -958,8 +947,7 @@ def derive_last_layer_each_node_best_track(handling_cell_id,  # CellId
                                            handling_frame_num: int,
                                            frame_num_node_idx_cell_id_occupation_list_list_dict: dict,
                                            merge_above_threshold: float,
-                                           cell_id_frame_num_node_idx_best_value_list_dict_dict: dict,
-                                           cell_idx_track_list_dict):
+                                           cell_id_frame_num_node_idx_best_value_list_dict_dict: dict):
 
     handling_cell_idx: int = handling_cell_id.cell_idx
     start_frame_num: int = handling_cell_id.start_frame_num
@@ -1035,7 +1023,7 @@ def derive_last_layer_each_node_best_track(handling_cell_id,  # CellId
                                 print(node_idx, ":", frame_num_node_idx_occupation_tuple)
 
                         # print("frame_num_node_idx_occupation_tuple_list_dict", frame_num_node_idx_occupation_tuple_list_dict[handling_frame_num])
-                        print(cell_idx_track_list_dict[0])
+                        # print(cell_idx_track_list_dict[0])
                         print("sdgberb")
                         print(handling_cell_probability, occupied_cell_probability, merge_above_threshold)
                         raise Exception("else")
