@@ -558,11 +558,11 @@ def derive_cell_idx_best_track(frame_num_cell_slot_idx_best_index_vec_dict: dict
 
                 if handling_cell_probability > last_frame_adjusted_threshold and occupied_cell_probability > last_frame_adjusted_threshold:
                     # print(f"let both cell share the same cell slot; {last_frame_adjusted_threshold}; {np.round(cell_slot_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {cell_slot_idx}vs{occupied_cell_idx}")
-                    print("s", end='')
+                    # print("s", end='')
                     pass
                 elif handling_cell_probability < last_frame_adjusted_threshold and occupied_cell_probability > last_frame_adjusted_threshold:
                     # print(f"handling_cell_probability merge to other cell; {last_frame_adjusted_threshold}; {np.round(cell_slot_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {cell_slot_idx}vs{occupied_cell_idx}")
-                    print("o", end='')
+                    # print("o", end='')
                     pass
                 elif handling_cell_probability > last_frame_adjusted_threshold and occupied_cell_probability < last_frame_adjusted_threshold:
                     print("vwavb", f"redo trajectory of occupied_cell_idx {occupied_cell_idx}; {last_frame_adjusted_threshold}; {np.round(cell_slot_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {cell_slot_idx}vs{occupied_cell_idx}")
@@ -570,7 +570,7 @@ def derive_cell_idx_best_track(frame_num_cell_slot_idx_best_index_vec_dict: dict
                     to_redo_cell_idx_set.add(occupied_cell_idx)
                 elif handling_cell_probability < last_frame_adjusted_threshold and occupied_cell_probability < last_frame_adjusted_threshold:
                     # print(f"??? have to define what to do (For now, let both cell share the same cell slot ). {last_frame_adjusted_threshold}; {np.round(cell_slot_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {cell_slot_idx}vs{occupied_cell_idx}")
-                    print("s1", end='')
+                    # print("s1", end='')
                     pass
                 else:
                     print("vebj")
