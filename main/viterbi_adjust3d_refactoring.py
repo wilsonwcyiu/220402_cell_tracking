@@ -85,7 +85,7 @@ def main():
 
 
     print("save_track_dictionary")
-    save_track_dictionary(viterbi_result_dict, save_dir + "viterbi_results_dict.pkl")
+    save_track_dictionary(viterbi_result_dict, save_dir + "viterbi_results_dict_adj3.pkl")
 
     with open(save_dir + "viterbi_results_dict.txt", 'w') as f:
         f.write(str(viterbi_result_dict[series]))
@@ -265,7 +265,7 @@ def execute_cell_tracking_task(profit_matrix_list: list, frame_num_prof_matrix_d
 
 
 #loop each node on first frame to find the optimal path using probabilty multiply
-def _process_and_find_best_cell_track(frame_num_prof_matrix_dict: dict, start_frame_num: int, merge_above_threshold:Decimal=Decimal(0)):
+def _process_and_find_best_cell_track(frame_num_prof_matrix_dict: dict, start_frame_num: int, merge_above_threshold:Decimal=Decimal(0.5)):
     cell_idx_track_list_dict: dict = {}
     # cell_id_track_list_dict: dict = {}
 
