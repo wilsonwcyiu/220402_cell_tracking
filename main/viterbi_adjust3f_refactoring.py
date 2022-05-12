@@ -695,14 +695,17 @@ def _cut_iter(new_store_dict, Threshold, transition_group, start_frame):
             current_frame = new_store_dict[cell_id][index][1]
             next_frame = new_store_dict[cell_id][index + 1][1]
             #find the correct frame and ID of the nodes on tracks, and find the corresponded prob on transition_group matrix
+
+            frame_idx = current_frame - start_frame
+
             if (index == 0):
                 current_node = 0
-                #print(transition_group[current_frame - start_frame].shape)
-                transition_group[current_frame - start_frame] = transition_group[current_frame - start_frame].reshape(1,-1)
+                transition_group[frame_idx] = transition_group[frame_idx].reshape(1,-1)
             else:
                 current_node = new_store_dict[cell_id][index][0]
+
             next_node = new_store_dict[cell_id][index + 1][0]
-            weight_between_nodes = transition_group[current_frame - start_frame][current_node][next_node]
+            weight_between_nodes = transition_group[frame_idx][current_node][next_node]
             #if prob > Threshold, add each node of each cell_id, otherwise, copy all the former nodes which are before the first lower_threshold value into a short cell_id
             if (weight_between_nodes > Threshold):
                 short_tracks.append(new_store_dict[cell_id][index])
