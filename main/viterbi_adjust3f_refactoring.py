@@ -211,15 +211,16 @@ def execute_cell_tracking_task(profit_matrix_list: list, frame_num_prof_matrix_d
 
 
 
-            new_short_Tracks = _cut_iter(new_store_dict, cut_threshold, new_transition_group_list, profit_matrix_idx)
+            new_short_cell_id_track_list_dict: dict = _cut_iter(new_store_dict, cut_threshold, new_transition_group_list, profit_matrix_idx)
+            # new_short_cell_id_track_list_dict: dict = _cut_iter(new_store_dict, cut_threshold, cell_id, frame_num_prof_matrix_dict, profit_matrix_idx)
 
 
 
 
 
 
-            mask_transition_group_mtx_list = _mask_update(new_short_Tracks, mask_transition_group_mtx_list)
-            for ke, val in new_short_Tracks.items():
+            mask_transition_group_mtx_list = _mask_update(new_short_cell_id_track_list_dict, mask_transition_group_mtx_list)
+            for ke, val in new_short_cell_id_track_list_dict.items():
                 all_cell_idx_track_list_dict[cell_id] = val
                 # all_cell_idx_track_list_dict[max_id_in_dict + ke + 1] = val
 
@@ -685,42 +686,55 @@ def _cut_1(cell_idx_track_list_dict: dict, threshold: float, frame_num_prof_matr
 
 
 
-# truncate the long tracks
-def _cut_iter(new_store_dict, Threshold, transition_group, start_frame):
-    short_Tracks = {}
 
-    for key, cell_id in enumerate(new_store_dict):
-        short_tracks = []
-        for index in range(len(new_store_dict[cell_id]) - 1):
-            current_frame = new_store_dict[cell_id][index][1]
-            next_frame = new_store_dict[cell_id][index + 1][1]
+# truncate the long tracks
+def _cut_iter(cell_idx_track_list_dict, cut_threshold: float, transition_group_list: dict, start_frame_idx):
+    short_cell_id_track_list_dict = {}
+
+    for key, cell_id in enumerate(cell_idx_track_list_dict):
+        short_track_list = []
+        for index in range(len(cell_idx_track_list_dict[cell_id]) - 1):
+            # print("qwgasg", key, index)
+            current_frame = cell_idx_track_list_dict[cell_id][index][1]
+            next_frame = cell_idx_track_list_dict[cell_id][index + 1][1]
             #find the correct frame and ID of the nodes on tracks, and find the corresponded prob on transition_group matrix
 
-            frame_idx = current_frame - start_frame
+            frame_idx = current_frame - start_frame_idx
 
             if (index == 0):
                 current_node = 0
-                transition_group[frame_idx] = transition_group[frame_idx].reshape(1,-1)
+                # frame_num_prof_matrix_dict[frame_idx] = frame_num_prof_matrix_dict[frame_idx].reshape(1, -1)
+                tmp = transition_group_list[frame_idx].reshape(1, -1)
             else:
-                current_node = new_store_dict[cell_id][index][0]
+                current_node = cell_idx_track_list_dict[cell_id][index][0]
 
-            next_node = new_store_dict[cell_id][index + 1][0]
-            weight_between_nodes = transition_group[frame_idx][current_node][next_node]
+            # print("webh", current_node)
+
+            next_node = cell_idx_track_list_dict[cell_id][index + 1][0]
+
+            # weight_between_nodes = frame_num_prof_matrix_dict[frame_idx][current_node][next_node]
+            if (index == 0):
+                weight_between_nodes = tmp[current_node][next_node]
+            else:
+                weight_between_nodes = transition_group_list[frame_idx][current_node][next_node]
+
             #if prob > Threshold, add each node of each cell_id, otherwise, copy all the former nodes which are before the first lower_threshold value into a short cell_id
-            if (weight_between_nodes > Threshold):
-                short_tracks.append(new_store_dict[cell_id][index])
-            else:
-                short_tracks = copy.deepcopy(new_store_dict[cell_id][0:index])
-                break
-        #add the final node into tracks
-        if (len(short_tracks)==len(new_store_dict[cell_id])-1):
-            short_tracks.append(new_store_dict[cell_id][-1])
-            short_Tracks[cell_id] = short_tracks
-        else:
-            short_tracks.append(new_store_dict[cell_id][len(short_tracks)])
-            short_Tracks[cell_id] = short_tracks
 
-    return short_Tracks
+            if (weight_between_nodes > cut_threshold):
+                short_track_list.append(cell_idx_track_list_dict[cell_id][index])
+            else:
+                short_track_list = copy.deepcopy(cell_idx_track_list_dict[cell_id][0:index])
+                break
+
+        #add the final node into tracks
+        if (len(short_track_list)==len(cell_idx_track_list_dict[cell_id])-1):
+            short_track_list.append(cell_idx_track_list_dict[cell_id][-1])
+            short_cell_id_track_list_dict[cell_id] = short_track_list
+        else:
+            short_track_list.append(cell_idx_track_list_dict[cell_id][len(short_track_list)])
+            short_cell_id_track_list_dict[cell_id] = short_track_list
+
+    return short_cell_id_track_list_dict
 
 
 
