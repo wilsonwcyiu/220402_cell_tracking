@@ -183,6 +183,9 @@ def execute_cell_tracking_task(profit_matrix_list: list, frame_num_prof_matrix_d
 
             cell_id = CellId(frame_num, cell_row_idx)
 
+
+
+
             new_transition_group_list_ = profit_matrix_list[profit_matrix_idx:]
 
             new_transition_group_list: list = [new_transition_group_list_[0][cell_row_idx]]
@@ -204,7 +207,16 @@ def execute_cell_tracking_task(profit_matrix_list: list, frame_num_prof_matrix_d
                 new_store_dict[cell_id] = track_list
 
 
+
+
+
+
             new_short_Tracks = _cut_iter(new_store_dict, cut_threshold, new_transition_group_list, profit_matrix_idx)
+
+
+
+
+
 
             mask_transition_group_mtx_list = _mask_update(new_short_Tracks, mask_transition_group_mtx_list)
             for ke, val in new_short_Tracks.items():
@@ -627,6 +639,52 @@ def _find_iter_one_track_version1(start_list_index_vec_list: list, start_list_va
 
 
 
+# after got tracks which started from first frame, check if there are very lower prob between each two cells, then truncate it.
+# store_dict, threshold, profit_matrix_list
+def _cut_1(cell_idx_track_list_dict: dict, threshold: float, frame_num_prof_matrix_dict: dict):
+    short_track_list_dict: dict = {}
+
+
+    # is_first_cell_id_not_zero: bool = list(cell_idx_track_list_dict.keys())[0].cell_idx != 0
+    # if is_first_cell_id_not_zero:
+    #     # raise Exception("is_first_cell_id_not_zero", list(cell_idx_track_list_dict.keys())[0].cell_idx)
+    #     for miss_key in range(list(cell_idx_track_list_dict.keys())[0].cell_idx):
+    #         short_track_list = []
+    #         short_track_list.append((miss_key, 0, -1))
+    #         short_track_list_dict[miss_key] = short_track_list
+
+
+    for cell_id, track_content_list in cell_idx_track_list_dict.items():
+        short_track_list = []
+        for index in range(len(cell_idx_track_list_dict[cell_id]) - 1):
+            frame_idx = cell_idx_track_list_dict[cell_id][index][1]
+            frame_num: int = frame_idx + 1
+
+            current_node = cell_idx_track_list_dict[cell_id][index][0]
+            next_node = cell_idx_track_list_dict[cell_id][index + 1][0]
+
+            # weight_between_nodes = profit_matrix_list[frame_idx][current_node][next_node]
+            weight_between_nodes = frame_num_prof_matrix_dict[frame_num][current_node][next_node]
+            if (weight_between_nodes > threshold):
+                short_track_list.append(cell_idx_track_list_dict[cell_id][index])
+            else:
+                short_track_list = copy.deepcopy(cell_idx_track_list_dict[cell_id][0: index])
+                break
+
+
+        if (len(short_track_list) == len(cell_idx_track_list_dict[cell_id])-1):
+            tmp = cell_idx_track_list_dict[cell_id][-1]
+            short_track_list.append(tmp)
+            short_track_list_dict[cell_id] = short_track_list
+
+        else:
+            short_track_list.append(cell_idx_track_list_dict[cell_id][len(short_track_list)])
+            short_track_list_dict[cell_id] = short_track_list
+
+    return short_track_list_dict
+
+
+
 # truncate the long tracks
 def _cut_iter(new_store_dict, Threshold, transition_group, start_frame):
     short_Tracks = {}
@@ -658,6 +716,7 @@ def _cut_iter(new_store_dict, Threshold, transition_group, start_frame):
         else:
             short_tracks.append(new_store_dict[cell_id][len(short_tracks)])
             short_Tracks[cell_id] = short_tracks
+
     return short_Tracks
 
 
@@ -711,52 +770,6 @@ def derive_segmented_filename_list_by_series(series: str, segmented_filename_lis
             result_segmented_filename_list.append(segmented_filename)
 
     return result_segmented_filename_list
-
-
-
-# after got tracks which started from first frame, check if there are very lower prob between each two cells, then truncate it.
-# store_dict, threshold, profit_matrix_list
-def _cut_1(cell_idx_track_list_dict: dict, threshold: float, frame_num_prof_matrix_dict: dict):
-    short_track_list_dict: dict = {}
-
-
-    # is_first_cell_id_not_zero: bool = list(cell_idx_track_list_dict.keys())[0].cell_idx != 0
-    # if is_first_cell_id_not_zero:
-    #     # raise Exception("is_first_cell_id_not_zero", list(cell_idx_track_list_dict.keys())[0].cell_idx)
-    #     for miss_key in range(list(cell_idx_track_list_dict.keys())[0].cell_idx):
-    #         short_track_list = []
-    #         short_track_list.append((miss_key, 0, -1))
-    #         short_track_list_dict[miss_key] = short_track_list
-
-
-    for cell_id, track_content_list in cell_idx_track_list_dict.items():
-        short_track_list = []
-        for index in range(len(cell_idx_track_list_dict[cell_id]) - 1):
-            frame_idx = cell_idx_track_list_dict[cell_id][index][1]
-            frame_num: int = frame_idx + 1
-
-            current_node = cell_idx_track_list_dict[cell_id][index][0]
-            next_node = cell_idx_track_list_dict[cell_id][index + 1][0]
-
-            # weight_between_nodes = profit_matrix_list[frame_idx][current_node][next_node]
-            weight_between_nodes = frame_num_prof_matrix_dict[frame_num][current_node][next_node]
-            if (weight_between_nodes > threshold):
-                short_track_list.append(cell_idx_track_list_dict[cell_id][index])
-            else:
-                short_track_list = copy.deepcopy(cell_idx_track_list_dict[cell_id][0: index])
-                break
-
-
-        if (len(short_track_list) == len(cell_idx_track_list_dict[cell_id])-1):
-            tmp = cell_idx_track_list_dict[cell_id][-1]
-            short_track_list.append(tmp)
-            short_track_list_dict[cell_id] = short_track_list
-
-        else:
-            short_track_list.append(cell_idx_track_list_dict[cell_id][len(short_track_list)])
-            short_track_list_dict[cell_id] = short_track_list
-
-    return short_track_list_dict
 
 
 
