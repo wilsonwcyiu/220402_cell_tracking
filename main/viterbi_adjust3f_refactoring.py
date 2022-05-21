@@ -168,7 +168,10 @@ def execute_cell_tracking_task(profit_matrix_list: list, frame_num_prof_matrix_d
     ## handle new cells that enter the image
     ##
     max_id_in_dict: int = len(all_cell_idx_track_list_dict)           # dict key is cell idx
-    mask_transition_group_mtx_list: list = _mask_1(cell_idx_short_track_list_dict, frame_num_prof_matrix_dict)
+    mask_transition_group_mtx_list = _initiate_mask(frame_num_prof_matrix_dict)
+    mask_transition_group_mtx_list = _mask_update(cell_idx_short_track_list_dict, mask_transition_group_mtx_list)
+
+    # mask_transition_group_mtx_list: list = _mask_1(cell_idx_short_track_list_dict, frame_num_prof_matrix_dict)
 
     # total_step: int = len(profit_matrix_list)
     last_frame_num: int = np.max(list(frame_num_prof_matrix_dict.keys()))
@@ -215,16 +218,12 @@ def execute_cell_tracking_task(profit_matrix_list: list, frame_num_prof_matrix_d
             # new_short_cell_id_track_list_dict: dict = _cut_iter(new_store_dict, cut_threshold, cell_id, frame_num_prof_matrix_dict, profit_matrix_idx)
 
 
-
-
-
-
             mask_transition_group_mtx_list = _mask_update(new_short_cell_id_track_list_dict, mask_transition_group_mtx_list)
+
+
             for ke, val in new_short_cell_id_track_list_dict.items():
                 all_cell_idx_track_list_dict[cell_id] = val
-                # all_cell_idx_track_list_dict[max_id_in_dict + ke + 1] = val
 
-            max_id_in_dict = len(all_cell_idx_track_list_dict)
 
     return all_cell_idx_track_list_dict
 
@@ -247,7 +246,7 @@ def _process_and_find_best_cell_track(to_handle_cell_id_list: list, frame_num_pr
     while len(to_handle_cell_id_list) != 0:
         handling_cell_id: CellId = to_handle_cell_id_list[0]
         handling_cell_idx: int = handling_cell_id.cell_idx
-        print(f"{handling_cell_idx}, ", end='')
+        print(f"{handling_cell_id.start_frame_num}-{handling_cell_idx}; ", end='')
 
         start_frame_num: int = handling_cell_id.start_frame_num
         second_frame: int = start_frame_num + 1
@@ -472,7 +471,7 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
                             merge_above_threshold: Decimal,
                             handling_cell_id):           # CellId
 
-    handling_cell_idx = handling_cell_id.cell_idx
+    # handling_cell_idx = handling_cell_id.cell_idx
     frame_num_node_idx_best_index_list_dict: dict = cell_id_frame_num_node_idx_best_index_list_dict_dict[handling_cell_id]
     frame_num_node_idx_best_value_list_dict: dict = cell_id_frame_num_node_idx_best_value_list_dict_dict[handling_cell_id]
 
@@ -481,7 +480,7 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
 
     last_frame_num: int = np.max(list(frame_num_node_idx_best_value_list_dict.keys()))
     second_frame_num: int = np.min(list(frame_num_node_idx_best_value_list_dict.keys()))
-    total_frame: int = last_frame_num - second_frame_num + 1
+    # total_frame: int = last_frame_num - second_frame_num + 1
 
     last_frame_idx: int = last_frame_num - 1
 
@@ -489,7 +488,7 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
     current_maximize_value: float = 0
     frame_num_node_idx_best_value_vec: list = frame_num_node_idx_best_value_list_dict[last_frame_num]
     to_redo_cell_id_set: set = set()
-    threshold_exponential: float = float(total_frame - 2)
+    threshold_exponential: float = float(last_frame_num - 2)
     last_frame_adjusted_threshold: Decimal = Decimal(merge_above_threshold) ** (Decimal(threshold_exponential))
 
     for node_idx, node_probability_value in enumerate(frame_num_node_idx_best_value_vec):
@@ -790,29 +789,43 @@ def derive_segmented_filename_list_by_series(series: str, segmented_filename_lis
 
 
 
-
-#after got all tracks start from first frame, define a mask matrix. all the nodes which are passed by any tracks are labels as True
-def _mask_1(short_track_list_dict: dict, frame_num_prof_matrix_dict: dict):
+def _initiate_mask(frame_num_prof_matrix_dict: dict):
     # print("_mask_1")
     mask_frame_cell_id_list: list = []      #list list that stores [frame_id][cell_id]
 
     # initialize the transition group with all False
     for profit_matrix in frame_num_prof_matrix_dict.values():
-    # for profit_matrix in profit_matrix_list:
+        # for profit_matrix in profit_matrix_list:
         num_of_cell: int = profit_matrix.shape[0]
         mask_frame_cell_id_list.append(np.array([False for i in range(num_of_cell)]))
 
     mask_frame_cell_id_list.append(np.array([False for i in range(profit_matrix.shape[1])]))
 
-    # if the cell_id was passed, lable it to True
-    for short_track_cell_id in short_track_list_dict.keys():
-        for short_track_step_idx in range(len(short_track_list_dict[short_track_cell_id])):
-            cell_idx_data = short_track_list_dict[short_track_cell_id][short_track_step_idx][0]
-            frame_idx_data = short_track_list_dict[short_track_cell_id][short_track_step_idx][1]
-
-            mask_frame_cell_id_list[frame_idx_data][cell_idx_data] = True
-
     return mask_frame_cell_id_list
+
+
+# #after got all tracks start from first frame, define a mask matrix. all the nodes which are passed by any tracks are labels as True
+# def _mask_1(short_track_list_dict: dict, frame_num_prof_matrix_dict: dict):
+#     # print("_mask_1")
+#     mask_frame_cell_id_list: list = []      #list list that stores [frame_id][cell_id]
+#
+#     # initialize the transition group with all False
+#     for profit_matrix in frame_num_prof_matrix_dict.values():
+#     # for profit_matrix in profit_matrix_list:
+#         num_of_cell: int = profit_matrix.shape[0]
+#         mask_frame_cell_id_list.append(np.array([False for i in range(num_of_cell)]))
+#
+#     mask_frame_cell_id_list.append(np.array([False for i in range(profit_matrix.shape[1])]))
+#
+#     # if the cell_id was passed, lable it to True
+#     for short_track_cell_id in short_track_list_dict.keys():
+#         for short_track_step_idx in range(len(short_track_list_dict[short_track_cell_id])):
+#             cell_idx_data = short_track_list_dict[short_track_cell_id][short_track_step_idx][0]
+#             frame_idx_data = short_track_list_dict[short_track_cell_id][short_track_step_idx][1]
+#
+#             mask_frame_cell_id_list[frame_idx_data][cell_idx_data] = True
+#
+#     return mask_frame_cell_id_list
 
 
 
