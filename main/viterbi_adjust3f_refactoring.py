@@ -4,8 +4,11 @@ Created on Tue Sep 28 09:31:51 2021
 
 @author: 13784
 """
+import decimal
+import enum
 import os
 from decimal import Decimal
+from enum import Enum
 from functools import cmp_to_key
 from os import listdir
 from os.path import join, basename
@@ -29,6 +32,9 @@ from multiprocessing.pool import ThreadPool
 
 # from main.viterbi_adjust3e_refactoring import CellId
 
+class STRATEGY_ENUM(enum.Enum):
+    ALL_LAYER = 1
+    ONE_LAYER = 2
 
 def main():
 
@@ -171,11 +177,9 @@ def execute_cell_tracking_task(profit_matrix_list: list, frame_num_prof_matrix_d
     mask_transition_group_mtx_list = _initiate_mask(frame_num_prof_matrix_dict)
     mask_transition_group_mtx_list = _mask_update(cell_idx_short_track_list_dict, mask_transition_group_mtx_list)
 
-    # mask_transition_group_mtx_list: list = _mask_1(cell_idx_short_track_list_dict, frame_num_prof_matrix_dict)
-
     # total_step: int = len(profit_matrix_list)
     last_frame_num: int = np.max(list(frame_num_prof_matrix_dict.keys()))
-    for frame_num in range(2, last_frame_num):
+    for frame_num in range(2, last_frame_num-3):
         profit_matrix_idx = frame_num - 1
         for cell_row_idx in range(frame_num_prof_matrix_dict[frame_num].shape[0]):  #skip all nodes which are already passed
 
@@ -188,6 +192,11 @@ def execute_cell_tracking_task(profit_matrix_list: list, frame_num_prof_matrix_d
 
 
 
+            # to_handle_cell_id_list: list = [cell_id]
+            # new_cell_idx_track_list_dict: dict = _process_and_find_best_cell_track(to_handle_cell_id_list, frame_num_prof_matrix_dict) # 2D array list
+            # new_short_cell_id_track_list_dict = _cut_1(new_cell_idx_track_list_dict, cut_threshold, frame_num_prof_matrix_dict)   # filter out cells that does not make sense (e.g. too low probability)
+            #
+            # mask_transition_group_mtx_list = _mask_update(new_short_cell_id_track_list_dict, mask_transition_group_mtx_list)
 
             new_transition_group_list_ = profit_matrix_list[profit_matrix_idx:]
 
@@ -209,13 +218,9 @@ def execute_cell_tracking_task(profit_matrix_list: list, frame_num_prof_matrix_d
                 track_list: list = _find_iter_one_track_version1(start_list_index_vec_list, start_list_value_vec_list, profit_matrix_idx, cell_row_idx)
                 new_store_dict[cell_id] = track_list
 
-
-
-
-
-
             new_short_cell_id_track_list_dict: dict = _cut_iter(new_store_dict, cut_threshold, new_transition_group_list, profit_matrix_idx)
-            # new_short_cell_id_track_list_dict: dict = _cut_iter(new_store_dict, cut_threshold, cell_id, frame_num_prof_matrix_dict, profit_matrix_idx)
+
+
 
 
             mask_transition_group_mtx_list = _mask_update(new_short_cell_id_track_list_dict, mask_transition_group_mtx_list)
@@ -231,7 +236,7 @@ def execute_cell_tracking_task(profit_matrix_list: list, frame_num_prof_matrix_d
 
 
 #loop each node on first frame to find the optimal path using probabilty multiply
-def _process_and_find_best_cell_track(to_handle_cell_id_list: list, frame_num_prof_matrix_dict: dict, merge_above_threshold:Decimal=Decimal(0)):
+def _process_and_find_best_cell_track(to_handle_cell_id_list: list, frame_num_prof_matrix_dict: dict, merge_above_threshold:float=float(0)):
     cell_id_track_list_dict: dict = {}
 
     cell_id_frame_num_node_idx_best_index_list_dict_dict: dict = defaultdict(dict)
@@ -273,7 +278,10 @@ def _process_and_find_best_cell_track(to_handle_cell_id_list: list, frame_num_pr
 
             # index_ab_vec = np.argmax(last_layer_all_connection_value_mtx, axis=0)
             # value_ab_vec = np.max(last_layer_all_connection_value_mtx, axis=0)
-            adjusted_merge_above_threshold: Decimal = Decimal(merge_above_threshold) ** Decimal(handling_frame_num)
+
+            # adjusted_merge_above_threshold: Decimal = Decimal(merge_above_threshold) ** Decimal(handling_frame_num)
+            adjusted_merge_above_threshold: float = derive_merge_threshold_in_layer(merge_above_threshold, STRATEGY_ENUM.ALL_LAYER , handling_frame_num)
+
             index_ab_vec, value_ab_vec = derive_last_layer_each_node_best_track(handling_cell_id,
                                                                                 last_layer_all_connection_value_mtx,
                                                                                 frame_num_prof_matrix_dict,
@@ -408,6 +416,24 @@ def __________unit_function_start_label():
     raise Exception("for labeling only")
 
 
+
+def derive_merge_threshold_in_layer(merge_above_threshold:float, strategy_enum:STRATEGY_ENUM , frame_num:int, frame_num_profit_mtx:dict=None):
+
+    if strategy_enum == STRATEGY_ENUM.ALL_LAYER:
+        threshold_exponential: float = float(frame_num - 2)
+
+        merge_threshold_in_layer: float = pow(merge_above_threshold, threshold_exponential)
+
+        return merge_threshold_in_layer
+
+    elif strategy_enum == STRATEGY_ENUM.ONE_LAYER:
+        raise Exception(strategy_enum)
+
+    else:
+        raise Exception(strategy_enum)
+
+
+
 def filter_track_list_by_length(track_list_list: list, min_track_length: int = 5):
     result_track_list: list = []
     for track_list in track_list_list:
@@ -468,7 +494,7 @@ def post_adjustment(track_list_list: list, prof_mat_list: list):
 def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict: dict,
                             cell_id_frame_num_node_idx_best_value_list_dict_dict: dict,
                             frame_cell_occupation_vec_list_dict: dict,
-                            merge_above_threshold: Decimal,
+                            merge_above_threshold: float,
                             handling_cell_id):           # CellId
 
     # handling_cell_idx = handling_cell_id.cell_idx
@@ -488,8 +514,7 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
     current_maximize_value: float = 0
     frame_num_node_idx_best_value_vec: list = frame_num_node_idx_best_value_list_dict[last_frame_num]
     to_redo_cell_id_set: set = set()
-    threshold_exponential: float = float(last_frame_num - 2)
-    last_frame_adjusted_threshold: Decimal = Decimal(merge_above_threshold) ** (Decimal(threshold_exponential))
+    last_frame_adjusted_threshold: float = derive_merge_threshold_in_layer(merge_above_threshold, STRATEGY_ENUM.ALL_LAYER , last_frame_num)
 
     for node_idx, node_probability_value in enumerate(frame_num_node_idx_best_value_vec):
         is_new_value_higher: bool = (node_probability_value > current_maximize_value)
@@ -556,8 +581,9 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
         cell_track_list.append((current_maximize_index, reversed_frame_idx, previous_maximize_index))
 
 
-        threshold_exponential = float(reversed_frame_num - 2)
-        last_frame_adjusted_threshold = Decimal(merge_above_threshold) ** (Decimal(threshold_exponential))
+        # threshold_exponential = float(reversed_frame_num - 2)
+        # last_frame_adjusted_threshold = Decimal(merge_above_threshold) ** (Decimal(threshold_exponential))
+        last_frame_adjusted_threshold: float = derive_merge_threshold_in_layer(merge_above_threshold, STRATEGY_ENUM.ALL_LAYER , reversed_frame_num)
 
 
         ### add redo track here
