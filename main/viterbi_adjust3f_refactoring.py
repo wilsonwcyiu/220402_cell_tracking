@@ -164,7 +164,12 @@ def execute_cell_tracking_task(frame_num_prof_matrix_dict: dict, cut_threshold:f
     total_cell_in_first_frame: int = first_frame_mtx.shape[0]
     to_handle_cell_id_list: list = [CellId(1, cell_idx) for cell_idx in range(0, total_cell_in_first_frame)]
 
-    cell_idx_track_list_dict: dict = _process_and_find_best_cell_track(to_handle_cell_id_list, frame_num_prof_matrix_dict) # 2D array list
+    cell_id_frame_num_node_idx_best_index_list_dict_dict: dict = defaultdict(dict)
+    cell_id_frame_num_node_idx_best_value_list_dict_dict: dict = defaultdict(dict)
+
+    cell_idx_track_list_dict, cell_id_frame_num_node_idx_best_index_list_dict_dict, cell_id_frame_num_node_idx_best_value_list_dict_dict = \
+                                                        _process_and_find_best_cell_track(to_handle_cell_id_list, frame_num_prof_matrix_dict,
+                                                                                            cell_id_frame_num_node_idx_best_index_list_dict_dict, cell_id_frame_num_node_idx_best_value_list_dict_dict) # 2D array list
 
     cell_idx_short_track_list_dict = _cut_1(cell_idx_track_list_dict, cut_threshold, frame_num_prof_matrix_dict)   # filter out cells that does not make sense (e.g. too low probability)
     all_cell_idx_track_list_dict.update(cell_idx_short_track_list_dict)
@@ -196,7 +201,11 @@ def execute_cell_tracking_task(frame_num_prof_matrix_dict: dict, cut_threshold:f
 
 
             to_handle_cell_id_list: list = [cell_id]
-            new_cell_idx_track_list_dict: dict = _process_and_find_best_cell_track(to_handle_cell_id_list, frame_num_prof_matrix_dict) # 2D array list
+            new_cell_idx_track_list_dict, cell_id_frame_num_node_idx_best_index_list_dict_dict, cell_id_frame_num_node_idx_best_value_list_dict_dict = \
+                                                                                _process_and_find_best_cell_track(to_handle_cell_id_list, frame_num_prof_matrix_dict,
+                                                                                   cell_id_frame_num_node_idx_best_index_list_dict_dict,
+                                                                                   cell_id_frame_num_node_idx_best_value_list_dict_dict) # 2D array list
+
             new_short_cell_id_track_list_dict = _cut_1(new_cell_idx_track_list_dict, cut_threshold, frame_num_prof_matrix_dict)   # filter out cells that does not make sense (e.g. too low probability)
 
             mask_transition_group_mtx_list = _mask_update(new_short_cell_id_track_list_dict, mask_transition_group_mtx_list)
@@ -236,15 +245,18 @@ def execute_cell_tracking_task(frame_num_prof_matrix_dict: dict, cut_threshold:f
 
 
 #loop each node on first frame to find the optimal path using probabilty multiply
-def _process_and_find_best_cell_track(to_handle_cell_id_list: list, frame_num_prof_matrix_dict: dict, merge_above_threshold:float=float(0)):
+def _process_and_find_best_cell_track(to_handle_cell_id_list: list, frame_num_prof_matrix_dict: dict,
+                                      cell_id_frame_num_node_idx_best_index_list_dict_dict, cell_id_frame_num_node_idx_best_value_list_dict_dict,
+                                      merge_above_threshold:float=float(0)):
+
+    existing_cell_idx_track_list_dict: dict = {}
     cell_id_track_list_dict: dict = {}
 
-    cell_id_frame_num_node_idx_best_index_list_dict_dict: dict = defaultdict(dict)
-    cell_id_frame_num_node_idx_best_value_list_dict_dict: dict = defaultdict(dict)
 
     to_skip_cell_id_list: list = []
     last_frame_num: int = np.max(list(frame_num_prof_matrix_dict.keys())) + 1
-    frame_num_node_idx_cell_id_occupation_list_list_dict: dict = derive_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_prof_matrix_dict, cell_id_track_list_dict)
+    frame_num_node_idx_cell_id_occupation_list_list_dict: dict = initiate_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_prof_matrix_dict)
+    frame_num_node_idx_cell_id_occupation_list_list_dict = update_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_node_idx_cell_id_occupation_list_list_dict, existing_cell_idx_track_list_dict)
 
     print(f"handling_cell_idx: ", end='')
 
@@ -320,11 +332,12 @@ def _process_and_find_best_cell_track(to_handle_cell_id_list: list, frame_num_pr
 
             to_handle_cell_id_list.sort(key=cmp_to_key(compare_cell_id))
 
-            frame_num_node_idx_cell_id_occupation_list_list_dict = derive_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_prof_matrix_dict, cell_id_track_list_dict)
+            frame_num_node_idx_cell_id_occupation_list_list_dict = initiate_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_prof_matrix_dict)
+            frame_num_node_idx_cell_id_occupation_list_list_dict = update_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_node_idx_cell_id_occupation_list_list_dict, existing_cell_idx_track_list_dict)
 
     print("  --> finish")
 
-    return cell_id_track_list_dict
+    return cell_id_track_list_dict, cell_id_frame_num_node_idx_best_index_list_dict_dict, cell_id_frame_num_node_idx_best_value_list_dict_dict
 
 
 
@@ -901,7 +914,7 @@ def deprecated_derive_frame_num_node_id_occupation_tuple_list_dict(frame_num_pro
 
 
 
-def derive_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_prof_matrix_dict: dict, cell_id_track_tuple_list_dict: dict):
+def initiate_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_prof_matrix_dict: dict):
     frame_num_node_idx_occupation_tuple_vec_dict: dict = {}
 
     # initiate frame_num_node_idx_occupation_tuple_vec_dict
@@ -910,7 +923,11 @@ def derive_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_prof_m
         total_cell: int = profit_matrix.shape[1]
         frame_num_node_idx_occupation_tuple_vec_dict[next_frame_num] = [[] for _ in range(total_cell)]
 
+    return frame_num_node_idx_occupation_tuple_vec_dict
 
+
+
+def update_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_node_idx_occupation_tuple_vec_dict: dict, cell_id_track_tuple_list_dict: dict):
     for occupied_cell_id, track_tuple_list in cell_id_track_tuple_list_dict.items():
         start_frame_idx: int = track_tuple_list[0][1]
         start_frame_num: int = start_frame_idx + 1
@@ -925,6 +942,7 @@ def derive_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_prof_m
             frame_num_node_idx_occupation_tuple_vec_dict[frame_num][occupied_node_idx].append(occupied_cell_id)
 
     return frame_num_node_idx_occupation_tuple_vec_dict
+
 
 
 
