@@ -179,7 +179,8 @@ def execute_cell_tracking_task(profit_matrix_list: list, frame_num_prof_matrix_d
 
     # total_step: int = len(profit_matrix_list)
     last_frame_num: int = np.max(list(frame_num_prof_matrix_dict.keys()))
-    for frame_num in range(2, last_frame_num-3):
+
+    for frame_num in range(2, last_frame_num):
         profit_matrix_idx = frame_num - 1
         for cell_row_idx in range(frame_num_prof_matrix_dict[frame_num].shape[0]):  #skip all nodes which are already passed
 
@@ -192,38 +193,36 @@ def execute_cell_tracking_task(profit_matrix_list: list, frame_num_prof_matrix_d
 
 
 
-            # to_handle_cell_id_list: list = [cell_id]
-            # new_cell_idx_track_list_dict: dict = _process_and_find_best_cell_track(to_handle_cell_id_list, frame_num_prof_matrix_dict) # 2D array list
-            # new_short_cell_id_track_list_dict = _cut_1(new_cell_idx_track_list_dict, cut_threshold, frame_num_prof_matrix_dict)   # filter out cells that does not make sense (e.g. too low probability)
-            #
-            # mask_transition_group_mtx_list = _mask_update(new_short_cell_id_track_list_dict, mask_transition_group_mtx_list)
-
-            new_transition_group_list_ = profit_matrix_list[profit_matrix_idx:]
-
-            new_transition_group_list: list = [new_transition_group_list_[0][cell_row_idx]]
-            new_transition_group_list[1:] = profit_matrix_list[profit_matrix_idx + 1:]
-
-            new_transition_group_list[0] = new_transition_group_list[0].reshape(1, new_transition_group_list[0].shape[0])
-
-
-            # new_store_dict: dict = _process_and_find_best_cell_track(new_transition_group_list)
-            next_list_index_vec_list_dict, next_list_value_vec_list_dict = _process_best_cell_track(new_transition_group_list)
-
-            if len(next_list_value_vec_list_dict) > 1:
-                raise Exception(len(next_list_value_vec_list_dict))
-
-            new_store_dict: dict = {}
-            for cell_idx, start_list_value_vec_list in next_list_value_vec_list_dict.items():
-                start_list_index_vec_list: list = next_list_index_vec_list_dict[cell_idx]
-                track_list: list = _find_iter_one_track_version1(start_list_index_vec_list, start_list_value_vec_list, profit_matrix_idx, cell_row_idx)
-                new_store_dict[cell_id] = track_list
-
-            new_short_cell_id_track_list_dict: dict = _cut_iter(new_store_dict, cut_threshold, new_transition_group_list, profit_matrix_idx)
-
-
-
+            to_handle_cell_id_list: list = [cell_id]
+            print("tnbsdbn", cell_id.cell_idx, cell_id.start_frame_num)
+            new_cell_idx_track_list_dict: dict = _process_and_find_best_cell_track(to_handle_cell_id_list, frame_num_prof_matrix_dict) # 2D array list
+            new_short_cell_id_track_list_dict = _cut_1(new_cell_idx_track_list_dict, cut_threshold, frame_num_prof_matrix_dict)   # filter out cells that does not make sense (e.g. too low probability)
 
             mask_transition_group_mtx_list = _mask_update(new_short_cell_id_track_list_dict, mask_transition_group_mtx_list)
+
+            # new_transition_group_list_ = profit_matrix_list[profit_matrix_idx:]
+            #
+            # new_transition_group_list: list = [new_transition_group_list_[0][cell_row_idx]]
+            # new_transition_group_list[1:] = profit_matrix_list[profit_matrix_idx + 1:]
+            #
+            # new_transition_group_list[0] = new_transition_group_list[0].reshape(1, new_transition_group_list[0].shape[0])
+            #
+            #
+            # # new_store_dict: dict = _process_and_find_best_cell_track(new_transition_group_list)
+            # next_list_index_vec_list_dict, next_list_value_vec_list_dict = _process_best_cell_track(new_transition_group_list)
+            #
+            # if len(next_list_value_vec_list_dict) > 1:
+            #     raise Exception(len(next_list_value_vec_list_dict))
+            #
+            # new_store_dict: dict = {}
+            # for cell_idx, start_list_value_vec_list in next_list_value_vec_list_dict.items():
+            #     start_list_index_vec_list: list = next_list_index_vec_list_dict[cell_idx]
+            #     track_list: list = _find_iter_one_track_version1(start_list_index_vec_list, start_list_value_vec_list, profit_matrix_idx, cell_row_idx)
+            #     new_store_dict[cell_id] = track_list
+            #
+            # new_short_cell_id_track_list_dict: dict = _cut_iter(new_store_dict, cut_threshold, new_transition_group_list, profit_matrix_idx)
+
+            # mask_transition_group_mtx_list = _mask_update(new_short_cell_id_track_list_dict, mask_transition_group_mtx_list)
 
 
             for ke, val in new_short_cell_id_track_list_dict.items():
@@ -243,7 +242,7 @@ def _process_and_find_best_cell_track(to_handle_cell_id_list: list, frame_num_pr
     cell_id_frame_num_node_idx_best_value_list_dict_dict: dict = defaultdict(dict)
 
     to_skip_cell_id_list: list = []
-    last_frame_num: int = np.max(list(frame_num_prof_matrix_dict.keys()))
+    last_frame_num: int = np.max(list(frame_num_prof_matrix_dict.keys())) + 1
     frame_num_node_idx_cell_id_occupation_list_list_dict: dict = derive_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_prof_matrix_dict, cell_id_track_list_dict)
 
     print(f"handling_cell_idx: ", end='')
@@ -256,6 +255,8 @@ def _process_and_find_best_cell_track(to_handle_cell_id_list: list, frame_num_pr
         start_frame_num: int = handling_cell_id.start_frame_num
         second_frame: int = start_frame_num + 1
 
+        if handling_cell_id.cell_idx == 0 and handling_cell_id.start_frame_num == 118:
+            print("debug")
 
         # debug
         if handling_cell_idx in cell_id_frame_num_node_idx_best_index_list_dict_dict[handling_cell_id]:
@@ -296,6 +297,8 @@ def _process_and_find_best_cell_track(to_handle_cell_id_list: list, frame_num_pr
 
             else:
                 next_frame_num: int = handling_frame_num + 1
+                if handling_cell_id.cell_idx == 0 and handling_cell_id.start_frame_num == 118:
+                    print("debug")
                 cell_id_frame_num_node_idx_best_index_list_dict_dict[handling_cell_id][next_frame_num] = index_ab_vec
                 cell_id_frame_num_node_idx_best_value_list_dict_dict[handling_cell_id][next_frame_num] = value_ab_vec
 
@@ -303,6 +306,9 @@ def _process_and_find_best_cell_track(to_handle_cell_id_list: list, frame_num_pr
 
 
         if handling_cell_id not in to_skip_cell_id_list:
+            if handling_cell_id.cell_idx == 0 and handling_cell_id.start_frame_num == 118:
+                print("debug")
+
             cell_track_list, to_redo_cell_id_list = derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict,
                                                                             cell_id_frame_num_node_idx_best_value_list_dict_dict,
                                                                             frame_num_node_idx_cell_id_occupation_list_list_dict,
@@ -504,6 +510,7 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
     handling_cell_idx: int = handling_cell_id.cell_idx
     cell_track_list: list = []
 
+    print("awergs", handling_cell_id.cell_idx, handling_cell_id.start_frame_num)
     last_frame_num: int = np.max(list(frame_num_node_idx_best_value_list_dict.keys()))
     second_frame_num: int = np.min(list(frame_num_node_idx_best_value_list_dict.keys()))
     # total_frame: int = last_frame_num - second_frame_num + 1
@@ -1017,6 +1024,9 @@ def derive_last_layer_each_node_best_track(handling_cell_id,  # CellId
 
     handling_cell_idx: int = handling_cell_id.cell_idx
     start_frame_num: int = handling_cell_id.start_frame_num
+
+    if handling_cell_idx == 0 and start_frame_num == 118:
+        print("debug")
 
     total_node_next_frame: int = last_layer_all_probability_mtx.shape[1]
     index_ab_vec: list = [None] * total_node_next_frame
