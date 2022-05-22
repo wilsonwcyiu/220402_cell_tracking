@@ -167,9 +167,13 @@ def execute_cell_tracking_task(frame_num_prof_matrix_dict: dict, cut_threshold:f
     cell_id_frame_num_node_idx_best_index_list_dict_dict: dict = defaultdict(dict)
     cell_id_frame_num_node_idx_best_value_list_dict_dict: dict = defaultdict(dict)
 
-    cell_idx_track_list_dict, cell_id_frame_num_node_idx_best_index_list_dict_dict, cell_id_frame_num_node_idx_best_value_list_dict_dict = \
-                                                        _process_and_find_best_cell_track(to_handle_cell_id_list, frame_num_prof_matrix_dict,
-                                                                                            cell_id_frame_num_node_idx_best_index_list_dict_dict, cell_id_frame_num_node_idx_best_value_list_dict_dict) # 2D array list
+    cell_idx_track_list_dict, \
+    cell_id_frame_num_node_idx_best_index_list_dict_dict, \
+    cell_id_frame_num_node_idx_best_value_list_dict_dict = \
+                                                            _process_and_find_best_cell_track(to_handle_cell_id_list,
+                                                                                              frame_num_prof_matrix_dict,
+                                                                                              cell_id_frame_num_node_idx_best_index_list_dict_dict,
+                                                                                              cell_id_frame_num_node_idx_best_value_list_dict_dict)
 
     cell_idx_short_track_list_dict = _cut_1(cell_idx_track_list_dict, cut_threshold, frame_num_prof_matrix_dict)   # filter out cells that does not make sense (e.g. too low probability)
     all_cell_idx_track_list_dict.update(cell_idx_short_track_list_dict)
@@ -201,10 +205,13 @@ def execute_cell_tracking_task(frame_num_prof_matrix_dict: dict, cut_threshold:f
 
 
             to_handle_cell_id_list: list = [cell_id]
-            new_cell_idx_track_list_dict, cell_id_frame_num_node_idx_best_index_list_dict_dict, cell_id_frame_num_node_idx_best_value_list_dict_dict = \
-                                                                                _process_and_find_best_cell_track(to_handle_cell_id_list, frame_num_prof_matrix_dict,
-                                                                                   cell_id_frame_num_node_idx_best_index_list_dict_dict,
-                                                                                   cell_id_frame_num_node_idx_best_value_list_dict_dict) # 2D array list
+            new_cell_idx_track_list_dict, \
+            cell_id_frame_num_node_idx_best_index_list_dict_dict, \
+            cell_id_frame_num_node_idx_best_value_list_dict_dict = \
+                                                                    _process_and_find_best_cell_track(to_handle_cell_id_list,
+                                                                                                      frame_num_prof_matrix_dict,
+                                                                                                      cell_id_frame_num_node_idx_best_index_list_dict_dict,
+                                                                                                      cell_id_frame_num_node_idx_best_value_list_dict_dict)
 
             new_short_cell_id_track_list_dict = _cut_1(new_cell_idx_track_list_dict, cut_threshold, frame_num_prof_matrix_dict)   # filter out cells that does not make sense (e.g. too low probability)
 
