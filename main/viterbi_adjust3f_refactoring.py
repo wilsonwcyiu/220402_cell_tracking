@@ -167,10 +167,13 @@ def execute_cell_tracking_task(frame_num_prof_matrix_dict: dict, cut_threshold:f
     cell_id_frame_num_node_idx_best_index_list_dict_dict: dict = defaultdict(dict)
     cell_id_frame_num_node_idx_best_value_list_dict_dict: dict = defaultdict(dict)
 
+
+
     cell_idx_track_list_dict, \
     cell_id_frame_num_node_idx_best_index_list_dict_dict, \
     cell_id_frame_num_node_idx_best_value_list_dict_dict = \
-                                                            _process_and_find_best_cell_track(to_handle_cell_id_list,
+                                                            _process_and_find_best_cell_track(all_cell_idx_track_list_dict,
+                                                                                              to_handle_cell_id_list,
                                                                                               frame_num_prof_matrix_dict,
                                                                                               cell_id_frame_num_node_idx_best_index_list_dict_dict,
                                                                                               cell_id_frame_num_node_idx_best_value_list_dict_dict)
@@ -208,7 +211,8 @@ def execute_cell_tracking_task(frame_num_prof_matrix_dict: dict, cut_threshold:f
             new_cell_idx_track_list_dict, \
             cell_id_frame_num_node_idx_best_index_list_dict_dict, \
             cell_id_frame_num_node_idx_best_value_list_dict_dict = \
-                                                                    _process_and_find_best_cell_track(to_handle_cell_id_list,
+                                                                    _process_and_find_best_cell_track(all_cell_idx_track_list_dict,
+                                                                                                      to_handle_cell_id_list,
                                                                                                       frame_num_prof_matrix_dict,
                                                                                                       cell_id_frame_num_node_idx_best_index_list_dict_dict,
                                                                                                       cell_id_frame_num_node_idx_best_value_list_dict_dict)
@@ -252,11 +256,12 @@ def execute_cell_tracking_task(frame_num_prof_matrix_dict: dict, cut_threshold:f
 
 
 #loop each node on first frame to find the optimal path using probabilty multiply
-def _process_and_find_best_cell_track(to_handle_cell_id_list: list, frame_num_prof_matrix_dict: dict,
+def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
+                                      to_handle_cell_id_list: list, frame_num_prof_matrix_dict: dict,
                                       cell_id_frame_num_node_idx_best_index_list_dict_dict, cell_id_frame_num_node_idx_best_value_list_dict_dict,
                                       merge_above_threshold:float=float(0)):
 
-    existing_cell_idx_track_list_dict: dict = {}
+    # existing_cell_idx_track_list_dict: dict = {}
     cell_id_track_list_dict: dict = {}
 
 
@@ -1075,8 +1080,9 @@ def derive_last_layer_each_node_best_track(handling_cell_id,  # CellId
 
                 for occupied_cell_id in occupied_cell_id_list:
                     occupied_cell_idx: int = occupied_cell_id.cell_idx
-                    if handling_frame_num == second_frame:     occupied_cell_probability: float = frame_num_prof_matrix_dict[start_frame_num][occupied_cell_idx][node_idx]
-                    elif handling_frame_num > second_frame:    occupied_cell_probability: float = cell_id_frame_num_node_idx_best_value_list_dict_dict[occupied_cell_id][handling_frame_num][node_idx]
+                    occupied_cell_second_frame: int = occupied_cell_id.start_frame_num + 1
+                    if handling_frame_num == occupied_cell_second_frame:     occupied_cell_probability: float = frame_num_prof_matrix_dict[start_frame_num][occupied_cell_idx][node_idx]
+                    elif handling_frame_num > occupied_cell_second_frame:    occupied_cell_probability: float = cell_id_frame_num_node_idx_best_value_list_dict_dict[occupied_cell_id][handling_frame_num][node_idx]
 
 
                     if handling_cell_probability > merge_above_threshold and occupied_cell_probability > merge_above_threshold:
@@ -1112,14 +1118,23 @@ def derive_last_layer_each_node_best_track(handling_cell_id,  # CellId
                     else:
                         print("handling_frame_num", handling_frame_num)
 
-                        for node_idx, frame_num_node_idx_occupation_tuple_list in enumerate(frame_num_node_idx_cell_id_occupation_list_list_dict[handling_frame_num]):
-                            for frame_num_node_idx_occupation_tuple in enumerate(frame_num_node_idx_occupation_tuple_list):
-                                print(node_idx, ":", frame_num_node_idx_occupation_tuple)
+                        # for node_idx, frame_num_node_idx_occupation_tuple_list in enumerate(frame_num_node_idx_cell_id_occupation_list_list_dict[handling_frame_num]):
+                        #     for frame_num_node_idx_occupation_tuple in enumerate(frame_num_node_idx_occupation_tuple_list):
+                        #         print(node_idx, ":", frame_num_node_idx_occupation_tuple)
 
                         # print("frame_num_node_idx_occupation_tuple_list_dict", frame_num_node_idx_occupation_tuple_list_dict[handling_frame_num])
                         # print(cell_idx_track_list_dict[0])
+
+                        tmp0 = cell_id_frame_num_node_idx_best_value_list_dict_dict[occupied_cell_id]
+                        tmp1 = cell_id_frame_num_node_idx_best_value_list_dict_dict[occupied_cell_id][handling_frame_num]
+                        tmp2 = cell_id_frame_num_node_idx_best_value_list_dict_dict[occupied_cell_id][handling_frame_num][node_idx]
+
+
+
                         print("sdgberb")
-                        print(handling_cell_probability, occupied_cell_probability, merge_above_threshold)
+                        print("handling_cell_id: ", handling_cell_id)
+                        print("occupied_cell_id, handling_frame_num, node_idx: ", occupied_cell_id, handling_frame_num, node_idx)
+                        print("handling_cell_probability, occupied_cell_probability, merge_above_threshold: ", handling_cell_probability, occupied_cell_probability, merge_above_threshold)
                         raise Exception("else")
 
 
