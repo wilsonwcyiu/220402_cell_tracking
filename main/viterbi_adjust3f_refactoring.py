@@ -178,9 +178,10 @@ def execute_cell_tracking_task(profit_matrix_list: list, frame_num_prof_matrix_d
     mask_transition_group_mtx_list = _mask_update(cell_idx_short_track_list_dict, mask_transition_group_mtx_list)
 
     # total_step: int = len(profit_matrix_list)
+    second_frame_num: int = 2
     last_frame_num: int = np.max(list(frame_num_prof_matrix_dict.keys()))
 
-    for frame_num in range(2, last_frame_num):
+    for frame_num in range(second_frame_num, last_frame_num):
         profit_matrix_idx = frame_num - 1
         for cell_row_idx in range(frame_num_prof_matrix_dict[frame_num].shape[0]):  #skip all nodes which are already passed
 
@@ -255,8 +256,6 @@ def _process_and_find_best_cell_track(to_handle_cell_id_list: list, frame_num_pr
         start_frame_num: int = handling_cell_id.start_frame_num
         second_frame: int = start_frame_num + 1
 
-        if handling_cell_id.cell_idx == 0 and handling_cell_id.start_frame_num == 118:
-            print("debug")
 
         # debug
         if handling_cell_idx in cell_id_frame_num_node_idx_best_index_list_dict_dict[handling_cell_id]:
@@ -297,8 +296,6 @@ def _process_and_find_best_cell_track(to_handle_cell_id_list: list, frame_num_pr
 
             else:
                 next_frame_num: int = handling_frame_num + 1
-                if handling_cell_id.cell_idx == 0 and handling_cell_id.start_frame_num == 118:
-                    print("debug")
                 cell_id_frame_num_node_idx_best_index_list_dict_dict[handling_cell_id][next_frame_num] = index_ab_vec
                 cell_id_frame_num_node_idx_best_value_list_dict_dict[handling_cell_id][next_frame_num] = value_ab_vec
 
@@ -306,9 +303,6 @@ def _process_and_find_best_cell_track(to_handle_cell_id_list: list, frame_num_pr
 
 
         if handling_cell_id not in to_skip_cell_id_list:
-            if handling_cell_id.cell_idx == 0 and handling_cell_id.start_frame_num == 118:
-                print("debug")
-
             cell_track_list, to_redo_cell_id_list = derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict,
                                                                             cell_id_frame_num_node_idx_best_value_list_dict_dict,
                                                                             frame_num_node_idx_cell_id_occupation_list_list_dict,
@@ -1024,9 +1018,6 @@ def derive_last_layer_each_node_best_track(handling_cell_id,  # CellId
 
     handling_cell_idx: int = handling_cell_id.cell_idx
     start_frame_num: int = handling_cell_id.start_frame_num
-
-    if handling_cell_idx == 0 and start_frame_num == 118:
-        print("debug")
 
     total_node_next_frame: int = last_layer_all_probability_mtx.shape[1]
     index_ab_vec: list = [None] * total_node_next_frame
