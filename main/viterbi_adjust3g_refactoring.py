@@ -133,12 +133,19 @@ def cell_tracking_core_flow(series: str, segmentation_folder: str, all_segmented
     for tmp_cell_id in tmp_cell_id_list:
         del all_track_dict[tmp_cell_id]
 
+    sorted_cell_id_key_list = sorted(list(all_track_dict.keys()), key=cmp_to_key(compare_cell_id))
+    sorted_dict: dict = {}
+    for sorted_key in sorted_cell_id_key_list:
+        sorted_dict[sorted_key] = all_track_dict[sorted_key]
+    all_track_dict = sorted_dict
 
-    code_validate_track(all_track_dict)
+    # code_validate_track_key_order(all_track_dict)
+    # code_validate_track(all_track_dict)
 
-    # for cell_id, track in all_track_dict.items():
-    #     print("hsdf", cell_id.__str__(), track)
+    for cell_id in all_track_dict.keys():
+        print(cell_id.__str__())
 
+    exit()
 
 
     track_list_list = []
@@ -157,12 +164,15 @@ def cell_tracking_core_flow(series: str, segmentation_folder: str, all_segmented
         raise Exception(fix_flow)
 
 
-    # prof_mat_list: list = deprecate_derive_prof_matrix_list(segmentation_folder, output_folder, series, segmented_filename_list)
-    # final_track_list = post_adjustment(track_list_list, prof_mat_list)
 
-    final_track_list = track_list_list
 
+    # return track_list_list
+
+    prof_mat_list: list = deprecate_derive_prof_matrix_list(segmentation_folder, output_folder, series, segmented_filename_list)
+    final_track_list = post_adjustment(track_list_list, prof_mat_list)
     return final_track_list
+
+
 
 
 
@@ -243,6 +253,8 @@ def execute_cell_tracking_task(frame_num_prof_matrix_dict: dict, cut_threshold:f
 
             mask_transition_group_mtx_list = _mask_update(new_short_cell_id_track_list_dict, mask_transition_group_mtx_list)
 
+            all_cell_idx_track_list_dict.update(new_short_cell_id_track_list_dict)
+
             # new_transition_group_list_ = profit_matrix_list[profit_matrix_idx:]
             #
             # new_transition_group_list: list = [new_transition_group_list_[0][cell_row_idx]]
@@ -268,8 +280,8 @@ def execute_cell_tracking_task(frame_num_prof_matrix_dict: dict, cut_threshold:f
             # mask_transition_group_mtx_list = _mask_update(new_short_cell_id_track_list_dict, mask_transition_group_mtx_list)
 
 
-            for ke, val in new_short_cell_id_track_list_dict.items():
-                all_cell_idx_track_list_dict[ke] = val
+            # for ke, val in new_short_cell_id_track_list_dict.items():
+            #     all_cell_idx_track_list_dict[ke] = val
 
             code_validate_track(all_cell_idx_track_list_dict)
 
@@ -519,8 +531,8 @@ def post_adjustment(track_list_list: list, prof_mat_list: list):
         for next_track_k in range(pre_track_j + 1, len(track_list_list)):
             pre_track_list = track_list_list[pre_track_j]
 
-            if len(pre_track_list) < 5:
-                raise Exception("debug", "len(pre_track_list) < 5")
+            # if len(pre_track_list) < 5:
+            #     raise Exception("debug", "len(pre_track_list) < 5")
 
             next_track_list = track_list_list[next_track_k]
 
@@ -1343,6 +1355,22 @@ def code_validate_track_length(cell_idx_track_list_dict):
         # if len(track_list) < 5:
         #     raise Exception(cell_id.__str__(), tmp_start_frame_num)
 
+
+def code_validate_track_key_order(cell_idx_track_list_dict):
+    max_frame_num = 0
+    max_cell_idx = 0
+    for cell_id in cell_idx_track_list_dict.keys():
+        # print(cell_id.__str__())
+        # print(cell_id.start_frame_num < max_frame_num)
+        # print(cell_id.start_frame_num == max_frame_num and cell_id.cell_idx < max_cell_idx)
+
+        if cell_id.start_frame_num < max_frame_num:
+            raise Exception("cell_id.start_frame_num < max_frame_num")
+        if cell_id.start_frame_num == max_frame_num and cell_id.cell_idx < max_cell_idx:
+            raise Exception("cell_id.start_frame_num = max_frame_num and cell_id.cell_idx < max_cell_idx")
+
+        max_frame_num = cell_id.start_frame_num
+        max_cell_idx = cell_id.cell_idx
 
 if __name__ == '__main__':
     main()
