@@ -1439,14 +1439,14 @@ def _cut_1(original_track_dict: dict, threshold: float, profit_matrix_list: list
     short_track_list_dict: dict = {}
 
 
-    is_first_cell_id_not_zero: bool = list(original_track_dict.keys())[0] != 0
-    if is_first_cell_id_not_zero:
-        # print("is_first_cell_id_not_zero", is_first_cell_id_not_zero)
-        # raise Exception("investigate")
-        for miss_key in range(list(original_track_dict.keys())[0]):
-            short_track_list = []
-            short_track_list.append((miss_key,0, -1))
-            short_track_list_dict[miss_key] = short_track_list
+    # is_first_cell_id_not_zero: bool = list(original_track_dict.keys())[0] != 0
+    # if is_first_cell_id_not_zero:
+    #     # print("is_first_cell_id_not_zero", is_first_cell_id_not_zero)
+    #     # raise Exception("investigate")
+    #     for miss_key in range(list(original_track_dict.keys())[0]):
+    #         short_track_list = []
+    #         short_track_list.append((miss_key,0, -1))
+    #         short_track_list_dict[miss_key] = short_track_list
 
 
     for cell_id, track_content_list in original_track_dict.items():
@@ -1750,11 +1750,20 @@ if __name__ == '__main__':
 
 
 
-    print("save_track_dictionary")
-    save_track_dictionary(viterbi_result_dict, save_dir + "viterbi_results_dict.pkl")
+    # print("save_track_dictionary")
+    # save_track_dictionary(viterbi_result_dict, save_dir + "viterbi_results_dict.pkl")
 
-    with open(save_dir + "viterbi_results_dict.txt", 'w') as f:
-        f.write(str(viterbi_result_dict[series]))
+
+    with open(save_dir + "viterbi_adjust3c.txt", 'w') as f:
+        for series in existing_series_list:
+            f.write("======================" + str(series) + "================================")
+            f.write("\n")
+            cell_track_list_list = sorted(viterbi_result_dict[series])
+            for cell_track_list in cell_track_list_list:
+                f.write(str(cell_track_list))
+                f.write("\n")
+
+            f.write("\n\n")
 
 
     execution_time = time.perf_counter() - start_time

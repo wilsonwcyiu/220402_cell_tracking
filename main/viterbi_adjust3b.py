@@ -1532,11 +1532,20 @@ if __name__ == '__main__':
 
 
 
-    print("save_track_dictionary")
-    save_track_dictionary(viterbi_result_dict, save_dir + "viterbi_results_dict.pkl")
+    # print("save_track_dictionary")
+    # save_track_dictionary(viterbi_result_dict, save_dir + "viterbi_results_dict.pkl")
 
-    with open(save_dir + "viterbi_results_dict.txt", 'w') as f:
-        f.write(str(viterbi_result_dict[series]))
+
+    with open(save_dir + "viterbi_adjust3b.txt", 'w') as f:
+        for series in existing_series_list:
+            f.write("======================" + str(series) + "================================")
+            f.write("\n")
+            cell_track_list_list = sorted(viterbi_result_dict[series])
+            for cell_track_list in cell_track_list_list:
+                f.write(str(cell_track_list))
+                f.write("\n")
+
+            f.write("\n\n")
 
 
     execution_time = time.perf_counter() - start_time

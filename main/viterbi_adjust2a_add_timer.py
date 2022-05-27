@@ -209,7 +209,7 @@ def _iteration(transition_group):
                 new_store_dict = _find_iter(next_list_index, next_list_value, p_matrix, node)
                 new_short_Tracks = _cut_iter(new_store_dict, 0.01, new_transition_group, p_matrix)
             mask_transition_group =  _mask_update(new_short_Tracks, mask_transition_group)
-            for ke, val in new_short_Tracks.items():                
+            for ke, val in new_short_Tracks.items():
                 all_tracks[length + ke + 1] = val
             length = len(all_tracks)
     return all_tracks
@@ -252,6 +252,16 @@ def _process_iter(transition_group):
             start_list_value[ii].append(value_ab)
             item = value_ab
     return start_list_index, start_list_value
+
+
+
+def filter_track_list_by_length(track_list_list: list, min_track_length: int = 5):
+    result_track_list: list = []
+    for track_list in track_list_list:
+        if (len(track_list) > min_track_length):
+            result_track_list.append(track_list)
+
+    return result_track_list
 
 
 viterbi_results_dict = {   
@@ -343,15 +353,21 @@ for serie in series:
     #print(len(C))
     #result = tracking(C, prof_mat_list, DELTA_TIME)
     #prof_mat_list3 = prof_mat_list[0:4]
+
     all_tracks = _iteration(prof_mat_list)
 
-    result = []    
-    for i in range(len(all_tracks)):
-        if i not in all_tracks.keys():
-            continue
-        else:
-            if (len(all_tracks[i])>5):
-                result.append(all_tracks[i])
+
+    # result = []
+    # for i in range(len(all_tracks)):
+    #     if i not in all_tracks.keys():
+    #         continue
+    #     else:
+    #         if (len(all_tracks[i])>5):
+    #             result.append(all_tracks[i])
+
+    result = filter_track_list_by_length(all_tracks.values())
+
+
     #print(result)
     for j in range(len(result)-1):
         for k in range(j + 1, len(result)):
@@ -409,14 +425,20 @@ print(save_dir)
 save_track_dictionary(viterbi_results_dict, save_dir + "viterbi_results_dict.pkl")
 
 
+# with open(save_dir + "viterbi_results_dict.txt", 'w') as f:
+#     f.write(str(viterbi_results_dict[identifier]))
+
+
+
 
 folder_path: str = 'D:/viterbi linkage/dataset/'
+
 segmentation_folder = folder_path + 'segmentation_unet_seg//'
 images_folder = folder_path + 'dataset//images//'
 output_folder = folder_path + 'output_unet_seg_finetune//'
 save_dir = folder_path + 'save_directory_enhancement/'
 
-with open(save_dir + "viterbi_adjust2_add_timer.txt", 'w') as f:
+with open(save_dir + "viterbi_adjust2a_add_timer.txt", 'w') as f:
     for series in series:
         f.write("======================" + str(series) + "================================")
         f.write("\n")
@@ -427,8 +449,6 @@ with open(save_dir + "viterbi_adjust2_add_timer.txt", 'w') as f:
 
         f.write("\n")
         f.write("\n")
-
-
 
 
 execution_time = time.perf_counter() - start_time

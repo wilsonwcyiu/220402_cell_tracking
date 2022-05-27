@@ -52,7 +52,7 @@ def main():
 
     input_series_list = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
                          'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
-    # input_series_list = ['S10']
+    # input_series_list = ['S01']
 
     #all tracks shorter than DELTA_TIME are false postives and not included in tracks
     result_list = []
@@ -95,7 +95,16 @@ def main():
     save_track_dictionary(viterbi_result_dict, save_dir + "viterbi_results_dict.pkl")
 
     with open(save_dir + "viterbi_results_dict.txt", 'w') as f:
-        f.write(str(viterbi_result_dict[series]))
+        for series in existing_series_list:
+            f.write("======================" + str(series) + "================================")
+            f.write("\n")
+            for cell_track_list in viterbi_result_dict[series]:
+                f.write(str(cell_track_list))
+                f.write("\n")
+
+            f.write("\n")
+            f.write("\n")
+
 
 
     execution_time = time.perf_counter() - start_time
@@ -142,10 +151,10 @@ def cell_tracking_core_flow(series: str, segmentation_folder: str, all_segmented
     # code_validate_track_key_order(all_track_dict)
     # code_validate_track(all_track_dict)
 
-    for cell_id in all_track_dict.keys():
-        print(cell_id.__str__())
-
-    exit()
+    # for cell_id in all_track_dict.keys():
+    #     print(cell_id.__str__())
+    #
+    # exit()
 
 
     track_list_list = []
@@ -165,12 +174,15 @@ def cell_tracking_core_flow(series: str, segmentation_folder: str, all_segmented
 
 
 
+    is_do_post_adjustment: bool = True
+    if is_do_post_adjustment:
+        prof_mat_list: list = deprecate_derive_prof_matrix_list(segmentation_folder, output_folder, series, segmented_filename_list)
+        final_track_list = post_adjustment(track_list_list, prof_mat_list)
+        return final_track_list
+    else:
+        return track_list_list
 
-    # return track_list_list
 
-    prof_mat_list: list = deprecate_derive_prof_matrix_list(segmentation_folder, output_folder, series, segmented_filename_list)
-    final_track_list = post_adjustment(track_list_list, prof_mat_list)
-    return final_track_list
 
 
 
@@ -295,7 +307,7 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
                                       to_handle_cell_id_list: list, frame_num_prof_matrix_dict: dict,
                                       cell_id_frame_num_node_idx_best_index_list_dict_dict,
                                       cell_id_frame_num_node_idx_best_value_list_dict_dict,
-                                      merge_above_threshold:float=float(0.5)):
+                                      merge_above_threshold:float=float(0.0)):
 
     # existing_cell_idx_track_list_dict: dict = {}
     cell_id_track_list_dict: dict = {}
@@ -551,8 +563,8 @@ def post_adjustment(track_list_list: list, prof_mat_list: list):
                 else:
                     continue
 
-            print("ethbgd", "index_merge1", index_merge1, len(pre_track_list))
-            print("track_list_list[pre_track_j]", track_list_list[pre_track_j])
+            # print("ethbgd", "index_merge1", index_merge1, len(pre_track_list))
+            # print("track_list_list[pre_track_j]", track_list_list[pre_track_j])
             node_merge1 = pre_track_list[index_merge1][0]
             for ii, tuples in enumerate(next_track_list):
                 if tuples[1] == pre_frame:

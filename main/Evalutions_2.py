@@ -163,14 +163,14 @@ kuan_tracks_allseries_unet = open_track_dictionary(save_dir + "kuan_tracks_allse
 delta_results_dict = open_track_dictionary(save_dir + "delta_results_dict.pkl")
 hungarian_results_dict = open_track_dictionary(save_dir + "hungarian_results_dict.pkl")
 viterbi_results_dict = open_track_dictionary(save_dir + "viterbi_results_dict_adj2.pkl")
-viterbi_2_results_dict = open_track_dictionary(save_dir + "viterbi_results_dict_2.pkl")
+viterbi_adj3_results_dict = open_track_dictionary(save_dir + "viterbi_results_dict_adj3.pkl")
 gt_results_dict = open_track_dictionary(save_dir + "gt_results_dict.pkl")
 
 result_dicts = [('kuan_tracks_allseries_unet',kuan_tracks_allseries_unet),
                 ('delta_results_dict',delta_results_dict),
                 ('hungarian_results_dict',hungarian_results_dict),
                 ('viterbi_results_dict',viterbi_results_dict),
-                ('viterbi_2_results_dict',viterbi_2_results_dict)]
+                ('viterbi_adj3_results_dict', viterbi_adj3_results_dict)]
 
 series = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10', 'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20'] # enter all tracked images series
 #celltypes = ['C1'] # enter all tracked celllines
