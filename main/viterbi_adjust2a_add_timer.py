@@ -439,16 +439,15 @@ output_folder = folder_path + 'output_unet_seg_finetune//'
 save_dir = folder_path + 'save_directory_enhancement/'
 
 with open(save_dir + "viterbi_adjust2a_add_timer.txt", 'w') as f:
-    for series in series:
-        f.write("======================" + str(series) + "================================")
+    for s in series:
+        f.write("======================" + str(s) + "================================")
         f.write("\n")
-        cell_track_list_list = sorted(viterbi_results_dict[series])
+        cell_track_list_list = sorted(viterbi_results_dict[s])
         for cell_track_list in cell_track_list_list:
             f.write(str(cell_track_list))
             f.write("\n")
 
-        f.write("\n")
-        f.write("\n")
+        f.write("\n\n")
 
 
 execution_time = time.perf_counter() - start_time
