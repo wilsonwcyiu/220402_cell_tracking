@@ -201,9 +201,7 @@ def _iteration(transition_group):
 
     all_tracks.update(short_Tracks)
 
-    is_apply_fix: bool = False # when len(all_tracks.keys() == [0, 2, 3, 5]) == 4, which '5' will be overwritten in next step
-    if is_apply_fix:    length = np.max(list(all_tracks.keys())) - 1
-    else:               length = len(all_tracks)
+    length = len(all_tracks)
 
     mask_transition_group =  _mask(short_Tracks, transition_group)
 
@@ -231,8 +229,13 @@ def _iteration(transition_group):
 
             mask_transition_group =  _mask_update(new_short_Tracks, mask_transition_group)
 
+
+            is_apply_fix: bool = True  # when len(all_tracks.keys() == [0, 2, 3, 5]) == 4, which '5' will be overwritten in next step
             for ke, val in new_short_Tracks.items():
-                all_tracks[length + short_track_count + 1] = val
+                if is_apply_fix:    key = np.max(list(all_tracks.keys())) + 1
+                else:               key = length + short_track_count + 1
+
+                all_tracks[key] = val
                 short_track_count += 1
 
             length = len(all_tracks)
@@ -453,9 +456,9 @@ for serie in series:
 
 
 
-    for final_track in final_result:
-        if final_track[0] == (14, 0, -1):
-            print("after", final_track)
+    # for final_track in final_result:
+    #     if final_track[0] == (14, 0, -1):
+    #         print("after", final_track)
 
 
 
