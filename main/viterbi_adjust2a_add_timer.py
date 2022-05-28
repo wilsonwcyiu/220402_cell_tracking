@@ -188,17 +188,37 @@ def _iteration(transition_group):
     all_tracks = {}
     start_list_index, start_list_value = _process(transition_group)
     store_dict = _find(start_list_index, start_list_value)
+
+    # for store_list in store_dict.values():
+    #     if store_list[0] == (14, 0, -1):
+    #         tmp = store_list
+
     short_Tracks = _cut(store_dict, 0.01, transition_group)
+
+    # for store_list in short_Tracks.values():
+    #     if store_list[0] == (14, 0, -1):
+    #         tmp1 = store_list
+
     all_tracks.update(short_Tracks)
-    length = len(all_tracks)
+
+    is_apply_fix: bool = False # when len(all_tracks.keys() == [0, 2, 3, 5]) == 4, which '5' will be overwritten in next step
+    if is_apply_fix:    length = np.max(list(all_tracks.keys())) - 1
+    else:               length = len(all_tracks)
+
     mask_transition_group =  _mask(short_Tracks, transition_group)
-    for p_matrix in range(1,len(transition_group)):
+
+
+
+    # bugfix
+    short_track_count: int = 0
+    for p_matrix in range(1, len(transition_group)):
         #print(p_matrix)
         #print(transition_group[p_matrix].shape)
         #print(transition_group[p_matrix].shape[0])
-        for node in range(transition_group[p_matrix].shape[0]):  #skip all nodes which are already passed 
+        for node in range(transition_group[p_matrix].shape[0]):  #skip all nodes which are already passed
             #print(node)
-            if (mask_transition_group[p_matrix][node]==True):
+            is_node_occupied: bool = mask_transition_group[p_matrix][node]
+            if (is_node_occupied == True):
                 continue
             else:
                 new_transition_group = []
@@ -208,10 +228,15 @@ def _iteration(transition_group):
                 next_list_index, next_list_value = _process_iter(new_transition_group)
                 new_store_dict = _find_iter(next_list_index, next_list_value, p_matrix, node)
                 new_short_Tracks = _cut_iter(new_store_dict, 0.01, new_transition_group, p_matrix)
+
             mask_transition_group =  _mask_update(new_short_Tracks, mask_transition_group)
+
             for ke, val in new_short_Tracks.items():
-                all_tracks[length + ke + 1] = val
+                all_tracks[length + short_track_count + 1] = val
+                short_track_count += 1
+
             length = len(all_tracks)
+
     return all_tracks
 
 #loop each node on first frame to find the optimal path using probabilty multiply
@@ -221,17 +246,24 @@ def _process(transition_group):
     start_list_value = defaultdict(list)
     #loop each row on first prob matrix. return the maximum value and index through the whole frames 
     #the first prob matrix in transition_group is a matrix (2D array)
-    for ii, item in enumerate(transition_group[0]):
-        for i in range(1, step):          
+    for cell_idx, item in enumerate(transition_group[0]):
+
+        for frame_idx in range(1, step):
             item = item[:, np.newaxis]
-            item = np.repeat(item, transition_group[i].shape[1], 1)
-            index_ab = np.argmax(item * transition_group[i], 0)
-            value_ab = np.max(item * transition_group[i], 0)
+            item = np.repeat(item, transition_group[frame_idx].shape[1], 1)
+            index_ab = np.argmax(item * transition_group[frame_idx], 0)
+            value_ab = np.max(item * transition_group[frame_idx], 0)
             if (np.all(value_ab==0)):
                 break
-            start_list_index[ii].append(index_ab)
-            start_list_value[ii].append(value_ab)
+            start_list_index[cell_idx].append(index_ab)
+            start_list_value[cell_idx].append(value_ab)
             item = value_ab
+
+        # if cell_idx == 14:
+        #     tmp1 = start_list_index[cell_idx]
+        #     tmp2 = start_list_value[cell_idx]
+        #     print("grsdb", "bugfix")
+
     return start_list_index, start_list_value
 #loop each node on the other frames which is not passed by the tracks we've got.
 def _process_iter(transition_group):
@@ -290,6 +322,7 @@ viterbi_results_dict = {
 }
 
 series = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10', 'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
+# series = ['S13']
 #celltypes = ['C1'] # enter all tracked celllines
 
 #all tracks shorter than DELTA_TIME are false postives and not included in tracks
@@ -365,6 +398,14 @@ for serie in series:
     #         if (len(all_tracks[i])>5):
     #             result.append(all_tracks[i])
 
+
+    # for final_track in all_tracks.values():
+    #     if final_track[0] == (14, 0, -1):
+    #         print("before", final_track)
+
+
+
+
     result = filter_track_list_by_length(all_tracks.values())
 
 
@@ -408,7 +449,17 @@ for serie in series:
     final_result = []    
     for i in range(len(result)):
         if (len(result[i])>5):
-            final_result.append(result[i])    
+            final_result.append(result[i])
+
+
+
+    for final_track in final_result:
+        if final_track[0] == (14, 0, -1):
+            print("after", final_track)
+
+
+
+
     identifier = serie
     viterbi_results_dict[identifier] = final_result      
             
