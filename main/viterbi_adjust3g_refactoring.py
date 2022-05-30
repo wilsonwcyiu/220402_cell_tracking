@@ -303,7 +303,7 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
                                       to_handle_cell_id_list: list, frame_num_prof_matrix_dict: dict,
                                       cell_id_frame_num_node_idx_best_index_list_dict_dict,
                                       cell_id_frame_num_node_idx_best_value_list_dict_dict,
-                                      merge_above_threshold:float=float(0.5)):
+                                      merge_above_threshold:float=float(0.0)):
 
     # existing_cell_idx_track_list_dict: dict = {}
     cell_id_track_list_dict: dict = {}
