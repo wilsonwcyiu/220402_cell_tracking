@@ -76,7 +76,7 @@ def main():
         thread_list: list = []
 
         for series in existing_series_list:
-            print(f"working on series: {series}. ", end="\t")
+            print(f"\n\n\n\nworking on series: {series}. ", end="\t")
 
             async_result = pool.apply_async(cell_tracking_core_flow, (series, segmentation_folder, all_segmented_filename_list, output_folder,)) # tuple of args for foo
             thread_list.append(async_result)
@@ -168,9 +168,9 @@ def cell_tracking_core_flow(series: str, segmentation_folder: str, all_segmented
         prof_mat_list: list = deprecate_derive_prof_matrix_list(segmentation_folder, output_folder, series, segmented_filename_list)
         final_track_list = post_adjustment_old(track_list_list, prof_mat_list)
 
-        for final_track in final_track_list:
-            if final_track[0] == (12, 0, -1):
-                dev_print("after", final_track)
+        # for final_track in final_track_list:
+        #     if final_track[0] == (12, 0, -1):
+        #         dev_print("after", final_track)
 
         return final_track_list
     else:
@@ -696,8 +696,14 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
             for occupied_cell_id in occupied_cell_id_list:
                 occupied_cell_idx = occupied_cell_id.cell_idx
 
-                dev_print("ehsdh", occupied_cell_id, last_frame_num, node_idx)
-                occupied_cell_probability: float = cell_id_frame_num_node_idx_best_value_list_dict_dict[occupied_cell_id][last_frame_num][node_idx]
+                # if occupied_cell_id == CellId(9, 29) and last_frame_num == 10 and node_idx == 28:
+                #     tmp1 = cell_id_frame_num_node_idx_best_value_list_dict_dict[occupied_cell_id]
+                #     dev_print("ehsdh", "debug", occupied_cell_id, last_frame_num, node_idx)
+
+                occupied_cell_second_frame_num: int = occupied_cell_id.start_frame_num + 1
+                if last_frame_num == occupied_cell_second_frame_num:      occupied_cell_probability: float = frame_num_prof_matrix_dict[occupied_cell_id.start_frame_num][occupied_cell_idx][node_idx]
+                elif last_frame_num > occupied_cell_second_frame_num:     occupied_cell_probability: float = cell_id_frame_num_node_idx_best_value_list_dict_dict[occupied_cell_id][last_frame_num][node_idx]
+                else: raise Exception()
 
                 if node_probability_value > last_frame_adjusted_threshold and occupied_cell_probability > last_frame_adjusted_threshold:
                     # print(f"let both cell share the same node; {last_frame_adjusted_threshold}; {np.round(node_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {node_idx}vs{occupied_cell_idx}")
@@ -739,7 +745,6 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
     # 2) all node is occupied by another cell which has a value higher than threshold
     if is_all_tracks_invalid:
         print("'is_all_tracks_invalid == True' detected, move one layer backward")
-        time.sleep(5)
 
         # find the last -1 layer, since as it is checked in previous process it must be valid
         last_layer_max_probability_idx: int = np.argmax(frame_num_node_idx_best_value_vec)
@@ -749,11 +754,21 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
         current_maximize_index = second_last_layer_max_probability_idx
 
 
-    previous_maximize_index: int = frame_num_node_idx_best_index_list_dict[last_frame_num][current_maximize_index]
+    handling_cell_second_frame_num: int = handling_cell_id.start_frame_num + 1
+    if last_frame_num == handling_cell_second_frame_num:
+        previous_maximize_index: int = handling_cell_idx
+
+    elif last_frame_num > handling_cell_second_frame_num:
+        previous_maximize_index: int = frame_num_node_idx_best_index_list_dict[last_frame_num][current_maximize_index]
+
+        last_frame_idx: int = last_frame_num - 1
+        cell_track_list.append((current_maximize_index, last_frame_idx, previous_maximize_index))
+    else: raise Exception()
+    # dev_print("esthdh", handling_cell_id.__str__(), last_frame_num, current_maximize_index)
 
 
-    last_frame_idx: int = last_frame_num - 1
-    cell_track_list.append((current_maximize_index, last_frame_idx, previous_maximize_index))
+
+
 
 
     # check if this is working fine
@@ -906,6 +921,11 @@ def _cut_1(cell_idx_track_list_dict: dict, threshold: float, frame_num_prof_matr
             next_node = cell_idx_track_list_dict[cell_id][index + 1][0]
 
             # weight_between_nodes = profit_matrix_list[frame_idx][current_node][next_node]
+            if cell_id == CellId(8, 7) and frame_num == 9 and current_node == 7 and next_node == 7:
+                dev_print("asdgasg", cell_id.__str__(), frame_num, current_node, next_node)
+                tmp = frame_num_prof_matrix_dict[frame_num][current_node]
+                tmp1 = frame_num_prof_matrix_dict[frame_num][current_node][next_node]
+
             weight_between_nodes = frame_num_prof_matrix_dict[frame_num][current_node][next_node]
             if (weight_between_nodes > threshold):
                 short_track_list.append(cell_idx_track_list_dict[cell_id][index])
