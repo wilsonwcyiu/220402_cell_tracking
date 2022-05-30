@@ -303,7 +303,7 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
                                       to_handle_cell_id_list: list, frame_num_prof_matrix_dict: dict,
                                       cell_id_frame_num_node_idx_best_index_list_dict_dict,
                                       cell_id_frame_num_node_idx_best_value_list_dict_dict,
-                                      merge_above_threshold:float=float(0.0)):
+                                      merge_above_threshold:float=float(0.5)):
 
     # existing_cell_idx_track_list_dict: dict = {}
     cell_id_track_list_dict: dict = {}
@@ -354,13 +354,23 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
             # adjusted_merge_above_threshold: Decimal = Decimal(merge_above_threshold) ** Decimal(handling_frame_num)
             adjusted_merge_above_threshold: float = derive_merge_threshold_in_layer(merge_above_threshold, STRATEGY_ENUM.ALL_LAYER , handling_frame_num)
 
+
+            if handling_cell_id == CellId(2, 32):
+                dev_print("6uer", "debug")
+
+            if handling_cell_id.start_frame_num == 2 and  handling_cell_id.cell_idx == 32 and handling_frame_num == 5:
+                dev_print("8gikuyc", "debug")
+
+
             index_ab_vec, value_ab_vec = derive_last_layer_each_node_best_track(handling_cell_id,
                                                                                 last_layer_all_connection_value_mtx,
                                                                                 frame_num_prof_matrix_dict,
                                                                                 handling_frame_num,
                                                                                 frame_num_node_idx_cell_id_occupation_list_list_dict,
                                                                                 adjusted_merge_above_threshold,
-                                                                                cell_id_frame_num_node_idx_best_value_list_dict_dict)
+                                                                                cell_id_frame_num_node_idx_best_value_list_dict_dict,
+                                                                                cell_id_track_list_dict,
+                                                                                existing_cell_idx_track_list_dict)
 
             if ( np.all(value_ab_vec == 0) ):
                 # print()
@@ -658,9 +668,6 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
 
     last_frame_num: int = np.max(list(frame_num_node_idx_best_value_list_dict.keys()))
     second_frame_num: int = np.min(list(frame_num_node_idx_best_value_list_dict.keys()))
-    # total_frame: int = last_frame_num - second_frame_num + 1
-
-    last_frame_idx: int = last_frame_num - 1
 
     current_maximize_index: int = None
     current_maximize_value: float = 0
@@ -668,7 +675,11 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
     to_redo_cell_id_set: set = set()
     last_frame_adjusted_threshold: float = derive_merge_threshold_in_layer(merge_above_threshold, STRATEGY_ENUM.ALL_LAYER , last_frame_num)
 
+
     for node_idx, node_probability_value in enumerate(frame_num_node_idx_best_value_vec):
+        if handling_cell_id == CellId(2, 32) and node_idx == 31:
+            dev_print("warsgsg", "debug")
+
         is_new_value_higher: bool = (node_probability_value > current_maximize_value)
 
         if not is_new_value_higher:
@@ -684,6 +695,8 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
         elif has_cell_occupation:
             for occupied_cell_id in occupied_cell_id_list:
                 occupied_cell_idx = occupied_cell_id.cell_idx
+
+                dev_print("ehsdh", occupied_cell_id, last_frame_num, node_idx)
                 occupied_cell_probability: float = cell_id_frame_num_node_idx_best_value_list_dict_dict[occupied_cell_id][last_frame_num][node_idx]
 
                 if node_probability_value > last_frame_adjusted_threshold and occupied_cell_probability > last_frame_adjusted_threshold:
@@ -692,7 +705,8 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
                     current_maximize_value = node_probability_value
 
                 elif node_probability_value < last_frame_adjusted_threshold and occupied_cell_probability > last_frame_adjusted_threshold:
-                    print(f"handling_cell_probability merge to other cell; {last_frame_adjusted_threshold}; {np.round(node_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {node_idx}vs{occupied_cell_idx}")
+                    # may happen in last layer, as viterbi does not check last layer score
+                    print(f"no valid cell in last layer due to other cell occupation with higher threshold. Use layer - 1 track; {last_frame_adjusted_threshold}; {np.round(node_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {node_idx}vs{occupied_cell_idx}")
                     pass
 
                 elif node_probability_value > last_frame_adjusted_threshold and occupied_cell_probability < last_frame_adjusted_threshold:
@@ -718,8 +732,27 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
                     print(node_probability_value, occupied_cell_probability, merge_above_threshold)
                     raise Exception("else")
 
+
+    is_all_tracks_invalid: bool = (current_maximize_index == None)
+    # this could happen because last layer is not checked with occupation (but last layer -1 is checked). Therefore, it happens if:
+    # 1) probability value is lower than threshold
+    # 2) all node is occupied by another cell which has a value higher than threshold
+    if is_all_tracks_invalid:
+        print("'is_all_tracks_invalid == True' detected, move one layer backward")
+        time.sleep(5)
+
+        # find the last -1 layer, since as it is checked in previous process it must be valid
+        last_layer_max_probability_idx: int = np.argmax(frame_num_node_idx_best_value_vec)
+        second_last_layer_max_probability_idx: int = frame_num_node_idx_best_index_list_dict[last_frame_num][last_layer_max_probability_idx]
+
+        last_frame_num -= 1
+        current_maximize_index = second_last_layer_max_probability_idx
+
+
     previous_maximize_index: int = frame_num_node_idx_best_index_list_dict[last_frame_num][current_maximize_index]
 
+
+    last_frame_idx: int = last_frame_num - 1
     cell_track_list.append((current_maximize_index, last_frame_idx, previous_maximize_index))
 
 
@@ -1227,7 +1260,9 @@ def derive_last_layer_each_node_best_track(handling_cell_id,  # CellId
                                            handling_frame_num: int,
                                            frame_num_node_idx_cell_id_occupation_list_list_dict: dict,
                                            merge_above_threshold: float,
-                                           cell_id_frame_num_node_idx_best_value_list_dict_dict: dict):
+                                           cell_id_frame_num_node_idx_best_value_list_dict_dict: dict,
+                                           cell_id_track_list_dict,
+                                           existing_cell_idx_track_list_dict):
 
     handling_cell_idx: int = handling_cell_id.cell_idx
     start_frame_num: int = handling_cell_id.start_frame_num
@@ -1243,6 +1278,12 @@ def derive_last_layer_each_node_best_track(handling_cell_id,  # CellId
 
         node_connection_score_list = last_layer_all_probability_mtx[:, next_frame_node_idx]
         for node_idx, node_connection_score in enumerate(node_connection_score_list):
+
+            if handling_cell_id == CellId(2, 32) and next_frame_node_idx == 31 and handling_frame_num == 5 and node_idx == 34:
+                tmp1 = cell_id_track_list_dict#[CellId(1, 32)]
+                tmp2 = existing_cell_idx_track_list_dict[CellId(1, 32)]
+                dev_print("tnjdrg", "debug")
+
             is_new_connection_score_higher: bool = (node_connection_score > best_score)
             if not is_new_connection_score_higher:
                 continue
@@ -1348,7 +1389,7 @@ class CellId():
 
 
     def __str__(self):
-        return f"start_frame_num: {self.start_frame_num}; cell_idx: {self.cell_idx};"
+        return f"CellId(start_frame_num: {self.start_frame_num}; cell_idx: {self.cell_idx})"
 
 
     def __eq__(self, other):
