@@ -51,8 +51,8 @@ def main():
     is_use_thread: bool = False
 
     ## hyper parameter settings
-    strategy_enum: STRATEGY_ENUM = STRATEGY_ENUM.ALL_LAYER
-    merge_threshold: float = float(0.0)
+    strategy_enum: STRATEGY_ENUM = STRATEGY_ENUM.ONE_LAYER
+    merge_threshold: float = float(0.5)
     minimum_track_length: int = 5
     cut_threshold: float = float(0.01)
     hyper_para: HyperPara = HyperPara(strategy_enum, merge_threshold, minimum_track_length, cut_threshold)
@@ -65,7 +65,7 @@ def main():
 
     input_series_list = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
                          'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
-    # input_series_list = ['S13']
+    # input_series_list = ['S05']
 
     all_segmented_filename_list = listdir(segmentation_folder)
     all_segmented_filename_list.sort()
@@ -608,7 +608,9 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
                     else: raise Exception()
 
                 elif strategy_enum == STRATEGY_ENUM.ONE_LAYER:
-                    occupied_cell_probability = frame_num_prof_matrix_dict[last_frame_num - 1][occupied_cell_idx][node_idx]
+                    handling_frame_occupied_cell_idx: int = cell_id_frame_num_node_idx_best_index_list_dict_dict[occupied_cell_id][last_frame_num][node_idx]
+                    # dev_print("sfdhd", last_frame_num - 1, occupied_cell_idx, node_idx)
+                    occupied_cell_probability = frame_num_prof_matrix_dict[last_frame_num - 1][handling_frame_occupied_cell_idx][node_idx]
 
                 else:
                     raise Exception(strategy_enum)
@@ -626,15 +628,12 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
                     pass
 
                 elif node_probability_value > last_frame_adjusted_threshold and occupied_cell_probability < last_frame_adjusted_threshold:
-                    print(f"redo trajectory of occupied_cell_idx {occupied_cell_idx}; {last_frame_adjusted_threshold}; {np.round(node_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {node_idx}vs{occupied_cell_idx}")
-                    start_frame_num: int = 1
-                    to_redo_cell_id_set.add(CellId(start_frame_num, occupied_cell_idx))
+                    print("htrs", f"redo trajectory of occupied_cell_idx {occupied_cell_id.__str__()}; {last_frame_adjusted_threshold}; {np.round(node_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {node_idx}vs{occupied_cell_idx}")
+                    to_redo_cell_id_set.add(occupied_cell_id)
                     # may not be final track, handle at find track
 
                     current_maximize_index = node_idx
                     current_maximize_value = node_probability_value
-
-                    # time.sleep(2)
 
                 elif node_probability_value < last_frame_adjusted_threshold and occupied_cell_probability < last_frame_adjusted_threshold:
                     # print(f"??? have to define what to do (For now, let both cell share the same node ). {last_frame_adjusted_threshold}; {np.round(node_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {node_idx}vs{occupied_cell_idx}")
