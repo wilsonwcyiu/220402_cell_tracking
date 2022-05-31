@@ -707,6 +707,8 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
             for occupied_cell_id in occupied_cell_id_list:
                 occupied_cell_start_frame_num: int = occupied_cell_id.start_frame_num
                 occupied_cell_second_frame: int = occupied_cell_start_frame_num + 1
+                occupied_cell_idx: int = occupied_cell_id.cell_idx
+
                 if reversed_frame_num == occupied_cell_second_frame:     occupied_cell_probability: float = frame_num_prof_matrix_dict[occupied_cell_start_frame_num][occupied_cell_idx][current_maximize_index]
                 elif reversed_frame_num > occupied_cell_second_frame:    occupied_cell_probability: float = cell_id_frame_num_node_idx_best_value_list_dict_dict[occupied_cell_id][reversed_frame_num][current_maximize_index]
 
