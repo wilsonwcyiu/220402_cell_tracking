@@ -51,73 +51,80 @@ def main():
     is_use_thread: bool = False
 
     ## hyper parameter settings
-    strategy_enum: STRATEGY_ENUM = STRATEGY_ENUM.ONE_LAYER
-    merge_threshold: float = float(0.5)
+    strategy_enum: STRATEGY_ENUM = STRATEGY_ENUM.ALL_LAYER
+    merge_threshold: float = float(0.0)
     minimum_track_length: int = 5
     cut_threshold: float = float(0.01)
-    hyper_para: HyperPara = HyperPara(strategy_enum, merge_threshold, minimum_track_length, cut_threshold)
+    is_do_post_adjustment: bool = True
+
+    hyper_para: HyperPara = HyperPara(strategy_enum, merge_threshold, minimum_track_length, cut_threshold, is_do_post_adjustment)
 
 
+    hyper_para_list: list = [hyper_para]
 
-    print("start")
-    start_time = time.perf_counter()
+    total_para_size: int = len(hyper_para_list)
+    for idx, hyper_para in enumerate(hyper_para_list):
+        print(f"start {idx+1}/ {total_para_size}")
+        time.sleep(5)
+
+        start_time = time.perf_counter()
+
+        input_series_list = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
+                             'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
+        # input_series_list = ['S04']
+
+        all_segmented_filename_list = listdir(segmentation_folder)
+        all_segmented_filename_list.sort()
+
+        existing_series_list = derive_existing_series_list(input_series_list, listdir(output_folder))
+
+        viterbi_result_dict = {}
+
+        if is_use_thread:
+            for input_series in input_series_list:
+                viterbi_result_dict[input_series] = []
+
+            pool = ThreadPool(processes=8)
+            thread_list: list = []
+
+            for series in existing_series_list:
+                print(f"working on series: {series}. ")
+
+                async_result = pool.apply_async(cell_tracking_core_flow, (series, segmentation_folder, all_segmented_filename_list, output_folder, hyper_para, )) # tuple of args for foo
+                thread_list.append(async_result)
+
+            for thread_idx in range(len(thread_list)):
+                final_result_list = thread_list[thread_idx].get()
+                viterbi_result_dict[series] = final_result_list
+                print(f"Thread {thread_idx} completed")
+
+        else:
+            for series in existing_series_list:
+                print(f"working on series: {series}. ")
+                final_result_list = cell_tracking_core_flow(series, segmentation_folder, all_segmented_filename_list, output_folder, hyper_para)
+                viterbi_result_dict[series] = final_result_list
 
 
-    input_series_list = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
-                         'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
-    # input_series_list = ['S05']
+        print("save_track_dictionary")
+        # file_name: str = f"}viterbi_results_dict_{idx+1}__{hyper_para.strategy_enum}_T{hyper_para.merge_threshold}_CT{hyper_para.cut_threshold}_MIN{hyper_para.minimum_track_length}_PADJ({hyper_para.is_do_post_adjustment})"
+        save_track_dictionary(viterbi_result_dict, save_dir + "viterbi_results_dict.pkl")
 
-    all_segmented_filename_list = listdir(segmentation_folder)
-    all_segmented_filename_list.sort()
-
-    existing_series_list = derive_existing_series_list(input_series_list, listdir(output_folder))
-
-    viterbi_result_dict = {}
-
-    if is_use_thread:
-        for input_series in input_series_list:
-            viterbi_result_dict[input_series] = []
-
-        pool = ThreadPool(processes=8)
-        thread_list: list = []
-
-        for series in existing_series_list:
-            print(f"\n\n\n\nworking on series: {series}. ", end="\t")
-
-            async_result = pool.apply_async(cell_tracking_core_flow, (series, segmentation_folder, all_segmented_filename_list, output_folder, hyper_para, )) # tuple of args for foo
-            thread_list.append(async_result)
-
-        for thread_idx in range(len(thread_list)):
-            final_result_list = thread_list[thread_idx].get()
-            viterbi_result_dict[series] = final_result_list
-            print(f"Thread {thread_idx} completed")
-
-    else:
-        for series in existing_series_list:
-            print(f"working on series: {series}", end="\t")
-            final_result_list = cell_tracking_core_flow(series, segmentation_folder, all_segmented_filename_list, output_folder, hyper_para)
-            viterbi_result_dict[series] = final_result_list
-
-
-    print("save_track_dictionary")
-    save_track_dictionary(viterbi_result_dict, save_dir + "viterbi_results_dict.pkl")
-
-    result_txt_file_name: str = Path(__file__).name
-    with open(save_dir + result_txt_file_name + ".txt", 'w') as f:
-        for series in existing_series_list:
-            f.write("======================" + str(series) + "================================")
-            f.write("\n")
-            cell_track_list_list = sorted(viterbi_result_dict[series])
-            for cell_track_list in cell_track_list_list:
-                f.write(str(cell_track_list))
+        result_txt_file_name: str = Path(__file__).name
+        with open(save_dir + result_txt_file_name + ".txt", 'w') as f:
+            for series in existing_series_list:
+                f.write("======================" + str(series) + "================================")
                 f.write("\n")
+                cell_track_list_list = sorted(viterbi_result_dict[series])
+                for cell_track_list in cell_track_list_list:
+                    f.write(str(cell_track_list))
+                    f.write("\n")
 
-            f.write("\n\n")
+                f.write("\n\n")
 
 
 
-    execution_time = time.perf_counter() - start_time
-    print(f"Execution time: {np.round(execution_time, 4)} seconds")
+        execution_time = time.perf_counter() - start_time
+        print(f"Execution time: {np.round(execution_time, 4)} seconds")
 
 
 
@@ -133,19 +140,14 @@ def cell_tracking_core_flow(series: str, segmentation_folder: str, all_segmented
 
     segmented_filename_list: list = derive_segmented_filename_list_by_series(series, all_segmented_filename_list)
 
-
     frame_num_prof_matrix_dict: dict = derive_frame_num_prof_matrix_dict(segmentation_folder, output_folder, series, segmented_filename_list)
-
 
     if is_create_excel:
         save_prof_matrix_to_excel(series, frame_num_prof_matrix_dict, excel_output_dir_path="d:/tmp/")
 
-
     all_track_dict = execute_cell_tracking_task(frame_num_prof_matrix_dict, hyper_para)
 
-
     all_track_dict = filter_track_dict_by_length(all_track_dict, hyper_para.minimum_track_length)
-
 
     sorted_cell_id_key_list = sorted(list(all_track_dict.keys()), key=cmp_to_key(compare_cell_id))
     sorted_dict: dict = {}
@@ -153,11 +155,9 @@ def cell_tracking_core_flow(series: str, segmentation_folder: str, all_segmented
         sorted_dict[sorted_key] = all_track_dict[sorted_key]
     all_track_dict = sorted_dict
 
-
     track_list_list = filter_track_list_by_length(all_track_dict.values(), hyper_para.minimum_track_length)
 
-
-    is_do_post_adjustment: bool = True
+    is_do_post_adjustment: bool = hyper_para.is_do_post_adjustment
     if is_do_post_adjustment:
         prof_mat_list: list = deprecate_derive_prof_matrix_list(segmentation_folder, output_folder, series, segmented_filename_list)
         final_track_list = post_adjustment_old(track_list_list, prof_mat_list)
@@ -185,16 +185,17 @@ def execute_cell_tracking_task(frame_num_prof_matrix_dict: dict, hyper_para):
     start_frame_num: int = 1
     first_frame_mtx: np.array = frame_num_prof_matrix_dict[start_frame_num]
     total_cell_in_first_frame: int = first_frame_mtx.shape[0]
-    to_handle_cell_id_list: list = [CellId(1, cell_idx) for cell_idx in range(0, total_cell_in_first_frame)]
+    to_handle_cell_id_list: list = [CellId(start_frame_num, cell_idx) for cell_idx in range(0, total_cell_in_first_frame)]
 
     cell_id_frame_num_node_idx_best_index_list_dict_dict: dict = defaultdict(dict)
     cell_id_frame_num_node_idx_best_value_list_dict_dict: dict = defaultdict(dict)
 
 
-
+    print(f"frame {start_frame_num}: ", end='')
     cell_idx_track_list_dict, \
     cell_id_frame_num_node_idx_best_index_list_dict_dict, \
-    cell_id_frame_num_node_idx_best_value_list_dict_dict = \
+    cell_id_frame_num_node_idx_best_value_list_dict_dict, \
+    frame_num_node_idx_cell_occupation_list_list_dict = \
                                                             _process_and_find_best_cell_track(all_cell_id_track_list_dict,
                                                                                               to_handle_cell_id_list,
                                                                                               frame_num_prof_matrix_dict,
@@ -202,7 +203,7 @@ def execute_cell_tracking_task(frame_num_prof_matrix_dict: dict, hyper_para):
                                                                                               cell_id_frame_num_node_idx_best_value_list_dict_dict,
                                                                                               hyper_para.merge_threshold,
                                                                                               hyper_para.strategy_enum)
-
+    print("  --> finish")
 
     cell_idx_short_track_list_dict = _cut_1(cell_idx_track_list_dict, hyper_para.cut_threshold, frame_num_prof_matrix_dict)   # filter out cells that does not make sense (e.g. too low probability)
 
@@ -213,29 +214,44 @@ def execute_cell_tracking_task(frame_num_prof_matrix_dict: dict, hyper_para):
     ##
     ## handle new cells that enter the image
     ##
-    mask_transition_group_mtx_list = _initiate_mask(frame_num_prof_matrix_dict)
-    mask_transition_group_mtx_list = _mask_update(cell_idx_short_track_list_dict, mask_transition_group_mtx_list)
+    # mask_transition_group_mtx_list = _initiate_mask(frame_num_prof_matrix_dict)
+    # mask_transition_group_mtx_list = _mask_update(all_cell_id_track_list_dict, mask_transition_group_mtx_list)
 
     second_frame_num: int = 2
-    last_frame_num: int = np.max(list(frame_num_prof_matrix_dict.keys()))
+    last_frame_num: int = np.max(list(frame_num_prof_matrix_dict.keys())) # should be + 1?
+
+
+
 
     for frame_num in range(second_frame_num, last_frame_num):
+        print(f"frame {frame_num}: ", end='')
         profit_matrix_idx = frame_num - 1
         for cell_row_idx in range(frame_num_prof_matrix_dict[frame_num].shape[0]):  #skip all nodes which are already passed
 
-            is_old_call: bool = (mask_transition_group_mtx_list[profit_matrix_idx][cell_row_idx] == True)
+            # is_old_cell: bool = (mask_transition_group_mtx_list[profit_matrix_idx][cell_row_idx] == True)
 
-            if is_old_call:
+            # if is_old_cell != (not is_new_cell):
+            #     dev_print("is_old_cell != (not is_new_cell)d")
+            #     time.sleep(5)
+            #     raise Exception("is_old_cell != (not is_new_cell):")
+
+            # if is_old_cell:
+            #     continue
+
+            is_new_cell: bool = len(frame_num_node_idx_cell_occupation_list_list_dict[frame_num][cell_row_idx]) == 0
+            if not is_new_cell:
                 continue
+
+
 
             cell_id = CellId(frame_num, cell_row_idx)
 
-
-
             to_handle_cell_id_list: list = [cell_id]
+
             new_cell_idx_track_list_dict, \
             cell_id_frame_num_node_idx_best_index_list_dict_dict, \
-            cell_id_frame_num_node_idx_best_value_list_dict_dict = \
+            cell_id_frame_num_node_idx_best_value_list_dict_dict, \
+            xxxx_frame_num_node_idx_cell_occupation_list_list_dict = \
                                                                     _process_and_find_best_cell_track(all_cell_id_track_list_dict,
                                                                                                       to_handle_cell_id_list,
                                                                                                       frame_num_prof_matrix_dict,
@@ -250,11 +266,22 @@ def execute_cell_tracking_task(frame_num_prof_matrix_dict: dict, hyper_para):
 
             code_validate_track(new_short_cell_id_track_list_dict)
 
-            mask_transition_group_mtx_list = _mask_update(new_short_cell_id_track_list_dict, mask_transition_group_mtx_list)
 
             all_cell_id_track_list_dict.update(new_short_cell_id_track_list_dict)
 
+            frame_num_node_idx_cell_occupation_list_list_dict = initiate_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_prof_matrix_dict)
+            frame_num_node_idx_cell_occupation_list_list_dict = update_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_node_idx_cell_occupation_list_list_dict, all_cell_id_track_list_dict)
+
+
+            # mask_transition_group_mtx_list = _mask_update(new_short_cell_id_track_list_dict, mask_transition_group_mtx_list)
+
+            # mask_transition_group_mtx_list = _initiate_mask(frame_num_prof_matrix_dict)
+            # mask_transition_group_mtx_list = _mask_update(all_cell_id_track_list_dict, mask_transition_group_mtx_list)
+
+
             code_validate_track(all_cell_id_track_list_dict)
+
+        print("  --> finish")
 
     return all_cell_id_track_list_dict
 
@@ -274,11 +301,11 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
 
     to_skip_cell_id_list: list = []
     last_frame_num: int = np.max(list(frame_num_prof_matrix_dict.keys())) + 1
-    frame_num_node_idx_cell_id_occupation_list_list_dict: dict = initiate_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_prof_matrix_dict)
+    frame_num_node_idx_cell_occupation_list_list_dict: dict = initiate_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_prof_matrix_dict)
 
 
     code_validate_track(existing_cell_idx_track_list_dict)
-    frame_num_node_idx_cell_id_occupation_list_list_dict = update_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_node_idx_cell_id_occupation_list_list_dict, existing_cell_idx_track_list_dict)
+    frame_num_node_idx_cell_occupation_list_list_dict = update_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_node_idx_cell_occupation_list_list_dict, existing_cell_idx_track_list_dict)
 
 
     while len(to_handle_cell_id_list) != 0:
@@ -299,7 +326,6 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
 
 
         for handling_frame_num in range(second_frame, last_frame_num):
-
 
             if strategy_enum == STRATEGY_ENUM.ALL_LAYER:
                 if  handling_frame_num == second_frame:  last_layer_best_connection_value_list = frame_num_prof_matrix_dict[start_frame_num][handling_cell_idx]
@@ -328,7 +354,7 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
                                                                                 last_layer_all_connection_value_mtx,
                                                                                 frame_num_prof_matrix_dict,
                                                                                 handling_frame_num,
-                                                                                frame_num_node_idx_cell_id_occupation_list_list_dict,
+                                                                                frame_num_node_idx_cell_occupation_list_list_dict,
                                                                                 adjusted_merge_above_threshold,
                                                                                 cell_id_frame_num_node_idx_best_value_list_dict_dict,
                                                                                 strategy_enum,
@@ -353,7 +379,7 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
             cell_track_list, to_redo_cell_id_list = derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict,
                                                                             cell_id_frame_num_node_idx_best_value_list_dict_dict,
                                                                             frame_num_prof_matrix_dict,
-                                                                            frame_num_node_idx_cell_id_occupation_list_list_dict,
+                                                                            frame_num_node_idx_cell_occupation_list_list_dict,
                                                                             merge_above_threshold,
                                                                             handling_cell_id,
                                                                             strategy_enum)
@@ -386,12 +412,11 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
 
             to_handle_cell_id_list.sort(key=cmp_to_key(compare_cell_id))
 
-            frame_num_node_idx_cell_id_occupation_list_list_dict = initiate_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_prof_matrix_dict)
-            frame_num_node_idx_cell_id_occupation_list_list_dict = update_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_node_idx_cell_id_occupation_list_list_dict, existing_cell_idx_track_list_dict)
+            frame_num_node_idx_cell_occupation_list_list_dict = initiate_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_prof_matrix_dict)
+            frame_num_node_idx_cell_occupation_list_list_dict = update_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_node_idx_cell_occupation_list_list_dict, cell_id_track_list_dict)
+            frame_num_node_idx_cell_occupation_list_list_dict = update_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_node_idx_cell_occupation_list_list_dict, existing_cell_idx_track_list_dict)
 
-    print("  --> finish")
-
-    return cell_id_track_list_dict, cell_id_frame_num_node_idx_best_index_list_dict_dict, cell_id_frame_num_node_idx_best_value_list_dict_dict
+    return cell_id_track_list_dict, cell_id_frame_num_node_idx_best_index_list_dict_dict, cell_id_frame_num_node_idx_best_value_list_dict_dict, frame_num_node_idx_cell_occupation_list_list_dict
 
 
 
@@ -784,30 +809,30 @@ def _cut_1(cell_idx_track_list_dict: dict, threshold: float, frame_num_prof_matr
 
 
 
-def _initiate_mask(frame_num_prof_matrix_dict: dict):
-    mask_frame_cell_id_list: list = []      #list list that stores [frame_id][cell_id]
+# def _initiate_mask(frame_num_prof_matrix_dict: dict):
+#     mask_frame_cell_id_list: list = []      #list list that stores [frame_id][cell_id]
+#
+#     # initialize the transition group with all False
+#     for profit_matrix in frame_num_prof_matrix_dict.values():
+#         num_of_cell: int = profit_matrix.shape[0]
+#         mask_frame_cell_id_list.append(np.array([False for i in range(num_of_cell)]))
+#
+#     mask_frame_cell_id_list.append(np.array([False for i in range(profit_matrix.shape[1])]))
+#
+#     return mask_frame_cell_id_list
 
-    # initialize the transition group with all False
-    for profit_matrix in frame_num_prof_matrix_dict.values():
-        num_of_cell: int = profit_matrix.shape[0]
-        mask_frame_cell_id_list.append(np.array([False for i in range(num_of_cell)]))
-
-    mask_frame_cell_id_list.append(np.array([False for i in range(profit_matrix.shape[1])]))
-
-    return mask_frame_cell_id_list
 
 
-
-#update the mask matrix based on each track obtained in iteration
-def _mask_update(short_Tracks, mask_transition_group):
-    # if the node was passed, lable it to True
-    for cell_id, vv in short_Tracks.items():
-        for iindex in range(len(short_Tracks[cell_id])):
-            frame = short_Tracks[cell_id][iindex][1]
-            node = short_Tracks[cell_id][iindex][0]
-            mask_transition_group[frame][node] = True
-
-    return mask_transition_group
+# #update the mask matrix based on each track obtained in iteration
+# def _mask_update(short_Tracks, mask_transition_group):
+#     # if the node was passed, lable it to True
+#     for cell_id, vv in short_Tracks.items():
+#         for iindex in range(len(short_Tracks[cell_id])):
+#             frame = short_Tracks[cell_id][iindex][1]
+#             node = short_Tracks[cell_id][iindex][0]
+#             mask_transition_group[frame][node] = True
+#
+#     return mask_transition_group
 
 
 
@@ -878,11 +903,16 @@ def deprecated_derive_frame_num_node_id_occupation_tuple_list_dict(frame_num_pro
 def initiate_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_prof_matrix_dict: dict):
     frame_num_node_idx_occupation_tuple_vec_dict: dict = {}
 
-    # initiate frame_num_node_idx_occupation_tuple_vec_dict
+    # initiate slots from frame 1 to (last_frame-1)
     for frame_num, profit_matrix in frame_num_prof_matrix_dict.items():
-        next_frame_num: int = frame_num + 1
-        total_cell_next_frame: int = profit_matrix.shape[1]
-        frame_num_node_idx_occupation_tuple_vec_dict[next_frame_num] = [[] for _ in range(total_cell_next_frame)]
+        total_cell: int = profit_matrix.shape[0]
+        frame_num_node_idx_occupation_tuple_vec_dict[frame_num] = [[] for _ in range(total_cell)]
+
+    # initiate slots for last_frame
+    last_frame_num: int = np.max(list(frame_num_prof_matrix_dict.keys())) + 1
+    second_last_frame_num: int = last_frame_num - 1
+    total_cell_last_frame: int = frame_num_prof_matrix_dict[second_last_frame_num].shape[1]
+    frame_num_node_idx_occupation_tuple_vec_dict[last_frame_num] = [[] for _ in range(total_cell_last_frame)]
 
     return frame_num_node_idx_occupation_tuple_vec_dict
 
@@ -890,19 +920,23 @@ def initiate_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_prof
 
 def update_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_node_idx_occupation_tuple_vec_dict: dict, cell_id_track_tuple_list_dict: dict):
     for occupied_cell_id, track_tuple_list in cell_id_track_tuple_list_dict.items():
-        start_frame_idx: int = track_tuple_list[0][1]
-        start_frame_num: int = start_frame_idx + 1
+        # start_frame_idx: int = track_tuple_list[0][1]
+        # start_frame_num: int = start_frame_idx + 1
+
+        # if occupied_cell_id == CellId(102, 2):
+        #     time.sleep(5)
+        #     print("debug")
 
         for track_tuple in track_tuple_list:
             frame_num: int = track_tuple[1] + 1
 
-            if frame_num == start_frame_num:
-                continue
+            # if frame_num == start_frame_num:
+            #     continue
 
             occupied_node_idx: int = track_tuple[0]
 
 
-            if frame_num <= occupied_cell_id.start_frame_num:
+            if frame_num < occupied_cell_id.start_frame_num:
                 time.sleep(2)
                 print(occupied_cell_id)
                 print(track_tuple_list)
@@ -1109,11 +1143,13 @@ def __________object_start_label():
 
 
 class HyperPara():
-    def __init__(self, strategy_enum: STRATEGY_ENUM, merge_threshold: float, minimum_track_length: int, cut_threshold: float):
+    def __init__(self, strategy_enum: STRATEGY_ENUM, merge_threshold: float, minimum_track_length: int, cut_threshold: float, is_do_post_adjustment: bool):
         self.strategy_enum: STRATEGY_ENUM = strategy_enum
         self.merge_threshold: float = merge_threshold
         self.minimum_track_length: int = minimum_track_length
         self.cut_threshold: float = cut_threshold
+        self.is_do_post_adjustment: bool = is_do_post_adjustment
+        # self.both_cell_below_threshold_strategy =
 
 
 
