@@ -460,7 +460,6 @@ def filter_track_dict_by_length(all_track_dict: dict, minimum_track_length: int)
 
 
 def derive_merge_threshold_in_layer(merge_above_threshold:float, strategy_enum:STRATEGY_ENUM , frame_num:int, frame_num_profit_mtx:dict=None):
-
     if strategy_enum == STRATEGY_ENUM.ALL_LAYER:
         if frame_num > 1: threshold_exponential: float = float(frame_num - 1)
         elif frame_num == 1: threshold_exponential = 1                          # avoid 0.5^0 becomes 1
@@ -1099,7 +1098,9 @@ def derive_last_layer_each_node_best_track(handling_cell_id,  # CellId
                     elif handling_frame_num > occupied_cell_second_frame:    occupied_cell_probability_1: float = cell_id_frame_num_node_idx_best_value_list_dict_dict[occupied_cell_id][handling_frame_num][node_idx]
                     else: raise Exception(occupied_cell_id.__str__(), handling_frame_num, node_idx, occupied_cell_second_frame)
 
-                    if handling_cell_probability > merge_above_threshold and occupied_cell_probability_1 > merge_above_threshold:
+                    code_validate_cell_probability(node_connection_score, occupied_cell_probability_1)
+
+                    if handling_cell_probability >= merge_above_threshold and occupied_cell_probability_1 >= merge_above_threshold:
                         # print(f"let both cell share the same node; {merge_above_threshold}; {np.round(node_connection_score, 20)}, {np.round(occupied_cell_probability_1, 20)} ; {handling_cell_idx}vs{occupied_cell_idx}")
                         if not is_new_connection_score_higher:
                             raise Exception("not is_new_connection_score_higher")
@@ -1107,11 +1108,11 @@ def derive_last_layer_each_node_best_track(handling_cell_id,  # CellId
                         best_idx = node_idx
                         best_score = node_connection_score
 
-                    elif handling_cell_probability < merge_above_threshold and occupied_cell_probability_1 > merge_above_threshold:
+                    elif handling_cell_probability < merge_above_threshold and occupied_cell_probability_1 >= merge_above_threshold:
                         pass
                         # print(f"handling_cell_probability merge to other cell; {merge_above_threshold}; {np.round(node_connection_score, 20)}, {np.round(occupied_cell_probability_1, 20)} ; {handling_cell_idx}vs{occupied_cell_idx}")
 
-                    elif handling_cell_probability > merge_above_threshold and occupied_cell_probability_1 < merge_above_threshold:
+                    elif handling_cell_probability >= merge_above_threshold and occupied_cell_probability_1 < merge_above_threshold:
                         # print(f"redo trajectory of occupied_cell_idx {occupied_cell_idx}; {merge_above_threshold}; {np.round(node_connection_score, 20)}, {np.round(occupied_cell_probability_1, 20)} ; {handling_cell_idx}vs{occupied_cell_idx}")
                         # to_redo_cell_idx_set.add(occupied_cell_idx)
                         # may not be final track, handle at find track
@@ -1223,6 +1224,11 @@ def __________code_validation_function_start_label():
     raise Exception("for labeling only")
 
 
+def code_validate_cell_probability(cell_1_prob: float, cell_2_prob: float):
+    if cell_1_prob == 0: raise Exception("cell_1_prob == 0")
+    if cell_2_prob == 0: raise Exception("cell_2_prob == 0")
+
+
 
 def code_validate_track(cell_idx_track_list_dict):
     for cell_id, track_list in cell_idx_track_list_dict.items():
@@ -1261,6 +1267,7 @@ def code_validate_track_key_order(cell_idx_track_list_dict):
 
         max_frame_num = cell_id.start_frame_num
         max_cell_idx = cell_id.cell_idx
+
 
 if __name__ == '__main__':
     main()
