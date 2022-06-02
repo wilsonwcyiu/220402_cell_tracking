@@ -52,7 +52,7 @@ def main():
 
     ## hyper parameter settings
     strategy_enum: STRATEGY_ENUM = STRATEGY_ENUM.ALL_LAYER
-    merge_threshold: float = float(0.0)
+    merge_threshold: float = float(0.5)
     minimum_track_length: int = 5
     cut_threshold: float = float(0.01)
     is_do_post_adjustment: bool = True
@@ -412,10 +412,10 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
 
             for to_redo_cell_id in to_redo_cell_id_list:
                 if to_redo_cell_id in existing_cell_idx_track_list_dict:
-                    frame_num_node_idx_occupation_tuple_vec_dict = remove_track_from_cell_occupation_list_list_dict(frame_num_node_idx_occupation_tuple_vec_dict, to_redo_cell_id, existing_cell_idx_track_list_dict[to_redo_cell_id])
+                    frame_num_node_idx_cell_occupation_list_list_dict = remove_track_from_cell_occupation_list_list_dict(frame_num_node_idx_cell_occupation_list_list_dict, to_redo_cell_id, existing_cell_idx_track_list_dict[to_redo_cell_id])
                     del existing_cell_idx_track_list_dict[to_redo_cell_id]
                 elif to_redo_cell_id in cell_id_track_list_dict:
-                    frame_num_node_idx_occupation_tuple_vec_dict = remove_track_from_cell_occupation_list_list_dict(frame_num_node_idx_occupation_tuple_vec_dict, to_redo_cell_id, cell_id_track_list_dict[to_redo_cell_id])
+                    frame_num_node_idx_cell_occupation_list_list_dict = remove_track_from_cell_occupation_list_list_dict(frame_num_node_idx_cell_occupation_list_list_dict, to_redo_cell_id, cell_id_track_list_dict[to_redo_cell_id])
                     del cell_id_track_list_dict[to_redo_cell_id]
                 else:
                     raise Exception(to_redo_cell_id)
