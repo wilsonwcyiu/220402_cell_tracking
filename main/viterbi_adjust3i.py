@@ -292,7 +292,8 @@ def execute_cell_tracking_task(frame_num_prof_matrix_dict: dict, hyper_para):
 
 #loop each node on first frame to find the optimal path using probabilty multiply
 def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
-                                      to_handle_cell_id_list: list, frame_num_prof_matrix_dict: dict,
+                                      to_handle_cell_id_list: list,
+                                      frame_num_prof_matrix_dict: dict,
                                       cell_id_frame_num_node_idx_best_index_list_dict_dict,
                                       cell_id_frame_num_node_idx_best_value_list_dict_dict,
                                       merge_above_threshold: float,
@@ -308,7 +309,9 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
 
 
     code_validate_track(existing_cell_idx_track_list_dict)
-    frame_num_node_idx_cell_occupation_list_list_dict = update_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_node_idx_cell_occupation_list_list_dict, existing_cell_idx_track_list_dict)
+    for cell_id, track_list in existing_cell_idx_track_list_dict.items():
+        frame_num_node_idx_cell_occupation_list_list_dict = add_track_to_cell_occupation_list_list_dict(frame_num_node_idx_cell_occupation_list_list_dict, cell_id, track_list)
+    # frame_num_node_idx_cell_occupation_list_list_dict = update_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_node_idx_cell_occupation_list_list_dict, existing_cell_idx_track_list_dict)
 
 
     while len(to_handle_cell_id_list) != 0:
@@ -392,7 +395,7 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
 
             cell_id_track_list_dict[handling_cell_id] = cell_track_list
 
-
+            frame_num_node_idx_cell_occupation_list_list_dict = add_track_to_cell_occupation_list_list_dict(frame_num_node_idx_cell_occupation_list_list_dict, handling_cell_id, cell_track_list)
 
             tmp_frame_num = cell_track_list[0][1] + 1
             if handling_cell_id.start_frame_num != tmp_frame_num:
@@ -405,8 +408,10 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
 
             for to_redo_cell_id in to_redo_cell_id_list:
                 if to_redo_cell_id in existing_cell_idx_track_list_dict:
+                    frame_num_node_idx_occupation_tuple_vec_dict = remove_track_from_cell_occupation_list_list_dict(frame_num_node_idx_occupation_tuple_vec_dict, to_redo_cell_id, existing_cell_idx_track_list_dict[to_redo_cell_id])
                     del existing_cell_idx_track_list_dict[to_redo_cell_id]
                 elif to_redo_cell_id in cell_id_track_list_dict:
+                    frame_num_node_idx_occupation_tuple_vec_dict = remove_track_from_cell_occupation_list_list_dict(frame_num_node_idx_occupation_tuple_vec_dict, to_redo_cell_id, cell_id_track_list_dict[to_redo_cell_id])
                     del cell_id_track_list_dict[to_redo_cell_id]
                 else:
                     raise Exception(to_redo_cell_id)
@@ -418,9 +423,10 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
 
             to_handle_cell_id_list.sort(key=cmp_to_key(compare_cell_id))
 
-            frame_num_node_idx_cell_occupation_list_list_dict = initiate_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_prof_matrix_dict)
-            frame_num_node_idx_cell_occupation_list_list_dict = update_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_node_idx_cell_occupation_list_list_dict, cell_id_track_list_dict)
-            frame_num_node_idx_cell_occupation_list_list_dict = update_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_node_idx_cell_occupation_list_list_dict, existing_cell_idx_track_list_dict)
+            # frame_num_node_idx_cell_occupation_list_list_dict = initiate_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_prof_matrix_dict)
+            # frame_num_node_idx_cell_occupation_list_list_dict = update_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_node_idx_cell_occupation_list_list_dict, cell_id_track_list_dict)
+            # frame_num_node_idx_cell_occupation_list_list_dict = update_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_node_idx_cell_occupation_list_list_dict, existing_cell_idx_track_list_dict)
+
 
     return cell_id_track_list_dict, cell_id_frame_num_node_idx_best_index_list_dict_dict, cell_id_frame_num_node_idx_best_value_list_dict_dict, frame_num_node_idx_cell_occupation_list_list_dict
 
@@ -941,6 +947,28 @@ def initiate_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_prof
     second_last_frame_num: int = last_frame_num - 1
     total_cell_last_frame: int = frame_num_prof_matrix_dict[second_last_frame_num].shape[1]
     frame_num_node_idx_occupation_tuple_vec_dict[last_frame_num] = [[] for _ in range(total_cell_last_frame)]
+
+    return frame_num_node_idx_occupation_tuple_vec_dict
+
+
+
+def add_track_to_cell_occupation_list_list_dict(frame_num_node_idx_occupation_tuple_vec_dict: dict, cell_id, track_tuple_list: list):
+    for track_tuple in track_tuple_list:
+        frame_num: int = track_tuple[1] + 1
+        occupied_node_idx: int = track_tuple[0]
+
+        frame_num_node_idx_occupation_tuple_vec_dict[frame_num][occupied_node_idx].append(cell_id)
+
+    return frame_num_node_idx_occupation_tuple_vec_dict
+
+
+
+def remove_track_from_cell_occupation_list_list_dict(frame_num_node_idx_occupation_tuple_vec_dict: dict, cell_id, track_tuple_list: list):
+    for track_tuple in track_tuple_list:
+        frame_num: int = track_tuple[1] + 1
+        occupied_node_idx: int = track_tuple[0]
+
+        frame_num_node_idx_occupation_tuple_vec_dict[frame_num][occupied_node_idx].remove(cell_id)
 
     return frame_num_node_idx_occupation_tuple_vec_dict
 
