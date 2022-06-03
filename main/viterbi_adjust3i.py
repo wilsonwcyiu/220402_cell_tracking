@@ -52,7 +52,7 @@ def main():
 
     ## hyper parameter settings
     strategy_enum: STRATEGY_ENUM = STRATEGY_ENUM.ALL_LAYER
-    merge_threshold: float = float(0.5)
+    merge_threshold: float = float(0.0)
     minimum_track_length: int = 5
     cut_threshold: float = float(0.01)
     is_do_post_adjustment: bool = True
