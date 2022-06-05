@@ -356,7 +356,8 @@ def execute_cell_tracking_task(frame_num_prof_matrix_dict: dict, hyper_para):
                                                                                                   hyper_para.merge_threshold,
                                                                                                   hyper_para.strategy_enum,
                                                                                                   hyper_para.cut_strategy_enum,
-                                                                                                  hyper_para.cut_threshold)
+                                                                                                  hyper_para.cut_threshold,
+                                                                                                  hyper_para.both_cell_below_threshold_strategy_enum)
 
             # code_validate_track(new_cell_idx_track_list_dict)
             #
