@@ -110,7 +110,7 @@ def main():
 
         print("save_track_dictionary")
 
-        result_file_name: str = Path(__file__).name
+        result_file_name: str = Path(__file__).name.replace(".py", "")
 
         date_str: str = datetime.now().strftime("%Y%m%d-%H%M%S")
         hyper_para_indicator: str = "R(" +  str(hyper_para.routing_strategy_enum.name)[0] + ")_" + \
@@ -124,9 +124,8 @@ def main():
 
         os.makedirs(save_dir + date_str)
 
-        abs_save_dir: str = save_dir + date_str + "/" + result_file_name + "__hp" + str(idx) + "_" + hyper_para_indicator
+        abs_save_dir: str = save_dir + date_str + "/" + result_file_name + "__hp" + str(idx+1) + "_" + hyper_para_indicator
         save_track_dictionary(viterbi_result_dict, abs_save_dir + ".pkl")
-
 
         with open(abs_save_dir + ".txt", 'w') as f:
             f.write("hyper_para--- ID: " + str(idx+1) + "; \n" + hyper_para.__str_newlines__())
