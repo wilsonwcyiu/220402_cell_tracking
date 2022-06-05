@@ -50,7 +50,7 @@ def main():
     is_use_thread: bool = False
 
     ## hyper parameter settings
-    strategy_enum: STRATEGY_ENUM = STRATEGY_ENUM.ALL_LAYER
+    routing_strategy_enum: ROUTING_STRATEGY_ENUM = ROUTING_STRATEGY_ENUM.ALL_LAYER
     merge_threshold: float = float(0.0)
     minimum_track_length: int = 5
     cut_threshold: float = float(0.01)
@@ -58,7 +58,7 @@ def main():
     cut_strategy_enum: CUT_STRATEGY_ENUM = CUT_STRATEGY_ENUM.AFTER_ROUTING
 
 
-    hyper_para: HyperPara = HyperPara(strategy_enum, merge_threshold, minimum_track_length, cut_threshold, is_do_post_adjustment, cut_strategy_enum)
+    hyper_para: HyperPara = HyperPara(routing_strategy_enum, merge_threshold, minimum_track_length, cut_threshold, is_do_post_adjustment, cut_strategy_enum)
 
 
     hyper_para_list: list = [hyper_para]
@@ -108,7 +108,7 @@ def main():
 
 
         print("save_track_dictionary")
-        # file_name: str = f"}viterbi_results_dict_{idx+1}__{hyper_para.strategy_enum}_T{hyper_para.merge_threshold}_CT{hyper_para.cut_threshold}_MIN{hyper_para.minimum_track_length}_PADJ({hyper_para.is_do_post_adjustment})"
+        # file_name: str = f"}viterbi_results_dict_{idx+1}__{hyper_para.routing_strategy_enum}_T{hyper_para.merge_threshold}_CT{hyper_para.cut_threshold}_MIN{hyper_para.minimum_track_length}_PADJ({hyper_para.is_do_post_adjustment})"
 
 
         result_file_name: str = Path(__file__).name
@@ -143,7 +143,7 @@ def __________object_start_label():
 
 
 
-class STRATEGY_ENUM(enum.Enum):
+class ROUTING_STRATEGY_ENUM(enum.Enum):
     ALL_LAYER = 1
     ONE_LAYER = 2
 
@@ -154,9 +154,9 @@ class CUT_STRATEGY_ENUM(enum.Enum):
 
 
 class HyperPara():
-    def __init__(self, strategy_enum: STRATEGY_ENUM, merge_threshold: float, minimum_track_length: int, cut_threshold: float, is_do_post_adjustment: bool,
+    def __init__(self, routing_strategy_enum: ROUTING_STRATEGY_ENUM, merge_threshold: float, minimum_track_length: int, cut_threshold: float, is_do_post_adjustment: bool,
                  cut_strategy_enum: CUT_STRATEGY_ENUM):
-        self.strategy_enum: STRATEGY_ENUM = strategy_enum
+        self.strategy_enum: ROUTING_STRATEGY_ENUM = routing_strategy_enum
         self.merge_threshold: float = merge_threshold
         self.minimum_track_length: int = minimum_track_length
         self.cut_threshold: float = cut_threshold
@@ -389,7 +389,7 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
                                       cell_id_frame_num_node_idx_best_index_list_dict_dict,
                                       cell_id_frame_num_node_idx_best_value_list_dict_dict,
                                       merge_above_threshold: float,
-                                      strategy_enum: STRATEGY_ENUM,
+                                      routing_strategy_enum: ROUTING_STRATEGY_ENUM,
                                       cut_strategy_enum: CUT_STRATEGY_ENUM,
                                       cut_threshold: float):
 
@@ -429,7 +429,7 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
                 dev_print("debug")
 
 
-            if strategy_enum == STRATEGY_ENUM.ALL_LAYER:
+            if routing_strategy_enum == ROUTING_STRATEGY_ENUM.ALL_LAYER:
                 if  handling_frame_num == second_frame:  last_layer_best_connection_value_list = frame_num_prof_matrix_dict[start_frame_num][handling_cell_idx]
                 elif handling_frame_num > second_frame:  last_layer_best_connection_value_list = cell_id_frame_num_node_idx_best_value_list_dict_dict[handling_cell_id][handling_frame_num]
 
@@ -442,14 +442,14 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
 
                 last_layer_all_connection_value_mtx: np.array = last_layer_cell_mtx * tmp_prof_matrix
 
-            elif strategy_enum == STRATEGY_ENUM.ONE_LAYER:
+            elif routing_strategy_enum == ROUTING_STRATEGY_ENUM.ONE_LAYER:
                 last_layer_all_connection_value_mtx = frame_num_prof_matrix_dict[handling_frame_num]
 
             else:
-                raise Exception(strategy_enum)
+                raise Exception(routing_strategy_enum)
 
 
-            adjusted_merge_above_threshold: float = derive_merge_threshold_in_layer(merge_above_threshold, strategy_enum , handling_frame_num)
+            adjusted_merge_above_threshold: float = derive_merge_threshold_in_layer(merge_above_threshold, routing_strategy_enum, handling_frame_num)
 
 
             index_ab_vec, value_ab_vec = derive_last_layer_each_node_best_track(handling_cell_id,
@@ -459,7 +459,7 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
                                                                                 frame_num_node_idx_cell_occupation_list_list_dict,
                                                                                 adjusted_merge_above_threshold,
                                                                                 cell_id_frame_num_node_idx_best_value_list_dict_dict,
-                                                                                strategy_enum,
+                                                                                routing_strategy_enum,
                                                                                 cell_id_track_list_dict,
                                                                                 existing_cell_idx_track_list_dict,
                                                                                 cut_strategy_enum,
@@ -487,7 +487,7 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
                                                                             frame_num_node_idx_cell_occupation_list_list_dict,
                                                                             merge_above_threshold,
                                                                             handling_cell_id,
-                                                                            strategy_enum)
+                                                                            routing_strategy_enum)
 
             if cut_strategy_enum == CUT_STRATEGY_ENUM.AFTER_ROUTING:
                 cell_track_list = _cut_single_track(cell_track_list, cut_threshold, frame_num_prof_matrix_dict)
@@ -591,8 +591,8 @@ def filter_track_dict_by_length(all_track_dict: dict, minimum_track_length: int)
 
 
 
-def derive_merge_threshold_in_layer(merge_above_threshold:float, strategy_enum:STRATEGY_ENUM , frame_num:int, frame_num_profit_mtx:dict=None):
-    if strategy_enum == STRATEGY_ENUM.ALL_LAYER:
+def derive_merge_threshold_in_layer(merge_above_threshold:float, routing_strategy_enum:ROUTING_STRATEGY_ENUM, frame_num:int, frame_num_profit_mtx:dict=None):
+    if routing_strategy_enum == ROUTING_STRATEGY_ENUM.ALL_LAYER:
         if frame_num > 1: threshold_exponential: float = float(frame_num - 1)
         elif frame_num == 1: threshold_exponential = 1                          # avoid 0.5^0 becomes 1
         else: raise Exception()
@@ -601,11 +601,11 @@ def derive_merge_threshold_in_layer(merge_above_threshold:float, strategy_enum:S
 
         return merge_threshold_in_layer
 
-    elif strategy_enum == STRATEGY_ENUM.ONE_LAYER:
+    elif routing_strategy_enum == ROUTING_STRATEGY_ENUM.ONE_LAYER:
         return merge_above_threshold
 
     else:
-        raise Exception(strategy_enum)
+        raise Exception(routing_strategy_enum)
 
 
 
@@ -722,7 +722,7 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
                             frame_cell_occupation_vec_list_dict: dict,
                             merge_above_threshold: float,
                             handling_cell_id,
-                            strategy_enum):           # CellId
+                            routing_strategy_enum):           # CellId
 
     frame_num_node_idx_best_index_list_dict: dict = cell_id_frame_num_node_idx_best_index_list_dict_dict[handling_cell_id]
     frame_num_node_idx_best_value_list_dict: dict = cell_id_frame_num_node_idx_best_value_list_dict_dict[handling_cell_id]
@@ -737,7 +737,7 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
     current_maximize_value: float = 0
     frame_num_node_idx_best_value_vec: list = frame_num_node_idx_best_value_list_dict[last_frame_num]
     to_redo_cell_id_set: set = set()
-    last_frame_adjusted_threshold: float = derive_merge_threshold_in_layer(merge_above_threshold, STRATEGY_ENUM.ALL_LAYER , last_frame_num)
+    last_frame_adjusted_threshold: float = derive_merge_threshold_in_layer(merge_above_threshold, ROUTING_STRATEGY_ENUM.ALL_LAYER, last_frame_num)
 
 
     for node_idx, node_probability_value in enumerate(frame_num_node_idx_best_value_vec):
@@ -759,19 +759,19 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
                 occupied_cell_idx = occupied_cell_id.cell_idx
 
 
-                if strategy_enum == STRATEGY_ENUM.ALL_LAYER:
+                if routing_strategy_enum == ROUTING_STRATEGY_ENUM.ALL_LAYER:
                     occupied_cell_second_frame_num: int = occupied_cell_id.start_frame_num + 1
                     if last_frame_num == occupied_cell_second_frame_num:      occupied_cell_probability: float = frame_num_prof_matrix_dict[occupied_cell_id.start_frame_num][occupied_cell_idx][node_idx]
                     elif last_frame_num > occupied_cell_second_frame_num:     occupied_cell_probability: float = cell_id_frame_num_node_idx_best_value_list_dict_dict[occupied_cell_id][last_frame_num][node_idx]
                     else: raise Exception()
 
-                elif strategy_enum == STRATEGY_ENUM.ONE_LAYER:
+                elif routing_strategy_enum == ROUTING_STRATEGY_ENUM.ONE_LAYER:
                     handling_frame_occupied_cell_idx: int = cell_id_frame_num_node_idx_best_index_list_dict_dict[occupied_cell_id][last_frame_num][node_idx]
                     # dev_print("sfdhd", last_frame_num - 1, occupied_cell_idx, node_idx)
                     occupied_cell_probability = frame_num_prof_matrix_dict[last_frame_num - 1][handling_frame_occupied_cell_idx][node_idx]
 
                 else:
-                    raise Exception(strategy_enum)
+                    raise Exception(routing_strategy_enum)
 
 
 
@@ -848,7 +848,7 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
 
         cell_track_list.append((current_maximize_index, reversed_frame_idx, previous_maximize_index))
 
-        last_frame_adjusted_threshold: float = derive_merge_threshold_in_layer(merge_above_threshold, STRATEGY_ENUM.ALL_LAYER , reversed_frame_num)
+        last_frame_adjusted_threshold: float = derive_merge_threshold_in_layer(merge_above_threshold, ROUTING_STRATEGY_ENUM.ALL_LAYER, reversed_frame_num)
 
         ### add redo track here
         occupied_cell_id_list: tuple = frame_cell_occupation_vec_list_dict[reversed_frame_num][current_maximize_index]
@@ -1206,7 +1206,7 @@ def derive_last_layer_each_node_best_track(handling_cell_id,  # CellId
                                            frame_num_node_idx_cell_id_occupation_list_list_dict: dict,
                                            merge_above_threshold: float,
                                            cell_id_frame_num_node_idx_best_value_list_dict_dict: dict,
-                                           strategy_enum,
+                                           routing_strategy_enum: ROUTING_STRATEGY_ENUM,
                                            cell_id_track_list_dict,
                                            existing_cell_idx_track_list_dict,
                                            cut_strategy_enum: CUT_STRATEGY_ENUM,
