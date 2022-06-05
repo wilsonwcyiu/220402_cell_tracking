@@ -4,6 +4,7 @@ Created on Tue Sep 28 09:31:51 2021
 
 @author: 13784
 """
+from datetime import datetime
 import decimal
 import enum
 import os
@@ -47,7 +48,7 @@ def main():
     save_dir = folder_path + 'save_directory_enhancement/'
 
 
-    is_use_thread: bool = False
+    is_use_thread: bool = True
 
     ## hyper parameter settings
     routing_strategy_enum: ROUTING_STRATEGY_ENUM = ROUTING_STRATEGY_ENUM.ALL_LAYER
@@ -66,14 +67,14 @@ def main():
     total_para_size: int = len(hyper_para_list)
     for idx, hyper_para in enumerate(hyper_para_list):
         print(f"start {idx+1}/ {total_para_size}; {hyper_para.__str__()}")
-        time.sleep(5)
+        time.sleep(2)
 
         start_time = time.perf_counter()
 
-        input_series_list = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
-                             'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
+        # input_series_list = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
+        #                      'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
         # input_series_list = ['S01']
-        # input_series_list = ['S02', 'S03', 'S04']
+        input_series_list = ['S02']#, 'S03', 'S04']
 
         all_segmented_filename_list = listdir(segmentation_folder)
         all_segmented_filename_list.sort()
@@ -108,14 +109,28 @@ def main():
 
 
         print("save_track_dictionary")
-        # file_name: str = f"}viterbi_results_dict_{idx+1}__{hyper_para.routing_strategy_enum}_T{hyper_para.merge_threshold}_CT{hyper_para.cut_threshold}_MIN{hyper_para.minimum_track_length}_PADJ({hyper_para.is_do_post_adjustment})"
-
 
         result_file_name: str = Path(__file__).name
 
-        save_track_dictionary(viterbi_result_dict, save_dir + result_file_name + ".pkl")
+        date_str: str = datetime.now().strftime("%Y%m%d-%H%M%S")
+        hyper_para_indicator: str = "R(" +  str(hyper_para.routing_strategy_enum.name)[0] + ")_" + \
+                                    "M(" + str(merge_threshold) + ")_" + \
+                                    "MIN(" + str(minimum_track_length) + ")_" + \
+                                    "CT(" + str(cut_threshold) + ")_" + \
+                                    "ADJ(" + ("T" if is_do_post_adjustment else "F") + ")_" + \
+                                    "CS(" +  str(cut_strategy_enum.name)[0] + ")_" + \
+                                    "BB(" + str(both_cell_below_threshold_strategy_enum.name)[0] + ")"
 
-        with open(save_dir + result_file_name + ".txt", 'w') as f:
+
+        os.makedirs(save_dir + date_str)
+
+        abs_save_dir: str = save_dir + date_str + "/" + result_file_name + "__hp" + str(idx) + "_" + hyper_para_indicator
+        save_track_dictionary(viterbi_result_dict, abs_save_dir + ".pkl")
+
+
+        with open(abs_save_dir + ".txt", 'w') as f:
+            f.write("hyper_para--- ID: " + str(idx+1) + "; \n" + hyper_para.__str_newlines__())
+            f.write("\n")
             for series in existing_series_list:
                 f.write("======================" + str(series) + "================================")
                 f.write("\n")
@@ -160,7 +175,7 @@ class BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM(enum.Enum):
 class HyperPara():
     def __init__(self, routing_strategy_enum: ROUTING_STRATEGY_ENUM, merge_threshold: float, minimum_track_length: int, cut_threshold: float, is_do_post_adjustment: bool,
                  cut_strategy_enum: CUT_STRATEGY_ENUM, both_cell_below_threshold_strategy_enum: BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM):
-        self.strategy_enum: ROUTING_STRATEGY_ENUM = routing_strategy_enum
+        self.routing_strategy_enum: ROUTING_STRATEGY_ENUM = routing_strategy_enum
         self.merge_threshold: float = merge_threshold
         self.minimum_track_length: int = minimum_track_length
         self.cut_threshold: float = cut_threshold
@@ -170,10 +185,27 @@ class HyperPara():
 
 
     def __str__(self):
-        return f"CellId(strategy_enum: {self.strategy_enum}; merge_threshold: {self.merge_threshold})"
+        return f"routing_strategy_enum: {self.routing_strategy_enum.name}; " \
+               f"merge_threshold: {self.merge_threshold}; " \
+               f"minimum_track_length: {self.minimum_track_length}; " \
+               f"cut_threshold: {self.cut_threshold}; " \
+               f"is_do_post_adjustment: {self.is_do_post_adjustment}; " \
+               f"cut_strategy_enum: {self.cut_strategy_enum.name}; " \
+               f"both_cell_below_threshold_strategy_enum: {self.both_cell_below_threshold_strategy_enum.name}; "
+
+
+    def __str_newlines__(self):
+        return f"routing_strategy_enum: {self.routing_strategy_enum.name}; \n" \
+               f"merge_threshold: {self.merge_threshold}; \n" \
+               f"minimum_track_length: {self.minimum_track_length}; \n" \
+               f"cut_threshold: {self.cut_threshold}; \n" \
+               f"is_do_post_adjustment: {self.is_do_post_adjustment}; \n" \
+               f"cut_strategy_enum: {self.cut_strategy_enum.name}; \n" \
+               f"both_cell_below_threshold_strategy_enum: {self.both_cell_below_threshold_strategy_enum.name}; \n"
+
 
     def __eq__(self, other):
-        if self.strategy_enum == other.strategy_enum and \
+        if self.routing_strategy_enum == other.routing_strategy_enum and \
                 self.merge_threshold == other.merge_threshold and \
                 self.minimum_track_length == other.minimum_track_length and \
                 self.cut_threshold == other.cut_threshold:
@@ -182,8 +214,9 @@ class HyperPara():
 
         return False
 
+
     def __hash__(self):
-        return hash((self.strategy_enum, self.merge_threshold, self.minimum_track_length, self.cut_threshold))
+        return hash((self.routing_strategy_enum, self.merge_threshold, self.minimum_track_length, self.cut_threshold))
 
 
 
@@ -296,7 +329,7 @@ def execute_cell_tracking_task(frame_num_prof_matrix_dict: dict, hyper_para):
                                                                                           cell_id_frame_num_node_idx_best_index_list_dict_dict,
                                                                                           cell_id_frame_num_node_idx_best_value_list_dict_dict,
                                                                                           hyper_para.merge_threshold,
-                                                                                          hyper_para.strategy_enum,
+                                                                                          hyper_para.routing_strategy_enum,
                                                                                           hyper_para.cut_strategy_enum,
                                                                                           hyper_para.cut_threshold,
                                                                                           hyper_para.both_cell_below_threshold_strategy_enum)
@@ -354,7 +387,7 @@ def execute_cell_tracking_task(frame_num_prof_matrix_dict: dict, hyper_para):
                                                                                                   cell_id_frame_num_node_idx_best_index_list_dict_dict,
                                                                                                   cell_id_frame_num_node_idx_best_value_list_dict_dict,
                                                                                                   hyper_para.merge_threshold,
-                                                                                                  hyper_para.strategy_enum,
+                                                                                                  hyper_para.routing_strategy_enum,
                                                                                                   hyper_para.cut_strategy_enum,
                                                                                                   hyper_para.cut_threshold,
                                                                                                   hyper_para.both_cell_below_threshold_strategy_enum)
