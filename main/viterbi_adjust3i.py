@@ -73,7 +73,7 @@ def main():
         input_series_list = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
                              'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
         # input_series_list = ['S01']
-        input_series_list = ['S02', 'S03', 'S04']
+        # input_series_list = ['S02', 'S03', 'S04']
 
         all_segmented_filename_list = listdir(segmentation_folder)
         all_segmented_filename_list.sort()
@@ -424,9 +424,9 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
 
 
         for handling_frame_num in range(second_frame, last_frame_num):
-            if handling_frame_num == 14:
-                tmp = frame_num_prof_matrix_dict[handling_frame_num]
-                dev_print("debug")
+            # if handling_frame_num == 14:
+            #     tmp = frame_num_prof_matrix_dict[handling_frame_num]
+                # dev_print("debug")
 
 
             if routing_strategy_enum == ROUTING_STRATEGY_ENUM.ALL_LAYER:
@@ -825,7 +825,16 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
 
         current_maximize_index: int = None
         current_maximize_value: float = 0
-        frame_num_node_idx_best_value_vec: list = frame_num_node_idx_best_value_list_dict[last_frame_num]
+        dev_print("ebnsbsbsd", handling_cell_id.start_frame_num)
+
+        handling_cell_second_frame_num: int = handling_cell_id.start_frame_num + 1
+        if last_frame_num == handling_cell_second_frame_num:
+            frame_num_node_idx_best_value_vec = frame_num_prof_matrix_dict[handling_cell_id.start_frame_num][handling_cell_id.cell_idx]
+        elif last_frame_num > handling_cell_second_frame_num:
+            frame_num_node_idx_best_value_vec: list = frame_num_node_idx_best_value_list_dict[last_frame_num]
+        else:
+            raise Exception()
+
         last_frame_adjusted_threshold: float = derive_merge_threshold_in_layer(merge_above_threshold, ROUTING_STRATEGY_ENUM.ALL_LAYER, last_frame_num)
 
         for node_idx, node_probability_value in enumerate(frame_num_node_idx_best_value_vec):
@@ -849,7 +858,8 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
                         occupied_cell_second_frame_num: int = occupied_cell_id.start_frame_num + 1
                         if last_frame_num == occupied_cell_second_frame_num:      occupied_cell_probability: float = frame_num_prof_matrix_dict[occupied_cell_id.start_frame_num][occupied_cell_idx][node_idx]
                         elif last_frame_num > occupied_cell_second_frame_num:     occupied_cell_probability: float = cell_id_frame_num_node_idx_best_value_list_dict_dict[occupied_cell_id][last_frame_num][node_idx]
-                        else: raise Exception()
+                        elif last_frame_num == occupied_cell_id.start_frame_num:   occupied_cell_probability: float = merge_above_threshold
+                        else: raise Exception(occupied_cell_id.start_frame_num, occupied_cell_id.cell_idx, last_frame_num)
 
                     elif routing_strategy_enum == ROUTING_STRATEGY_ENUM.ONE_LAYER:
                         handling_frame_occupied_cell_idx: int = cell_id_frame_num_node_idx_best_index_list_dict_dict[occupied_cell_id][last_frame_num][node_idx]
