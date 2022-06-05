@@ -34,9 +34,8 @@ from multiprocessing.pool import ThreadPool
 
 # from main.viterbi_adjust3e_refactoring import CellId
 
-class STRATEGY_ENUM(enum.Enum):
-    ALL_LAYER = 1
-    ONE_LAYER = 2
+
+
 
 def main():
 
@@ -56,8 +55,10 @@ def main():
     minimum_track_length: int = 5
     cut_threshold: float = float(0.01)
     is_do_post_adjustment: bool = True
+    cut_strategy_enum: CUT_STRATEGY_ENUM = CUT_STRATEGY_ENUM.AFTER_ROUTING
 
-    hyper_para: HyperPara = HyperPara(strategy_enum, merge_threshold, minimum_track_length, cut_threshold, is_do_post_adjustment)
+
+    hyper_para: HyperPara = HyperPara(strategy_enum, merge_threshold, minimum_track_length, cut_threshold, is_do_post_adjustment, cut_strategy_enum)
 
 
     hyper_para_list: list = [hyper_para]
@@ -71,7 +72,8 @@ def main():
 
         input_series_list = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
                              'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
-        # input_series_list = ['S04']
+        # input_series_list = ['S01']
+        # input_series_list = ['S02', 'S03', 'S04']
 
         all_segmented_filename_list = listdir(segmentation_folder)
         all_segmented_filename_list.sort()
@@ -107,15 +109,20 @@ def main():
 
         print("save_track_dictionary")
         # file_name: str = f"}viterbi_results_dict_{idx+1}__{hyper_para.strategy_enum}_T{hyper_para.merge_threshold}_CT{hyper_para.cut_threshold}_MIN{hyper_para.minimum_track_length}_PADJ({hyper_para.is_do_post_adjustment})"
-        save_track_dictionary(viterbi_result_dict, save_dir + "viterbi_results_dict.pkl")
 
-        result_txt_file_name: str = Path(__file__).name
-        with open(save_dir + result_txt_file_name + ".txt", 'w') as f:
+
+        result_file_name: str = Path(__file__).name
+
+        save_track_dictionary(viterbi_result_dict, save_dir + result_file_name + ".pkl")
+
+        with open(save_dir + result_file_name + ".txt", 'w') as f:
             for series in existing_series_list:
                 f.write("======================" + str(series) + "================================")
                 f.write("\n")
+
                 cell_track_list_list = sorted(viterbi_result_dict[series])
                 for cell_track_list in cell_track_list_list:
+                # for cell_track_list in viterbi_result_dict[series]:
                     f.write(str(cell_track_list))
                     f.write("\n")
 
@@ -129,6 +136,86 @@ def main():
 
 
 
+
+
+def __________object_start_label():
+    raise Exception("for labeling only")
+
+
+
+class STRATEGY_ENUM(enum.Enum):
+    ALL_LAYER = 1
+    ONE_LAYER = 2
+
+
+class CUT_STRATEGY_ENUM(enum.Enum):
+    DURING_ROUTING = 1
+    AFTER_ROUTING = 2
+
+
+class HyperPara():
+    def __init__(self, strategy_enum: STRATEGY_ENUM, merge_threshold: float, minimum_track_length: int, cut_threshold: float, is_do_post_adjustment: bool,
+                 cut_strategy_enum: CUT_STRATEGY_ENUM):
+        self.strategy_enum: STRATEGY_ENUM = strategy_enum
+        self.merge_threshold: float = merge_threshold
+        self.minimum_track_length: int = minimum_track_length
+        self.cut_threshold: float = cut_threshold
+        self.is_do_post_adjustment: bool = is_do_post_adjustment
+        self.cut_strategy_enum = cut_strategy_enum
+        # self.both_cell_below_threshold_strategy =
+
+
+    def __str__(self):
+        return f"CellId(strategy_enum: {self.strategy_enum}; merge_threshold: {self.merge_threshold})"
+
+    def __eq__(self, other):
+        if self.strategy_enum == other.strategy_enum and \
+                self.merge_threshold == other.merge_threshold and \
+                self.minimum_track_length == other.minimum_track_length and \
+                self.cut_threshold == other.cut_threshold:
+
+            return True
+
+        return False
+
+    def __hash__(self):
+        return hash((self.strategy_enum, self.merge_threshold, self.minimum_track_length, self.cut_threshold))
+
+
+
+class CellId():
+    def __init__(self, start_frame_num: int, cell_idx: int):
+        self.start_frame_num = start_frame_num
+        self.cell_idx = cell_idx
+
+    def __str__(self):
+        return f"CellId(start_frame_num: {self.start_frame_num}; cell_idx: {self.cell_idx})"
+
+    def __eq__(self, other):
+        if self.start_frame_num == other.start_frame_num and self.cell_idx == other.cell_idx:
+            return True
+
+        return False
+
+    def __hash__(self):
+        return hash((self.start_frame_num, self.cell_idx))
+
+
+def compare_cell_id(cell_1, cell_2):
+    if cell_1.start_frame_num == cell_2.start_frame_num:
+        if cell_1.cell_idx < cell_2.cell_idx:           return -1
+        elif cell_1.cell_idx > cell_2.cell_idx:         return 1
+        else:                                           raise Exception("cell_1.node_idx == cell_2.node_idx")
+
+    if cell_1.start_frame_num < cell_2.start_frame_num:            return -1
+    elif cell_1.start_frame_num > cell_2.start_frame_num:          return 1
+
+
+
+
+
+
+
 def __________flow_function_start_label():
     raise Exception("for labeling only")
 
@@ -136,7 +223,7 @@ def __________flow_function_start_label():
 
 
 
-def cell_tracking_core_flow(series: str, segmentation_folder: str, all_segmented_filename_list: list, output_folder: str, hyper_para, is_create_excel:bool=False):
+def cell_tracking_core_flow(series: str, segmentation_folder: str, all_segmented_filename_list: list, output_folder: str, hyper_para: HyperPara, is_create_excel:bool=False):
 
     segmented_filename_list: list = derive_segmented_filename_list_by_series(series, all_segmented_filename_list)
 
@@ -206,10 +293,9 @@ def execute_cell_tracking_task(frame_num_prof_matrix_dict: dict, hyper_para):
                                                                                           cell_id_frame_num_node_idx_best_value_list_dict_dict,
                                                                                           hyper_para.merge_threshold,
                                                                                           hyper_para.strategy_enum,
+                                                                                          hyper_para.cut_strategy_enum,
                                                                                           hyper_para.cut_threshold)
     print("  --> finish")
-
-    # cell_idx_short_track_list_dict = _cut_1(cell_idx_track_list_dict, hyper_para.cut_threshold, frame_num_prof_matrix_dict)   # filter out cells that does not make sense (e.g. too low probability)
 
     all_cell_id_track_list_dict.update(cell_idx_track_list_dict)
 
@@ -256,15 +342,16 @@ def execute_cell_tracking_task(frame_num_prof_matrix_dict: dict, hyper_para):
             cell_id_frame_num_node_idx_best_index_list_dict_dict, \
             cell_id_frame_num_node_idx_best_value_list_dict_dict, \
             frame_num_node_idx_cell_occupation_list_list_dict = \
-                _process_and_find_best_cell_track(all_cell_id_track_list_dict,
-                                                  to_handle_cell_id_list,
-                                                  frame_num_prof_matrix_dict,
-                                                  frame_num_node_idx_cell_occupation_list_list_dict,
-                                                  cell_id_frame_num_node_idx_best_index_list_dict_dict,
-                                                  cell_id_frame_num_node_idx_best_value_list_dict_dict,
-                                                  hyper_para.merge_threshold,
-                                                  hyper_para.strategy_enum,
-                                                  hyper_para.cut_threshold)
+                                                                _process_and_find_best_cell_track(all_cell_id_track_list_dict,
+                                                                                                  to_handle_cell_id_list,
+                                                                                                  frame_num_prof_matrix_dict,
+                                                                                                  frame_num_node_idx_cell_occupation_list_list_dict,
+                                                                                                  cell_id_frame_num_node_idx_best_index_list_dict_dict,
+                                                                                                  cell_id_frame_num_node_idx_best_value_list_dict_dict,
+                                                                                                  hyper_para.merge_threshold,
+                                                                                                  hyper_para.strategy_enum,
+                                                                                                  hyper_para.cut_strategy_enum,
+                                                                                                  hyper_para.cut_threshold)
 
             # code_validate_track(new_cell_idx_track_list_dict)
             #
@@ -303,6 +390,7 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
                                       cell_id_frame_num_node_idx_best_value_list_dict_dict,
                                       merge_above_threshold: float,
                                       strategy_enum: STRATEGY_ENUM,
+                                      cut_strategy_enum: CUT_STRATEGY_ENUM,
                                       cut_threshold: float):
 
     cell_id_track_list_dict: dict = {}
@@ -336,6 +424,10 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
 
 
         for handling_frame_num in range(second_frame, last_frame_num):
+            if handling_frame_num == 14:
+                tmp = frame_num_prof_matrix_dict[handling_frame_num]
+                dev_print("debug")
+
 
             if strategy_enum == STRATEGY_ENUM.ALL_LAYER:
                 if  handling_frame_num == second_frame:  last_layer_best_connection_value_list = frame_num_prof_matrix_dict[start_frame_num][handling_cell_idx]
@@ -369,7 +461,9 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
                                                                                 cell_id_frame_num_node_idx_best_value_list_dict_dict,
                                                                                 strategy_enum,
                                                                                 cell_id_track_list_dict,
-                                                                                existing_cell_idx_track_list_dict)
+                                                                                existing_cell_idx_track_list_dict,
+                                                                                cut_strategy_enum,
+                                                                                cut_threshold)
 
             if ( np.all(value_ab_vec == 0) ):
                 is_zero_track_length = (handling_frame_num == second_frame)
@@ -395,7 +489,8 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
                                                                             handling_cell_id,
                                                                             strategy_enum)
 
-            cell_track_list = _cut_single_track(cell_track_list, cut_threshold, frame_num_prof_matrix_dict)
+            if cut_strategy_enum == CUT_STRATEGY_ENUM.AFTER_ROUTING:
+                cell_track_list = _cut_single_track(cell_track_list, cut_threshold, frame_num_prof_matrix_dict)
 
             cell_id_track_list_dict[handling_cell_id] = cell_track_list
 
@@ -1113,7 +1208,9 @@ def derive_last_layer_each_node_best_track(handling_cell_id,  # CellId
                                            cell_id_frame_num_node_idx_best_value_list_dict_dict: dict,
                                            strategy_enum,
                                            cell_id_track_list_dict,
-                                           existing_cell_idx_track_list_dict):
+                                           existing_cell_idx_track_list_dict,
+                                           cut_strategy_enum: CUT_STRATEGY_ENUM,
+                                           cut_threshold: float):
 
     handling_cell_idx: int = handling_cell_id.cell_idx
     start_frame_num: int = handling_cell_id.start_frame_num
@@ -1129,6 +1226,10 @@ def derive_last_layer_each_node_best_track(handling_cell_id,  # CellId
 
         node_connection_score_list = last_layer_all_probability_mtx[:, next_frame_node_idx]
         for node_idx, node_connection_score in enumerate(node_connection_score_list):
+            if cut_strategy_enum == CUT_STRATEGY_ENUM.DURING_ROUTING:
+                if node_connection_score <= cut_threshold:
+                    continue
+
 
             is_new_connection_score_higher: bool = (node_connection_score > best_score)
             if not is_new_connection_score_higher:
@@ -1199,75 +1300,15 @@ def derive_last_layer_each_node_best_track(handling_cell_id,  # CellId
     return index_ab_vec, np.array(value_ab_vec)
 
 
-
-def __________object_start_label():
-    raise Exception("for labeling only")
-
-
-
-class HyperPara():
-    def __init__(self, strategy_enum: STRATEGY_ENUM, merge_threshold: float, minimum_track_length: int, cut_threshold: float, is_do_post_adjustment: bool):
-        self.strategy_enum: STRATEGY_ENUM = strategy_enum
-        self.merge_threshold: float = merge_threshold
-        self.minimum_track_length: int = minimum_track_length
-        self.cut_threshold: float = cut_threshold
-        self.is_do_post_adjustment: bool = is_do_post_adjustment
-        # self.both_cell_below_threshold_strategy =
-
-
-    def __str__(self):
-        return f"CellId(strategy_enum: {self.strategy_enum}; merge_threshold: {self.merge_threshold})"
-
-    def __eq__(self, other):
-        if self.strategy_enum == other.strategy_enum and \
-                self.merge_threshold == other.merge_threshold and \
-                self.minimum_track_length == other.minimum_track_length and \
-                self.cut_threshold == other.cut_threshold:
-
-            return True
-
-        return False
-
-    def __hash__(self):
-        return hash((self.strategy_enum, self.merge_threshold, self.minimum_track_length, self.cut_threshold))
-
-
-
-class CellId():
-    def __init__(self, start_frame_num: int, cell_idx: int):
-        self.start_frame_num = start_frame_num
-        self.cell_idx = cell_idx
-
-    def __str__(self):
-        return f"CellId(start_frame_num: {self.start_frame_num}; cell_idx: {self.cell_idx})"
-
-    def __eq__(self, other):
-        if self.start_frame_num == other.start_frame_num and self.cell_idx == other.cell_idx:
-            return True
-
-        return False
-
-    def __hash__(self):
-        return hash((self.start_frame_num, self.cell_idx))
-
-
-def compare_cell_id(cell_1, cell_2):
-    if cell_1.start_frame_num == cell_2.start_frame_num:
-        if cell_1.cell_idx < cell_2.cell_idx:           return -1
-        elif cell_1.cell_idx > cell_2.cell_idx:         return 1
-        else:                                           raise Exception("cell_1.node_idx == cell_2.node_idx")
-
-    if cell_1.start_frame_num < cell_2.start_frame_num:            return -1
-    elif cell_1.start_frame_num > cell_2.start_frame_num:          return 1
-
-
-
 def __________common_function_start_label():
     raise Exception("for labeling only")
 
 
+
 def dev_print(*arg):
     print(*arg)
+
+
 
 def save_track_dictionary(dictionary, save_file):
     if not os.path.exists(save_file):
