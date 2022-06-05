@@ -796,7 +796,7 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
                     pass
 
                 elif node_probability_value > last_frame_adjusted_threshold and occupied_cell_probability < last_frame_adjusted_threshold:
-                    print("htrs", f"redo trajectory of occupied_cell_idx {occupied_cell_id.__str__()}; {last_frame_adjusted_threshold}; {np.round(node_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {node_idx}vs{occupied_cell_idx}")
+                    print("--->", f"redo occupied_cell: {occupied_cell_id.__str__()};  last_frame_num: {last_frame_num}; node_idx: {node_idx}; last_frame_adjusted_threshold: {last_frame_adjusted_threshold}; node_probability_value: {np.round(node_probability_value, 20)}; occupied_cell_probability: {np.round(occupied_cell_probability, 20)} ;")
                     to_redo_cell_id_set.add(occupied_cell_id)
                     # may not be final track, handle at find track
 
@@ -812,9 +812,7 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
                         raise Exception()
 
                 else:
-                    print("sdgberbee")
-                    print(node_probability_value, occupied_cell_probability, merge_above_threshold)
-                    raise Exception("else")
+                    raise Exception(node_probability_value, occupied_cell_probability, merge_above_threshold)
 
 
     is_all_nodes_invalid: bool = (current_maximize_index == None)
@@ -893,7 +891,7 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
                         pass
 
                     elif node_probability_value > last_frame_adjusted_threshold and occupied_cell_probability < last_frame_adjusted_threshold:
-                        print("htrs", f"redo trajectory of occupied_cell_idx {occupied_cell_id.__str__()}; {last_frame_adjusted_threshold}; {np.round(node_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {node_idx}vs{occupied_cell_idx}")
+                        print("==>", f"redo occupied_cell: {occupied_cell_id.__str__()};  last_frame_num: {last_frame_num}; node_idx: {node_idx}; last_frame_adjusted_threshold: {last_frame_adjusted_threshold}; node_probability_value: {np.round(node_probability_value, 20)}; occupied_cell_probability: {np.round(occupied_cell_probability, 20)} ;")
                         to_redo_cell_id_set.add(occupied_cell_id)
                         # may not be final track, handle at find track
 
@@ -909,9 +907,7 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
                             raise Exception()
 
                     else:
-                        print("herhsdgberbee")
-                        print(node_probability_value, occupied_cell_probability, merge_above_threshold)
-                        raise Exception("else")
+                        raise Exception(node_probability_value, occupied_cell_probability, merge_above_threshold)
 
 
     # debug check
@@ -985,7 +981,7 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
                     # print("o", end='')
                     pass
                 elif handling_cell_probability > last_frame_adjusted_threshold and occupied_cell_probability < last_frame_adjusted_threshold:
-                    print("vwavb", f"redo trajectory of occupied_cell_idx {occupied_cell_id}; {last_frame_adjusted_threshold}; {np.round(node_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {current_maximize_index}vs{occupied_cell_id.cell_idx}")
+                    print(">>>", f"redo occupied_cell: {occupied_cell_id.__str__()};  last_frame_num: {last_frame_num}; node_idx: {node_idx}; last_frame_adjusted_threshold: {last_frame_adjusted_threshold}; node_probability_value: {np.round(node_probability_value, 20)}; occupied_cell_probability: {np.round(occupied_cell_probability, 20)} ;")
                     # time.sleep(5)
                     # start_frame_num: int = 1
                     to_redo_cell_id_set.add(occupied_cell_id)
@@ -999,9 +995,7 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
                         raise Exception()
 
                 else:
-                    print("vebj")
-                    print(node_probability_value, occupied_cell_probability, merge_above_threshold)
-                    raise Exception("else")
+                    raise Exception(node_probability_value, occupied_cell_probability, merge_above_threshold)
 
 
     start_frame_idx: int = handling_cell_id.start_frame_num - 1
