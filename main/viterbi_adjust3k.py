@@ -62,8 +62,8 @@ def main():
     both_cell_below_threshold_strategy_enum_list: list = [BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM.SHARE]
 
 
-    routing_strategy_enum_list: list = [ROUTING_STRATEGY_ENUM.ALL_LAYER]
-    merge_threshold_list: list = [0.0]
+    routing_strategy_enum_list: list = [ROUTING_STRATEGY_ENUM.ONE_LAYER]
+    merge_threshold_list: list = [0.6]
     minimum_track_length_list: list = [5]
     cut_threshold_list: list = [0.01]
     is_do_post_adjustment_list: list = [True]
@@ -736,6 +736,9 @@ def derive_best_index_from_specific_layer(frame_num_node_idx_best_value_vec,
 
 
 def _cut_single_track(track_tuple_list: list, cut_threshold: float, frame_num_prof_matrix_dict: dict):
+    if len(track_tuple_list) == 1:
+        return track_tuple_list
+
     second_last_frame_idx: int = (len(track_tuple_list) - 2)
     for idx in range(len(track_tuple_list) - 1):
         frame_idx = track_tuple_list[idx][1]
@@ -994,10 +997,11 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
     is_all_nodes_invalid_in_second_last_layer: bool = (current_maximize_index == None)
 
     if is_all_nodes_invalid_in_second_last_layer and routing_strategy_enum == ROUTING_STRATEGY_ENUM.ONE_LAYER:
-        print("no valid nodes found in the last two layers with ONE_LAYER strategy, return empty")
-        empty_cell_track_list: list = []
+        print("no valid nodes found in the last two layers with ONE_LAYER strategy, return self node")
+        start_frame_idx: int = handling_cell_id.start_frame_num - 1
+        cell_track_list.append((handling_cell_idx, start_frame_idx, -1))
         empty_to_redo_cell_id_list: list = []
-        return empty_cell_track_list, empty_to_redo_cell_id_list
+        return cell_track_list, empty_to_redo_cell_id_list
 
 
     if is_all_nodes_invalid_in_second_last_layer:
@@ -1083,7 +1087,7 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
                     # print("o", end='')
                     pass
                 elif handling_cell_probability > last_frame_adjusted_threshold and occupied_cell_probability < last_frame_adjusted_threshold:
-                    print(">>>", f"redo occupied_cell: {occupied_cell_id.__str__()};  last_frame_num: {last_frame_num}; node_idx: {node_idx}; last_frame_adjusted_threshold: {last_frame_adjusted_threshold}; node_probability_value: {np.round(node_probability_value, 20)}; occupied_cell_probability: {np.round(occupied_cell_probability, 20)} ;")
+                    print(">>>", f"redo occupied_cell: {occupied_cell_id.__str__()};  last_frame_num: {last_frame_num}; current_maximize_index: {current_maximize_index}; last_frame_adjusted_threshold: {last_frame_adjusted_threshold}; node_probability_value: {np.round(handling_cell_probability, 20)}; occupied_cell_probability: {np.round(occupied_cell_probability, 20)} ;")
                     # time.sleep(5)
                     # start_frame_num: int = 1
                     to_redo_cell_id_set.add(occupied_cell_id)
