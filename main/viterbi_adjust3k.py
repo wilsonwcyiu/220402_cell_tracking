@@ -653,6 +653,86 @@ def __________unit_function_start_label():
     raise Exception("for labeling only")
 
 
+def derive_best_index_from_specific_layer(frame_num_node_idx_best_value_vec,
+                                          handling_frame_num,
+                                          frame_cell_occupation_vec_list_dict,
+                                          frame_num_prof_matrix_dict,
+                                          cell_id_frame_num_node_idx_best_index_list_dict_dict,
+                                          cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict,
+                                          last_frame_adjusted_threshold,
+                                          routing_strategy_enum,
+                                          both_cell_below_threshold_strategy_enum
+                                          ):
+    to_redo_cell_id_set: set = set()
+    current_maximize_index: float = None
+    current_maximize_value: float = 0
+
+    for node_idx, node_probability_value in enumerate(frame_num_node_idx_best_value_vec):
+
+        is_new_value_higher: bool = (node_probability_value > current_maximize_value)
+
+        if not is_new_value_higher:
+            continue
+
+        occupied_cell_id_list: tuple = frame_cell_occupation_vec_list_dict[handling_frame_num][node_idx]
+        has_cell_occupation: bool = ( len(occupied_cell_id_list) != 0 )
+
+        if not has_cell_occupation:
+            current_maximize_index = node_idx
+            current_maximize_value = node_probability_value
+
+        elif has_cell_occupation:
+            for occupied_cell_id in occupied_cell_id_list:
+                occupied_cell_idx = occupied_cell_id.cell_idx
+
+
+                if routing_strategy_enum == ROUTING_STRATEGY_ENUM.ALL_LAYER:
+                    occupied_cell_second_frame_num: int = occupied_cell_id.start_frame_num + 1
+                    if handling_frame_num == occupied_cell_second_frame_num:      occupied_cell_probability: float = frame_num_prof_matrix_dict[occupied_cell_id.start_frame_num][occupied_cell_idx][node_idx]
+                    elif handling_frame_num > occupied_cell_second_frame_num:     occupied_cell_probability: float = cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict[occupied_cell_id][handling_frame_num][node_idx]
+                    elif handling_frame_num == occupied_cell_id.start_frame_num:  occupied_cell_probability: float = last_frame_adjusted_threshold
+                    else: raise Exception(handling_frame_num, occupied_cell_id.__str__)
+
+                elif routing_strategy_enum == ROUTING_STRATEGY_ENUM.ONE_LAYER:
+                    handling_frame_occupied_cell_idx: int = cell_id_frame_num_node_idx_best_index_list_dict_dict[occupied_cell_id][handling_frame_num][node_idx]
+                    # dev_print("sfdhd", last_frame_num - 1, occupied_cell_idx, node_idx)
+                    occupied_cell_probability = frame_num_prof_matrix_dict[handling_frame_num - 1][handling_frame_occupied_cell_idx][node_idx]
+
+                else:
+                    raise Exception(routing_strategy_enum)
+
+
+
+                if node_probability_value > last_frame_adjusted_threshold and occupied_cell_probability > last_frame_adjusted_threshold:
+                    # print(f"let both cell share the same node; {last_frame_adjusted_threshold}; {np.round(node_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {node_idx}vs{occupied_cell_idx}")
+                    current_maximize_index = node_idx
+                    current_maximize_value = node_probability_value
+
+                elif node_probability_value < last_frame_adjusted_threshold and occupied_cell_probability > last_frame_adjusted_threshold:
+                    # may happen in last layer, as viterbi does not check last layer score
+                    print(f"no valid cell in last layer due to other cell occupation with higher threshold. Use layer - 1 track; {last_frame_adjusted_threshold}; {np.round(node_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {node_idx}vs{occupied_cell_idx}")
+                    pass
+
+                elif node_probability_value > last_frame_adjusted_threshold and occupied_cell_probability < last_frame_adjusted_threshold:
+                    print("--->", f"redo occupied_cell: {occupied_cell_id.__str__()};  last_frame_num: {handling_frame_num}; node_idx: {node_idx}; last_frame_adjusted_threshold: {last_frame_adjusted_threshold}; node_probability_value: {np.round(node_probability_value, 20)}; occupied_cell_probability: {np.round(occupied_cell_probability, 20)} ;")
+                    to_redo_cell_id_set.add(occupied_cell_id)
+                    # may not be final track, handle at find track
+
+                    current_maximize_index = node_idx
+                    current_maximize_value = node_probability_value
+
+                elif node_probability_value < last_frame_adjusted_threshold and occupied_cell_probability < last_frame_adjusted_threshold:
+                    # print(f"??? have to define what to do (For now, let both cell share the same node ). {last_frame_adjusted_threshold}; {np.round(node_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {node_idx}vs{occupied_cell_idx}")
+                    if both_cell_below_threshold_strategy_enum == BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM.SHARE:
+                        current_maximize_index = node_idx
+                        current_maximize_value = node_probability_value
+                    else:
+                        raise Exception()
+
+                else:
+                    raise Exception(node_probability_value, occupied_cell_probability, last_frame_adjusted_threshold)
+
+    return current_maximize_index, list(to_redo_cell_id_set)
 
 
 def _cut_single_track(track_tuple_list: list, cut_threshold: float, frame_num_prof_matrix_dict: dict):
@@ -839,79 +919,29 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
     if last_frame_num == handling_cell_id.start_frame_num:
         raise Exception(handling_cell_id.__str__())
 
-    current_maximize_index: int = None
-    current_maximize_value: float = 0
+
+
     frame_num_node_idx_best_value_vec: list = frame_num_node_idx_best_multi_layer_value_list_dict[last_frame_num]
     to_redo_cell_id_set: set = set()
 
     # must be ROUTING_STRATEGY_ENUM.ALL_LAYER in all case because ONE_LAYER is compared with multi_layer_probability score
     last_frame_adjusted_threshold: float = derive_merge_threshold_in_layer(merge_above_threshold, ROUTING_STRATEGY_ENUM.ALL_LAYER, last_frame_num)
 
-
-    for node_idx, node_probability_value in enumerate(frame_num_node_idx_best_value_vec):
-
-        is_new_value_higher: bool = (node_probability_value > current_maximize_value)
-
-        if not is_new_value_higher:
-            continue
-
-        occupied_cell_id_list: tuple = frame_cell_occupation_vec_list_dict[last_frame_num][node_idx]
-        has_cell_occupation: bool = ( len(occupied_cell_id_list) != 0 )
-
-        if not has_cell_occupation:
-            current_maximize_index = node_idx
-            current_maximize_value = node_probability_value
-
-        elif has_cell_occupation:
-            for occupied_cell_id in occupied_cell_id_list:
-                occupied_cell_idx = occupied_cell_id.cell_idx
-
-
-                if routing_strategy_enum == ROUTING_STRATEGY_ENUM.ALL_LAYER:
-                    occupied_cell_second_frame_num: int = occupied_cell_id.start_frame_num + 1
-                    if last_frame_num == occupied_cell_second_frame_num:      occupied_cell_probability: float = frame_num_prof_matrix_dict[occupied_cell_id.start_frame_num][occupied_cell_idx][node_idx]
-                    elif last_frame_num > occupied_cell_second_frame_num:     occupied_cell_probability: float = cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict[occupied_cell_id][last_frame_num][node_idx]
-                    elif last_frame_num == occupied_cell_id.start_frame_num:  occupied_cell_probability: float = merge_above_threshold
-                    else: raise Exception(last_frame_num, occupied_cell_id.__str__)
-
-                elif routing_strategy_enum == ROUTING_STRATEGY_ENUM.ONE_LAYER:
-                    handling_frame_occupied_cell_idx: int = cell_id_frame_num_node_idx_best_index_list_dict_dict[occupied_cell_id][last_frame_num][node_idx]
-                    # dev_print("sfdhd", last_frame_num - 1, occupied_cell_idx, node_idx)
-                    occupied_cell_probability = frame_num_prof_matrix_dict[last_frame_num - 1][handling_frame_occupied_cell_idx][node_idx]
-
-                else:
-                    raise Exception(routing_strategy_enum)
+    current_maximize_index, to_redo_cell_id_list = derive_best_index_from_specific_layer(frame_num_node_idx_best_value_vec,
+                                                                                         last_frame_num,
+                                                                                         frame_cell_occupation_vec_list_dict,
+                                                                                         frame_num_prof_matrix_dict,
+                                                                                         cell_id_frame_num_node_idx_best_index_list_dict_dict,
+                                                                                         cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict,
+                                                                                         last_frame_adjusted_threshold,
+                                                                                         routing_strategy_enum,
+                                                                                         both_cell_below_threshold_strategy_enum)
+    if len(to_redo_cell_id_list) != 0:
+        to_redo_cell_id_set.update(set(to_redo_cell_id_list))
 
 
 
-                if node_probability_value > last_frame_adjusted_threshold and occupied_cell_probability > last_frame_adjusted_threshold:
-                    # print(f"let both cell share the same node; {last_frame_adjusted_threshold}; {np.round(node_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {node_idx}vs{occupied_cell_idx}")
-                    current_maximize_index = node_idx
-                    current_maximize_value = node_probability_value
 
-                elif node_probability_value < last_frame_adjusted_threshold and occupied_cell_probability > last_frame_adjusted_threshold:
-                    # may happen in last layer, as viterbi does not check last layer score
-                    print(f"no valid cell in last layer due to other cell occupation with higher threshold. Use layer - 1 track; {last_frame_adjusted_threshold}; {np.round(node_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {node_idx}vs{occupied_cell_idx}")
-                    pass
-
-                elif node_probability_value > last_frame_adjusted_threshold and occupied_cell_probability < last_frame_adjusted_threshold:
-                    print("--->", f"redo occupied_cell: {occupied_cell_id.__str__()};  last_frame_num: {last_frame_num}; node_idx: {node_idx}; last_frame_adjusted_threshold: {last_frame_adjusted_threshold}; node_probability_value: {np.round(node_probability_value, 20)}; occupied_cell_probability: {np.round(occupied_cell_probability, 20)} ;")
-                    to_redo_cell_id_set.add(occupied_cell_id)
-                    # may not be final track, handle at find track
-
-                    current_maximize_index = node_idx
-                    current_maximize_value = node_probability_value
-
-                elif node_probability_value < last_frame_adjusted_threshold and occupied_cell_probability < last_frame_adjusted_threshold:
-                    # print(f"??? have to define what to do (For now, let both cell share the same node ). {last_frame_adjusted_threshold}; {np.round(node_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {node_idx}vs{occupied_cell_idx}")
-                    if both_cell_below_threshold_strategy_enum == BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM.SHARE:
-                        current_maximize_index = node_idx
-                        current_maximize_value = node_probability_value
-                    else:
-                        raise Exception()
-
-                else:
-                    raise Exception(node_probability_value, occupied_cell_probability, merge_above_threshold)
 
 
     is_all_nodes_invalid: bool = (current_maximize_index == None)
@@ -933,12 +963,7 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
         # last_frame_num -= 1
         # current_maximize_index = second_last_layer_max_probability_idx
 
-
         last_frame_num -= 1
-
-        current_maximize_index: int = None
-        current_maximize_value: float = 0
-        # dev_print("ebnsbsbsd", handling_cell_id.start_frame_num)
 
         handling_cell_second_frame_num: int = handling_cell_id.start_frame_num + 1
         if last_frame_num == handling_cell_second_frame_num:
@@ -951,73 +976,30 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
         # must be ROUTING_STRATEGY_ENUM.ALL_LAYER in all case because ONE_LAYER is compared with multi_layer_probability score
         last_frame_adjusted_threshold: float = derive_merge_threshold_in_layer(merge_above_threshold, ROUTING_STRATEGY_ENUM.ALL_LAYER, last_frame_num)
 
-        for node_idx, node_probability_value in enumerate(frame_num_node_idx_best_value_vec):
-            is_new_value_higher: bool = (node_probability_value > current_maximize_value)
-
-            if not is_new_value_higher:
-                continue
-
-            occupied_cell_id_list: tuple = frame_cell_occupation_vec_list_dict[last_frame_num][node_idx]
-            has_cell_occupation: bool = ( len(occupied_cell_id_list) != 0 )
-
-            if not has_cell_occupation:
-                current_maximize_index = node_idx
-                current_maximize_value = node_probability_value
-
-            elif has_cell_occupation:
-                for occupied_cell_id in occupied_cell_id_list:
-                    occupied_cell_idx = occupied_cell_id.cell_idx
-
-                    if routing_strategy_enum == ROUTING_STRATEGY_ENUM.ALL_LAYER:
-                        occupied_cell_second_frame_num: int = occupied_cell_id.start_frame_num + 1
-                        if last_frame_num == occupied_cell_second_frame_num:      occupied_cell_probability: float = frame_num_prof_matrix_dict[occupied_cell_id.start_frame_num][occupied_cell_idx][node_idx]
-                        elif last_frame_num > occupied_cell_second_frame_num:     occupied_cell_probability: float = cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict[occupied_cell_id][last_frame_num][node_idx]
-                        elif last_frame_num == occupied_cell_id.start_frame_num:   occupied_cell_probability: float = merge_above_threshold
-                        else: raise Exception(occupied_cell_id.start_frame_num, occupied_cell_id.cell_idx, last_frame_num)
-
-                    elif routing_strategy_enum == ROUTING_STRATEGY_ENUM.ONE_LAYER:
-                        handling_frame_occupied_cell_idx: int = cell_id_frame_num_node_idx_best_index_list_dict_dict[occupied_cell_id][last_frame_num][node_idx]
-                        # dev_print("sfdhd", last_frame_num - 1, occupied_cell_idx, node_idx)
-                        occupied_cell_probability = frame_num_prof_matrix_dict[last_frame_num - 1][handling_frame_occupied_cell_idx][node_idx]
-
-                    else:
-                        raise Exception(routing_strategy_enum)
-
-
-
-                    if node_probability_value > last_frame_adjusted_threshold and occupied_cell_probability > last_frame_adjusted_threshold:
-                        # print(f"let both cell share the same node; {last_frame_adjusted_threshold}; {np.round(node_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {node_idx}vs{occupied_cell_idx}")
-                        current_maximize_index = node_idx
-                        current_maximize_value = node_probability_value
-
-                    elif node_probability_value < last_frame_adjusted_threshold and occupied_cell_probability > last_frame_adjusted_threshold:
-                        # may happen in last layer, as viterbi does not check last layer score
-                        print(f"no valid cell in last layer due to other cell occupation with higher threshold. Use layer - 1 track; {last_frame_adjusted_threshold}; {np.round(node_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {node_idx}vs{occupied_cell_idx}")
-                        pass
-
-                    elif node_probability_value > last_frame_adjusted_threshold and occupied_cell_probability < last_frame_adjusted_threshold:
-                        print("==>", f"redo occupied_cell: {occupied_cell_id.__str__()};  last_frame_num: {last_frame_num}; node_idx: {node_idx}; last_frame_adjusted_threshold: {last_frame_adjusted_threshold}; node_probability_value: {np.round(node_probability_value, 20)}; occupied_cell_probability: {np.round(occupied_cell_probability, 20)} ;")
-                        to_redo_cell_id_set.add(occupied_cell_id)
-                        # may not be final track, handle at find track
-
-                        current_maximize_index = node_idx
-                        current_maximize_value = node_probability_value
-
-                    elif node_probability_value < last_frame_adjusted_threshold and occupied_cell_probability < last_frame_adjusted_threshold:
-                        # print(f"??? have to define what to do (For now, let both cell share the same node ). {last_frame_adjusted_threshold}; {np.round(node_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {node_idx}vs{occupied_cell_idx}")
-                        if both_cell_below_threshold_strategy_enum == BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM.SHARE:
-                            current_maximize_index = node_idx
-                            current_maximize_value = node_probability_value
-                        else:
-                            raise Exception()
-
-                    else:
-                        raise Exception(node_probability_value, occupied_cell_probability, merge_above_threshold)
+        current_maximize_index, to_redo_cell_id_list = derive_best_index_from_specific_layer(frame_num_node_idx_best_value_vec,
+                                                                                                 last_frame_num,
+                                                                                                 frame_cell_occupation_vec_list_dict,
+                                                                                                 frame_num_prof_matrix_dict,
+                                                                                                 cell_id_frame_num_node_idx_best_index_list_dict_dict,
+                                                                                                 cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict,
+                                                                                                 last_frame_adjusted_threshold,
+                                                                                                 routing_strategy_enum,
+                                                                                                 both_cell_below_threshold_strategy_enum)
+        if len(to_redo_cell_id_list) != 0:
+            to_redo_cell_id_set.update(set(to_redo_cell_id_list))
 
 
 
     # debug check
     is_all_nodes_invalid_in_second_last_layer: bool = (current_maximize_index == None)
+
+    if is_all_nodes_invalid_in_second_last_layer and routing_strategy_enum == ROUTING_STRATEGY_ENUM.ONE_LAYER:
+        print("no valid nodes found in the last two layers with ONE_LAYER strategy, return empty")
+        empty_cell_track_list: list = []
+        empty_to_redo_cell_id_list: list = []
+        return empty_cell_track_list, empty_to_redo_cell_id_list
+
+
     if is_all_nodes_invalid_in_second_last_layer:
         raise Exception("is_all_nodes_invalid_in_second_last_layer")
 
@@ -1026,7 +1008,7 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
 
     if last_frame_num == handling_cell_id.start_frame_num:
         start_frame_idx: int = handling_cell_id.start_frame_num - 1
-        cell_track_list.append((current_maximize_index, start_frame_idx + 1, handling_cell_idx))
+        # cell_track_list.append((current_maximize_index, start_frame_idx + 1, handling_cell_idx))
         cell_track_list.append((handling_cell_idx, start_frame_idx, -1))
         return cell_track_list, list(to_redo_cell_id_set)
 
@@ -1115,7 +1097,7 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
                         raise Exception()
 
                 else:
-                    raise Exception(node_probability_value, occupied_cell_probability, merge_above_threshold)
+                    raise Exception(occupied_cell_probability, merge_above_threshold)
 
 
     start_frame_idx: int = handling_cell_id.start_frame_num - 1
