@@ -62,13 +62,13 @@ def main():
     both_cell_below_threshold_strategy_enum_list: list = [BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM.SHARE]
 
 
-    routing_strategy_enum_list: list = [ROUTING_STRATEGY_ENUM.ONE_LAYER]
-    merge_threshold_list: list = [0.6]
-    minimum_track_length_list: list = [5]
-    cut_threshold_list: list = [0.01]
-    is_do_post_adjustment_list: list = [True]
-    cut_strategy_enum_list: list = [CUT_STRATEGY_ENUM.AFTER_ROUTING]
-    both_cell_below_threshold_strategy_enum_list: list = [BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM.SHARE]
+    # routing_strategy_enum_list: list = [ROUTING_STRATEGY_ENUM.ONE_LAYER]
+    # merge_threshold_list: list = [0.6]
+    # minimum_track_length_list: list = [5]
+    # cut_threshold_list: list = [0.01]
+    # is_do_post_adjustment_list: list = [True]
+    # cut_strategy_enum_list: list = [CUT_STRATEGY_ENUM.AFTER_ROUTING]
+    # both_cell_below_threshold_strategy_enum_list: list = [BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM.SHARE]
 
     hyper_para_combination_list = list(itertools.product(routing_strategy_enum_list,
                                                          merge_threshold_list,
@@ -100,7 +100,7 @@ def main():
     for idx, hyper_para in enumerate(hyper_para_list):
 
         print(f"start {idx+1}/ {total_para_size}; {hyper_para.__str__()}")
-        # if idx <= 23: continue
+        if idx <= 43: continue
         # if hyper_para.routing_strategy_enum == ROUTING_STRATEGY_ENUM.ONE_LAYER: continue
 
 
@@ -162,7 +162,7 @@ def main():
 
 
 
-        abs_save_dir: str = save_dir + date_str + result_file_name + "__hp" + str(idx+1) + "_" + hyper_para_indicator
+        abs_save_dir: str = save_dir + date_str + result_file_name + "_hp" + str(idx+1).zfill(3) + "__" + hyper_para_indicator
         save_track_dictionary(viterbi_result_dict, abs_save_dir + ".pkl")
 
         with open(abs_save_dir + ".txt", 'w') as f:
@@ -685,7 +685,6 @@ def derive_best_index_from_specific_layer(frame_num_node_idx_best_value_vec,
             for occupied_cell_id in occupied_cell_id_list:
                 occupied_cell_idx = occupied_cell_id.cell_idx
 
-
                 if routing_strategy_enum == ROUTING_STRATEGY_ENUM.ALL_LAYER:
                     occupied_cell_second_frame_num: int = occupied_cell_id.start_frame_num + 1
                     if handling_frame_num == occupied_cell_second_frame_num:      occupied_cell_probability: float = frame_num_prof_matrix_dict[occupied_cell_id.start_frame_num][occupied_cell_idx][node_idx]
@@ -694,26 +693,32 @@ def derive_best_index_from_specific_layer(frame_num_node_idx_best_value_vec,
                     else: raise Exception(handling_frame_num, occupied_cell_id.__str__)
 
                 elif routing_strategy_enum == ROUTING_STRATEGY_ENUM.ONE_LAYER:
-                    handling_frame_occupied_cell_idx: int = cell_id_frame_num_node_idx_best_index_list_dict_dict[occupied_cell_id][handling_frame_num][node_idx]
-                    # dev_print("sfdhd", last_frame_num - 1, occupied_cell_idx, node_idx)
-                    occupied_cell_probability = frame_num_prof_matrix_dict[handling_frame_num - 1][handling_frame_occupied_cell_idx][node_idx]
+                    # dev_print("sdfbsfd", occupied_cell_id.__str__(), handling_frame_num, node_idx)
+                    occupied_cell_second_frame_num: int = occupied_cell_id.start_frame_num + 1
+                    if handling_frame_num == occupied_cell_id.start_frame_num:  occupied_cell_probability: float = last_frame_adjusted_threshold
+                    elif handling_frame_num == occupied_cell_second_frame_num:  frame_num_prof_matrix_dict[occupied_cell_id.start_frame_num][occupied_cell_idx][node_idx]
+                    elif handling_frame_num > occupied_cell_second_frame_num:
+                        previous_frame_occupied_cell_idx: int = cell_id_frame_num_node_idx_best_index_list_dict_dict[occupied_cell_id][handling_frame_num][node_idx]
+                        occupied_cell_probability = frame_num_prof_matrix_dict[handling_frame_num-1][previous_frame_occupied_cell_idx][node_idx]
+                    else: raise Exception(handling_frame_num, occupied_cell_second_frame_num)
+
 
                 else:
                     raise Exception(routing_strategy_enum)
 
 
 
-                if node_probability_value > last_frame_adjusted_threshold and occupied_cell_probability > last_frame_adjusted_threshold:
+                if node_probability_value >= last_frame_adjusted_threshold and occupied_cell_probability >= last_frame_adjusted_threshold:
                     # print(f"let both cell share the same node; {last_frame_adjusted_threshold}; {np.round(node_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {node_idx}vs{occupied_cell_idx}")
                     current_maximize_index = node_idx
                     current_maximize_value = node_probability_value
 
-                elif node_probability_value < last_frame_adjusted_threshold and occupied_cell_probability > last_frame_adjusted_threshold:
+                elif node_probability_value < last_frame_adjusted_threshold and occupied_cell_probability >= last_frame_adjusted_threshold:
                     # may happen in last layer, as viterbi does not check last layer score
                     print(f"no valid cell in last layer due to other cell occupation with higher threshold. Use layer - 1 track; {last_frame_adjusted_threshold}; {np.round(node_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {node_idx}vs{occupied_cell_idx}")
                     pass
 
-                elif node_probability_value > last_frame_adjusted_threshold and occupied_cell_probability < last_frame_adjusted_threshold:
+                elif node_probability_value >= last_frame_adjusted_threshold and occupied_cell_probability < last_frame_adjusted_threshold:
                     print("--->", f"redo occupied_cell: {occupied_cell_id.__str__()};  last_frame_num: {handling_frame_num}; node_idx: {node_idx}; last_frame_adjusted_threshold: {last_frame_adjusted_threshold}; node_probability_value: {np.round(node_probability_value, 20)}; occupied_cell_probability: {np.round(occupied_cell_probability, 20)} ;")
                     to_redo_cell_id_set.add(occupied_cell_id)
                     # may not be final track, handle at find track
@@ -1078,15 +1083,15 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
                     else: raise Exception(reversed_frame_num, occupied_cell_second_frame)
                 else: raise Exception(routing_strategy_enum)
 
-                if handling_cell_probability > last_frame_adjusted_threshold and occupied_cell_probability > last_frame_adjusted_threshold:
+                if handling_cell_probability >= last_frame_adjusted_threshold and occupied_cell_probability >= last_frame_adjusted_threshold:
                     # print(f"let both cell share the same node; {last_frame_adjusted_threshold}; {np.round(node_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {node_idx}vs{occupied_cell_idx}")
                     # print("s", end='')
                     pass
-                elif handling_cell_probability < last_frame_adjusted_threshold and occupied_cell_probability > last_frame_adjusted_threshold:
+                elif handling_cell_probability < last_frame_adjusted_threshold and occupied_cell_probability >= last_frame_adjusted_threshold:
                     # print(f"handling_cell_probability merge to other cell; {last_frame_adjusted_threshold}; {np.round(node_probability_value, 20)}, {np.round(occupied_cell_probability, 20)} ; {node_idx}vs{occupied_cell_idx}")
                     # print("o", end='')
                     pass
-                elif handling_cell_probability > last_frame_adjusted_threshold and occupied_cell_probability < last_frame_adjusted_threshold:
+                elif handling_cell_probability >= last_frame_adjusted_threshold and occupied_cell_probability < last_frame_adjusted_threshold:
                     print(">>>", f"redo occupied_cell: {occupied_cell_id.__str__()};  last_frame_num: {last_frame_num}; current_maximize_index: {current_maximize_index}; last_frame_adjusted_threshold: {last_frame_adjusted_threshold}; node_probability_value: {np.round(handling_cell_probability, 20)}; occupied_cell_probability: {np.round(occupied_cell_probability, 20)} ;")
                     # time.sleep(5)
                     # start_frame_num: int = 1
@@ -1147,33 +1152,6 @@ def _cut_1(cell_idx_track_list_dict: dict, threshold: float, frame_num_prof_matr
             short_track_list_dict[cell_id] = short_track_list
 
     return short_track_list_dict
-
-
-
-# def _initiate_mask(frame_num_prof_matrix_dict: dict):
-#     mask_frame_cell_id_list: list = []      #list list that stores [frame_id][cell_id]
-#
-#     # initialize the transition group with all False
-#     for profit_matrix in frame_num_prof_matrix_dict.values():
-#         num_of_cell: int = profit_matrix.shape[0]
-#         mask_frame_cell_id_list.append(np.array([False for i in range(num_of_cell)]))
-#
-#     mask_frame_cell_id_list.append(np.array([False for i in range(profit_matrix.shape[1])]))
-#
-#     return mask_frame_cell_id_list
-
-
-
-# #update the mask matrix based on each track obtained in iteration
-# def _mask_update(short_Tracks, mask_transition_group):
-#     # if the node was passed, lable it to True
-#     for cell_id, vv in short_Tracks.items():
-#         for iindex in range(len(short_Tracks[cell_id])):
-#             frame = short_Tracks[cell_id][iindex][1]
-#             node = short_Tracks[cell_id][iindex][0]
-#             mask_transition_group[frame][node] = True
-#
-#     return mask_transition_group
 
 
 
