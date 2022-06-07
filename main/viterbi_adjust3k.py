@@ -100,7 +100,7 @@ def main():
     for idx, hyper_para in enumerate(hyper_para_list):
 
         print(f"start {idx+1}/ {total_para_size}; {hyper_para.__str__()}")
-        if idx <= 43: continue
+        if idx != 23: continue
         # if hyper_para.routing_strategy_enum == ROUTING_STRATEGY_ENUM.ONE_LAYER: continue
 
 
