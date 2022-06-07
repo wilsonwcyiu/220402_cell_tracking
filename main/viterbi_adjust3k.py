@@ -49,7 +49,7 @@ def main():
     save_dir = folder_path + 'save_directory_enhancement/'
 
 
-    is_use_thread: bool = False
+    is_use_thread: bool = True
 
 
     ## hyper parameter settings
@@ -696,7 +696,7 @@ def derive_best_index_from_specific_layer(frame_num_node_idx_best_value_vec,
                     # dev_print("sdfbsfd", occupied_cell_id.__str__(), handling_frame_num, node_idx)
                     occupied_cell_second_frame_num: int = occupied_cell_id.start_frame_num + 1
                     if handling_frame_num == occupied_cell_id.start_frame_num:  occupied_cell_probability: float = last_frame_adjusted_threshold
-                    elif handling_frame_num == occupied_cell_second_frame_num:  frame_num_prof_matrix_dict[occupied_cell_id.start_frame_num][occupied_cell_idx][node_idx]
+                    elif handling_frame_num == occupied_cell_second_frame_num:  occupied_cell_probability: float = frame_num_prof_matrix_dict[occupied_cell_id.start_frame_num][occupied_cell_idx][node_idx]
                     elif handling_frame_num > occupied_cell_second_frame_num:
                         previous_frame_occupied_cell_idx: int = cell_id_frame_num_node_idx_best_index_list_dict_dict[occupied_cell_id][handling_frame_num][node_idx]
                         occupied_cell_probability = frame_num_prof_matrix_dict[handling_frame_num-1][previous_frame_occupied_cell_idx][node_idx]
