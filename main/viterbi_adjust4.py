@@ -50,8 +50,8 @@ def main():
     save_dir = folder_path + 'save_directory_enhancement/'
 
 
-    is_use_thread: bool = False
-    is_use_cell_dependency_feature: bool = False
+    is_use_thread: bool = True
+    is_use_cell_dependency_feature: bool = True
 
     ## hyper parameter settings
     routing_strategy_enum_list: list = [ROUTING_STRATEGY_ENUM.ALL_LAYER, ROUTING_STRATEGY_ENUM.ONE_LAYER]
@@ -63,13 +63,13 @@ def main():
     both_cell_below_threshold_strategy_enum_list: list = [BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM.SHARE]
 
 
-    # routing_strategy_enum_list: list = [ROUTING_STRATEGY_ENUM.ALL_LAYER]
-    # merge_threshold_list: list = [0.0]
-    # minimum_track_length_list: list = [5]
-    # cut_threshold_list: list = [0.01]
-    # is_do_post_adjustment_list: list = [False]
-    # cut_strategy_enum_list: list = [CUT_STRATEGY_ENUM.AFTER_ROUTING]
-    # both_cell_below_threshold_strategy_enum_list: list = [BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM.SHARE]
+    routing_strategy_enum_list: list = [ROUTING_STRATEGY_ENUM.ALL_LAYER]
+    merge_threshold_list: list = [0.0]
+    minimum_track_length_list: list = [5]
+    cut_threshold_list: list = [0.01]
+    is_do_post_adjustment_list: list = [False]
+    cut_strategy_enum_list: list = [CUT_STRATEGY_ENUM.AFTER_ROUTING]
+    both_cell_below_threshold_strategy_enum_list: list = [BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM.SHARE]
 
     hyper_para_combination_list = list(itertools.product(routing_strategy_enum_list,
                                                          merge_threshold_list,
@@ -101,7 +101,7 @@ def main():
     for idx, hyper_para in enumerate(hyper_para_list):
         para_set_num: int = idx+1
         print(f"start {para_set_num}/ {total_para_size}; {hyper_para.__str__()}")
-        if para_set_num != 16:      continue
+        # if para_set_num != 16:      continue
         # if idx in [23, 15]: continue
         # if idx <= 10: continue
         # if hyper_para.routing_strategy_enum == ROUTING_STRATEGY_ENUM.ONE_LAYER: continue
@@ -301,7 +301,9 @@ class CellId():
 
 
     def __str__(self):
-        return f"CellId(start_frame_num: {self.start_frame_num}; cell_idx: {self.cell_idx})"
+        # return f"CellId(start_frame_num: {self.start_frame_num}; cell_idx: {self.cell_idx})"
+        return f"CellId({self.start_frame_num}, {self.cell_idx})"
+
 
     def __eq__(self, other):
         if self.start_frame_num == other.start_frame_num and self.cell_idx == other.cell_idx:
@@ -393,30 +395,35 @@ def execute_cell_tracking_task(frame_num_prof_matrix_dict: dict, hyper_para, is_
 
     frame_num_node_idx_cell_occupation_list_list_dict: dict = initiate_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_prof_matrix_dict)
 
+    max_cell_redo_cnt_record = 0
+
     print(f"frame {start_frame_num}: ", end='')
     cell_idx_track_list_dict, \
     cell_id_frame_num_node_idx_best_index_list_dict_dict, \
     cell_id_frame_num_node_idx_best_one_layer_value_list_dict_dict, \
     cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict, \
     frame_num_node_idx_cell_occupation_list_list_dict, \
-    cell_dependency_dict = \
-                            _process_and_find_best_cell_track(all_cell_id_track_list_dict,
-                                                              to_handle_cell_id_list,
-                                                              frame_num_prof_matrix_dict,
-                                                              frame_num_node_idx_cell_occupation_list_list_dict,
-                                                              cell_id_frame_num_node_idx_best_index_list_dict_dict,
-                                                              cell_id_frame_num_node_idx_best_one_layer_value_list_dict_dict,
-                                                              cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict,
-                                                              is_use_cell_dependency_feature,
-                                                              cell_dependency_dict,
-                                                              cell_id_frame_num_track_progress_dict,
-                                                              hyper_para.merge_threshold,
-                                                              hyper_para.routing_strategy_enum,
-                                                              hyper_para.cut_strategy_enum,
-                                                              hyper_para.cut_threshold,
-                                                              hyper_para.both_cell_below_threshold_strategy_enum,
-                                                              )
+    cell_dependency_dict, \
+    max_cell_redo_cnt_record = \
+        _process_and_find_best_cell_track(all_cell_id_track_list_dict,
+                                          to_handle_cell_id_list,
+                                          frame_num_prof_matrix_dict,
+                                          frame_num_node_idx_cell_occupation_list_list_dict,
+                                          cell_id_frame_num_node_idx_best_index_list_dict_dict,
+                                          cell_id_frame_num_node_idx_best_one_layer_value_list_dict_dict,
+                                          cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict,
+                                          is_use_cell_dependency_feature,
+                                          cell_dependency_dict,
+                                          cell_id_frame_num_track_progress_dict,
+                                          hyper_para.merge_threshold,
+                                          hyper_para.routing_strategy_enum,
+                                          hyper_para.cut_strategy_enum,
+                                          hyper_para.cut_threshold,
+                                          hyper_para.both_cell_below_threshold_strategy_enum,
+                                          max_cell_redo_cnt_record)
     print("  --> finish")
+
+
 
     all_cell_id_track_list_dict.update(cell_idx_track_list_dict)
 
@@ -459,14 +466,15 @@ def execute_cell_tracking_task(frame_num_prof_matrix_dict: dict, hyper_para, is_
 
             to_handle_cell_id_list: list = [cell_id]
 
-            dev_print(f"----------------------> {cell_id.str_short()}")
+            dev_print(f"\n----------------------> {cell_id.str_short()}")
 
             new_cell_idx_track_list_dict, \
             cell_id_frame_num_node_idx_best_index_list_dict_dict, \
             cell_id_frame_num_node_idx_best_one_layer_value_list_dict_dict, \
             cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict, \
             frame_num_node_idx_cell_occupation_list_list_dict, \
-            cell_dependency_dict = \
+            cell_dependency_dict, \
+            max_cell_redo_cnt_record  = \
                 _process_and_find_best_cell_track(all_cell_id_track_list_dict,
                                                   to_handle_cell_id_list,
                                                   frame_num_prof_matrix_dict,
@@ -481,7 +489,8 @@ def execute_cell_tracking_task(frame_num_prof_matrix_dict: dict, hyper_para, is_
                                                   hyper_para.routing_strategy_enum,
                                                   hyper_para.cut_strategy_enum,
                                                   hyper_para.cut_threshold,
-                                                  hyper_para.both_cell_below_threshold_strategy_enum)
+                                                  hyper_para.both_cell_below_threshold_strategy_enum,
+                                                  max_cell_redo_cnt_record)
 
             # code_validate_track(new_cell_idx_track_list_dict)
             #
@@ -526,7 +535,8 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
                                       routing_strategy_enum: ROUTING_STRATEGY_ENUM,
                                       cut_strategy_enum: CUT_STRATEGY_ENUM,
                                       cut_threshold: float,
-                                      both_cell_below_threshold_strategy_enum: BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM):
+                                      both_cell_below_threshold_strategy_enum: BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM,
+                                      max_cell_redo_cnt_record):
 
     cell_id_track_list_dict: dict = {}
 
@@ -546,6 +556,31 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
         if is_use_cell_dependency_feature:
             handling_cell_id = find_independent_cell_id_recursive(cell_dependency_dict, handling_cell_id, to_handle_cell_id_list)
 
+        #     tmp_list = []
+        # for to_handle_cell_id in to_handle_cell_id_list:
+        if len(frame_num_node_idx_cell_occupation_list_list_dict[handling_cell_id.start_frame_num][handling_cell_id.cell_idx]) == 0:
+            is_new_cell = True
+        elif len(frame_num_node_idx_cell_occupation_list_list_dict[handling_cell_id.start_frame_num][handling_cell_id.cell_idx]) == 1 and \
+                frame_num_node_idx_cell_occupation_list_list_dict[handling_cell_id.start_frame_num][handling_cell_id.cell_idx][0] == handling_cell_id:
+            is_new_cell = True
+        else:
+            is_new_cell = False
+
+        # if is_new_cell:
+        #     tmp_list.append(to_handle_cell_id)
+        if not is_new_cell:
+            print("asdbadfb", handling_cell_id.__str__(), "is no longer a new cell")
+            for cell_id in frame_num_node_idx_cell_occupation_list_list_dict[handling_cell_id.start_frame_num][handling_cell_id.cell_idx]:
+                print(cell_id.__str__(), end='')
+            print()
+
+            to_handle_cell_id_list.remove(handling_cell_id)
+            time.sleep(1)
+            continue
+
+        # to_handle_cell_id_list = tmp_list
+
+
         handling_cell_redo_cnt += 1
 
         handling_cell_idx: int = handling_cell_id.cell_idx
@@ -553,16 +588,16 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
         start_frame_num: int = handling_cell_id.start_frame_num
         second_frame_num: int = start_frame_num + 1
 
-        # if handling_cell_id == CellId(1, 22):
-        #     if CellId(1, 22) in existing_cell_idx_track_list_dict:
-        #         tmp = existing_cell_idx_track_list_dict[CellId(1, 22)]
+        # if handling_cell_id == CellId(1, 18):
+        #     if CellId(1, 18) in existing_cell_idx_track_list_dict:
+        #         tmp = existing_cell_idx_track_list_dict[CellId(1, 18)]
         #     time.sleep(1)
         #     dev_print("erthedrh")
 
         if handling_cell_id in cell_id_frame_num_track_progress_dict:   start_progress_frame_num: int = cell_id_frame_num_track_progress_dict[handling_cell_id]
         else:                                                           start_progress_frame_num: int = second_frame_num
 
-        print(f"{handling_cell_id.start_frame_num}-{handling_cell_idx}[{start_progress_frame_num}]({handling_cell_redo_cnt}); ", end='')
+        print(f"{handling_cell_id.start_frame_num}-{handling_cell_idx}[{start_progress_frame_num}]({handling_cell_redo_cnt}|{max_cell_redo_cnt_record}); ", end='')
 
         for handling_frame_num in range(start_progress_frame_num, last_frame_num):
 
@@ -707,7 +742,6 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
 
                             to_redo_cell_id = occupied_cell_id
 
-
                             # handle delete
                             if to_redo_cell_id in existing_cell_idx_track_list_dict:
                                 frame_num_node_idx_cell_occupation_list_list_dict = remove_track_from_cell_occupation_list_list_dict(frame_num_node_idx_cell_occupation_list_list_dict, to_redo_cell_id, existing_cell_idx_track_list_dict[to_redo_cell_id], frame_num)
@@ -725,7 +759,6 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
                                 if tmp_frame_num >= frame_num:
                                     del cell_id_frame_num_node_idx_best_index_list_dict_dict[to_redo_cell_id][tmp_frame_num]
                             # del cell_id_frame_num_node_idx_best_index_list_dict_dict[to_redo_cell_id]
-
 
                             for tmp_frame_num in list(cell_id_frame_num_node_idx_best_one_layer_value_list_dict_dict[to_redo_cell_id].keys()):
                                 if tmp_frame_num >= frame_num:
@@ -770,13 +803,15 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
 
 
 
-
+            # remove whole track because new track can have new track for earlier section
             if handling_cell_id in cell_id_track_list_dict:
-                remove_track_from_cell_occupation_list_list_dict(frame_num_node_idx_cell_occupation_list_list_dict, handling_cell_id, cell_id_track_list_dict[handling_cell_id], remove_from_frame_num=1)
+                frame_num_node_idx_cell_occupation_list_list_dict = remove_track_from_cell_occupation_list_list_dict(frame_num_node_idx_cell_occupation_list_list_dict, handling_cell_id, cell_id_track_list_dict[handling_cell_id], remove_from_frame_num=1)
                 del cell_id_track_list_dict[handling_cell_id]
             elif handling_cell_id in existing_cell_idx_track_list_dict:
-                remove_track_from_cell_occupation_list_list_dict(frame_num_node_idx_cell_occupation_list_list_dict, handling_cell_id, existing_cell_idx_track_list_dict[handling_cell_id], remove_from_frame_num=1)
+                frame_num_node_idx_cell_occupation_list_list_dict = remove_track_from_cell_occupation_list_list_dict(frame_num_node_idx_cell_occupation_list_list_dict, handling_cell_id, existing_cell_idx_track_list_dict[handling_cell_id], remove_from_frame_num=1)
                 del existing_cell_idx_track_list_dict[handling_cell_id]
+
+            code_validate_if_cellid_not_exist_in_occupation_data(frame_num_node_idx_cell_occupation_list_list_dict, handling_cell_id)
 
             cell_id_track_list_dict[handling_cell_id] = cell_track_list
 
@@ -807,19 +842,24 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
             #
             #     to_handle_cell_id_list.append(to_redo_cell_id)
 
+            # check if new cell is still new cell
+
             to_handle_cell_id_list.sort(key=cmp_to_key(compare_cell_id))
 
             # frame_num_node_idx_cell_occupation_list_list_dict = initiate_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_prof_matrix_dict)
             # frame_num_node_idx_cell_occupation_list_list_dict = update_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_node_idx_cell_occupation_list_list_dict, cell_id_track_list_dict)
             # frame_num_node_idx_cell_occupation_list_list_dict = update_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_node_idx_cell_occupation_list_list_dict, existing_cell_idx_track_list_dict)
 
+    if handling_cell_redo_cnt > max_cell_redo_cnt_record:
+        max_cell_redo_cnt_record = handling_cell_redo_cnt
 
     return cell_id_track_list_dict, \
            cell_id_frame_num_node_idx_best_index_list_dict_dict, \
            cell_id_frame_num_node_idx_best_one_layer_value_list_dict_dict, \
            cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict, \
            frame_num_node_idx_cell_occupation_list_list_dict, \
-           cell_dependency_dict
+           cell_dependency_dict, \
+           max_cell_redo_cnt_record
 
 
 
@@ -1761,7 +1801,7 @@ def derive_last_layer_each_node_best_track(handling_cell_id,  # CellId
                                 time.sleep(1)
                                 dev_print("ehseh")
 
-# may have bug during routing and final tracking (keep )
+                            # may have bug during routing and final tracking (keep )
                             occupied_cell_probability_1: float = cell_id_frame_num_node_idx_multi_layer_best_value_list_dict_dict[occupied_cell_id][handling_frame_num][node_idx]
                         else: raise Exception(occupied_cell_id.__str__(), handling_frame_num, node_idx, occupied_cell_second_frame)
 
@@ -1850,6 +1890,18 @@ def save_track_dictionary(dictionary, save_file):
 
 def __________code_validation_function_start_label():
     raise Exception("for labeling only")
+
+
+def code_validate_if_cellid_not_exist_in_occupation_data(frame_num_node_idx_cell_occupation_list_list_dict, check_cell_id):
+    exist_record_tuple_list = []
+    for frame_num in frame_num_node_idx_cell_occupation_list_list_dict.keys():
+        node_idx_cell_occupation_list_list = frame_num_node_idx_cell_occupation_list_list_dict[frame_num]
+        for node_idx, cell_occupation_list in enumerate(node_idx_cell_occupation_list_list):
+            if check_cell_id in cell_occupation_list:
+                exist_record_tuple_list.append([(frame_num, node_idx)])
+
+    if len(exist_record_tuple_list) != 0:
+        raise Exception("len(exist_record_tuple_list) != 0", exist_record_tuple_list)
 
 
 def code_validate_track_list(track_tuple_list_list: list):
