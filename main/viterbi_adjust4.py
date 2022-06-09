@@ -398,7 +398,7 @@ def execute_cell_tracking_task(frame_num_prof_matrix_dict: dict, hyper_para, is_
     max_cell_redo_cnt_record = 0
 
     print(f"frame {start_frame_num}: ", end='')
-    cell_idx_track_list_dict, \
+    all_cell_id_track_list_dict, \
     cell_id_frame_num_node_idx_best_index_list_dict_dict, \
     cell_id_frame_num_node_idx_best_one_layer_value_list_dict_dict, \
     cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict, \
@@ -425,7 +425,7 @@ def execute_cell_tracking_task(frame_num_prof_matrix_dict: dict, hyper_para, is_
 
 
 
-    all_cell_id_track_list_dict.update(cell_idx_track_list_dict)
+    # all_cell_id_track_list_dict.update(cell_idx_track_list_dict)
 
 
 
@@ -468,7 +468,7 @@ def execute_cell_tracking_task(frame_num_prof_matrix_dict: dict, hyper_para, is_
 
             dev_print(f"\n----------------------> {cell_id.str_short()}")
 
-            new_cell_idx_track_list_dict, \
+            all_cell_id_track_list_dict, \
             cell_id_frame_num_node_idx_best_index_list_dict_dict, \
             cell_id_frame_num_node_idx_best_one_layer_value_list_dict_dict, \
             cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict, \
@@ -499,7 +499,7 @@ def execute_cell_tracking_task(frame_num_prof_matrix_dict: dict, hyper_para, is_
             # code_validate_track(new_short_cell_id_track_list_dict)
 
 
-            all_cell_id_track_list_dict.update(new_cell_idx_track_list_dict)
+            # all_cell_id_track_list_dict.update(new_cell_idx_track_list_dict)
 
             # frame_num_node_idx_cell_occupation_list_list_dict = initiate_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_prof_matrix_dict)
             # frame_num_node_idx_cell_occupation_list_list_dict = update_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_node_idx_cell_occupation_list_list_dict, all_cell_id_track_list_dict)
@@ -521,7 +521,7 @@ def execute_cell_tracking_task(frame_num_prof_matrix_dict: dict, hyper_para, is_
 
 
 #loop each node on first frame to find the optimal path using probabilty multiply
-def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
+def _process_and_find_best_cell_track(cell_id_track_list_dict,
                                       to_handle_cell_id_list: list,
                                       frame_num_prof_matrix_dict: dict,
                                       frame_num_node_idx_cell_occupation_list_list_dict: dict,
@@ -538,7 +538,7 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
                                       both_cell_below_threshold_strategy_enum: BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM,
                                       max_cell_redo_cnt_record):
 
-    cell_id_track_list_dict: dict = {}
+    # cell_id_track_list_dict: dict = {}
 
 
     to_skip_cell_id_list: list = []
@@ -548,7 +548,7 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
 
     handling_cell_redo_cnt = 0
 
-    code_validate_track(existing_cell_idx_track_list_dict)
+    code_validate_track(cell_id_track_list_dict)
 
     while len(to_handle_cell_id_list) != 0:
         handling_cell_id: CellId = to_handle_cell_id_list[0]
@@ -629,7 +629,6 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
                                                                                                                     cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict,
                                                                                                                     routing_strategy_enum,
                                                                                                                     cell_id_track_list_dict,
-                                                                                                                    existing_cell_idx_track_list_dict,
                                                                                                                     cut_strategy_enum,
                                                                                                                     cut_threshold,
                                                                                                                     both_cell_below_threshold_strategy_enum)
@@ -743,11 +742,12 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
                             to_redo_cell_id = occupied_cell_id
 
                             # handle delete
-                            if to_redo_cell_id in existing_cell_idx_track_list_dict:
-                                frame_num_node_idx_cell_occupation_list_list_dict = remove_track_from_cell_occupation_list_list_dict(frame_num_node_idx_cell_occupation_list_list_dict, to_redo_cell_id, existing_cell_idx_track_list_dict[to_redo_cell_id], frame_num)
-                                existing_cell_idx_track_list_dict[to_redo_cell_id] = remove_track_from_frame_num(existing_cell_idx_track_list_dict[to_redo_cell_id], frame_num)
-                                # del existing_cell_idx_track_list_dict[to_redo_cell_id]
-                            elif to_redo_cell_id in cell_id_track_list_dict:
+                            # if to_redo_cell_id in existing_cell_idx_track_list_dict:
+                            #     frame_num_node_idx_cell_occupation_list_list_dict = remove_track_from_cell_occupation_list_list_dict(frame_num_node_idx_cell_occupation_list_list_dict, to_redo_cell_id, existing_cell_idx_track_list_dict[to_redo_cell_id], frame_num)
+                            #     existing_cell_idx_track_list_dict[to_redo_cell_id] = remove_track_from_frame_num(existing_cell_idx_track_list_dict[to_redo_cell_id], frame_num)
+                            #     # del existing_cell_idx_track_list_dict[to_redo_cell_id]
+                            # el
+                            if to_redo_cell_id in cell_id_track_list_dict:
                                 frame_num_node_idx_cell_occupation_list_list_dict = remove_track_from_cell_occupation_list_list_dict(frame_num_node_idx_cell_occupation_list_list_dict, to_redo_cell_id, cell_id_track_list_dict[to_redo_cell_id], frame_num)
                                 cell_id_track_list_dict[to_redo_cell_id] = remove_track_from_frame_num(cell_id_track_list_dict[to_redo_cell_id], frame_num)
                                 # del cell_id_track_list_dict[to_redo_cell_id]
@@ -807,9 +807,9 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
             if handling_cell_id in cell_id_track_list_dict:
                 frame_num_node_idx_cell_occupation_list_list_dict = remove_track_from_cell_occupation_list_list_dict(frame_num_node_idx_cell_occupation_list_list_dict, handling_cell_id, cell_id_track_list_dict[handling_cell_id], remove_from_frame_num=1)
                 del cell_id_track_list_dict[handling_cell_id]
-            elif handling_cell_id in existing_cell_idx_track_list_dict:
-                frame_num_node_idx_cell_occupation_list_list_dict = remove_track_from_cell_occupation_list_list_dict(frame_num_node_idx_cell_occupation_list_list_dict, handling_cell_id, existing_cell_idx_track_list_dict[handling_cell_id], remove_from_frame_num=1)
-                del existing_cell_idx_track_list_dict[handling_cell_id]
+            # elif handling_cell_id in existing_cell_idx_track_list_dict:
+            #     frame_num_node_idx_cell_occupation_list_list_dict = remove_track_from_cell_occupation_list_list_dict(frame_num_node_idx_cell_occupation_list_list_dict, handling_cell_id, existing_cell_idx_track_list_dict[handling_cell_id], remove_from_frame_num=1)
+            #     del existing_cell_idx_track_list_dict[handling_cell_id]
 
             code_validate_if_cellid_not_exist_in_occupation_data(frame_num_node_idx_cell_occupation_list_list_dict, handling_cell_id)
 
@@ -1702,7 +1702,6 @@ def derive_last_layer_each_node_best_track(handling_cell_id,  # CellId
                                            cell_id_frame_num_node_idx_multi_layer_best_value_list_dict_dict: dict,
                                            routing_strategy_enum: ROUTING_STRATEGY_ENUM,
                                            cell_id_track_list_dict,
-                                           existing_cell_idx_track_list_dict,
                                            cut_strategy_enum: CUT_STRATEGY_ENUM,
                                            cut_threshold: float,
                                            both_cell_below_threshold_strategy_enum: BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM):
