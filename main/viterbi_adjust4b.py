@@ -54,22 +54,22 @@ def main():
     is_use_cell_dependency_feature: bool = False
 
     ## hyper parameter settings
-    routing_strategy_enum_list: list = [ROUTING_STRATEGY_ENUM.ALL_LAYER, ROUTING_STRATEGY_ENUM.ONE_LAYER]
+    routing_strategy_enum_list: list = [ROUTING_STRATEGY_ENUM.ALL_LAYER]
     merge_threshold_list: list = [0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
     minimum_track_length_list: list = [5]
     cut_threshold_list: list = [0.01]
     is_do_post_adjustment_list: list = [False]
     cut_strategy_enum_list: list = [CUT_STRATEGY_ENUM.AFTER_ROUTING, CUT_STRATEGY_ENUM.DURING_ROUTING]
     both_cell_below_threshold_strategy_enum_list: list = [BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM.SHARE]
+    discount_rate_per_layer: list = [0.5] #"merge_threshold",
 
-
-    routing_strategy_enum_list: list = [ROUTING_STRATEGY_ENUM.ALL_LAYER]
-    merge_threshold_list: list = [0.5]
-    minimum_track_length_list: list = [5]
-    cut_threshold_list: list = [0.01]
-    is_do_post_adjustment_list: list = [False]
-    cut_strategy_enum_list: list = [CUT_STRATEGY_ENUM.AFTER_ROUTING]
-    both_cell_below_threshold_strategy_enum_list: list = [BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM.SHARE]
+    # routing_strategy_enum_list: list = [ROUTING_STRATEGY_ENUM.ALL_LAYER]
+    # merge_threshold_list: list = [0.5]
+    # minimum_track_length_list: list = [5]
+    # cut_threshold_list: list = [0.01]
+    # is_do_post_adjustment_list: list = [False]
+    # cut_strategy_enum_list: list = [CUT_STRATEGY_ENUM.AFTER_ROUTING]
+    # both_cell_below_threshold_strategy_enum_list: list = [BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM.SHARE]
 
     hyper_para_combination_list = list(itertools.product(routing_strategy_enum_list,
                                                          merge_threshold_list,
@@ -77,7 +77,8 @@ def main():
                                                          cut_threshold_list,
                                                          is_do_post_adjustment_list,
                                                          cut_strategy_enum_list,
-                                                         both_cell_below_threshold_strategy_enum_list
+                                                         both_cell_below_threshold_strategy_enum_list,
+                                                         discount_rate_per_layer
                                                          ))
 
     hyper_para_list: list = []
@@ -89,8 +90,17 @@ def main():
         is_do_post_adjustment: bool = hyper_para_combination[4]
         cut_strategy_enum: CUT_STRATEGY_ENUM = hyper_para_combination[5]
         both_cell_below_threshold_strategy_enum: BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM = hyper_para_combination[6]
+        discount_rate_per_layer: [str, float] = hyper_para_combination[7]
 
-        hyper_para: HyperPara = HyperPara(routing_strategy_enum, merge_threshold, minimum_track_length, cut_threshold, is_do_post_adjustment, cut_strategy_enum, both_cell_below_threshold_strategy_enum)
+        hyper_para: HyperPara = HyperPara(routing_strategy_enum,
+                                          merge_threshold,
+                                          minimum_track_length,
+                                          cut_threshold,
+                                          is_do_post_adjustment,
+                                          cut_strategy_enum,
+                                          both_cell_below_threshold_strategy_enum,
+                                          discount_rate_per_layer)
+
         hyper_para_list.append(hyper_para)
 
 
@@ -102,7 +112,7 @@ def main():
         para_set_num: int = idx+1
 
         # if para_set_num != 16:      continue
-        print(f"start {para_set_num}/ {total_para_size}; {hyper_para.__str__()}")
+        print(f"start. Parameter set: {para_set_num}/ {total_para_size}; {hyper_para.__str__()}")
 
         # if idx in [23, 15]: continue
         # if idx <= 10: continue
@@ -115,7 +125,7 @@ def main():
 
         input_series_list = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
                              'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
-        input_series_list = ['S01']
+        # input_series_list = ['S01']
         # input_series_list = ['S02', 'S03', 'S04']
 
         all_segmented_filename_list = listdir(segmentation_folder)
@@ -181,7 +191,9 @@ def main():
         abs_save_dir: str = save_dir + date_str + result_file_name + "_hp" + str(idx+1).zfill(3) + "__" + hyper_para_indicator
         save_track_dictionary(viterbi_result_dict, abs_save_dir + ".pkl")
 
+        execution_time = time.perf_counter() - start_time
         with open(abs_save_dir + ".txt", 'w') as f:
+            f.write(f"Execution time: {np.round(execution_time, 4)} seconds\n")
             f.write("hyper_para--- ID: " + str(idx+1) + "; \n" + hyper_para.__str_newlines__())
             f.write("\n")
             for series in existing_series_list:
@@ -200,6 +212,7 @@ def main():
 
         tmp_abs_save_dir: str = save_dir + result_file_name
         with open(tmp_abs_save_dir + ".txt", 'w') as f:
+            f.write(f"Execution time: {np.round(execution_time, 4)} seconds\n")
             f.write("hyper_para--- ID: " + str(idx+1) + "; \n" + hyper_para.__str_newlines__())
             f.write("\n")
             for series in existing_series_list:
@@ -217,7 +230,6 @@ def main():
 
         print("save_track_dictionary: ", abs_save_dir)
 
-        execution_time = time.perf_counter() - start_time
         print(f"Execution time: {np.round(execution_time, 4)} seconds")
 
 
@@ -246,7 +258,8 @@ class BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM(enum.Enum):
 
 class HyperPara():
     def __init__(self, routing_strategy_enum: ROUTING_STRATEGY_ENUM, merge_threshold: float, minimum_track_length: int, cut_threshold: float, is_do_post_adjustment: bool,
-                 cut_strategy_enum: CUT_STRATEGY_ENUM, both_cell_below_threshold_strategy_enum: BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM):
+                 cut_strategy_enum: CUT_STRATEGY_ENUM, both_cell_below_threshold_strategy_enum: BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM,
+                 discount_rate_per_layer: [str, int]):
         self.routing_strategy_enum: ROUTING_STRATEGY_ENUM = routing_strategy_enum
         self.merge_threshold: float = merge_threshold
         self.minimum_track_length: int = minimum_track_length
@@ -254,6 +267,7 @@ class HyperPara():
         self.is_do_post_adjustment: bool = is_do_post_adjustment
         self.cut_strategy_enum = cut_strategy_enum
         self.both_cell_below_threshold_strategy_enum = both_cell_below_threshold_strategy_enum
+        self.discount_rate_per_layer = discount_rate_per_layer   # can be merge_threshold to set as merge_threshold value, or provide an exact value
 
 
     def __str__(self):
@@ -263,7 +277,8 @@ class HyperPara():
                f"cut_threshold: {self.cut_threshold}; " \
                f"is_do_post_adjustment: {self.is_do_post_adjustment}; " \
                f"cut_strategy_enum: {self.cut_strategy_enum.name}; " \
-               f"both_cell_below_threshold_strategy_enum: {self.both_cell_below_threshold_strategy_enum.name}; "
+               f"both_cell_below_threshold_strategy_enum: {self.both_cell_below_threshold_strategy_enum.name}; " \
+               f"discount_rate_per_layer: {self.discount_rate_per_layer}; "
 
 
     def __str_newlines__(self):
@@ -273,8 +288,8 @@ class HyperPara():
                f"cut_threshold: {self.cut_threshold}; \n" \
                f"is_do_post_adjustment: {self.is_do_post_adjustment}; \n" \
                f"cut_strategy_enum: {self.cut_strategy_enum.name}; \n" \
-               f"both_cell_below_threshold_strategy_enum: {self.both_cell_below_threshold_strategy_enum.name}; \n"
-
+               f"both_cell_below_threshold_strategy_enum: {self.both_cell_below_threshold_strategy_enum.name}; \n" \
+               f"discount_rate_per_layer: {self.discount_rate_per_layer}; "
 
     def __eq__(self, other):
         if self.routing_strategy_enum == other.routing_strategy_enum and \
@@ -423,6 +438,7 @@ def execute_cell_tracking_task(frame_num_prof_matrix_dict: dict, hyper_para, is_
                                           hyper_para.cut_strategy_enum,
                                           hyper_para.cut_threshold,
                                           hyper_para.both_cell_below_threshold_strategy_enum,
+                                          hyper_para.discount_rate_per_layer,
                                           max_cell_redo_cnt_record)
     print("  --> finish")
 
@@ -493,6 +509,7 @@ def execute_cell_tracking_task(frame_num_prof_matrix_dict: dict, hyper_para, is_
                                                   hyper_para.cut_strategy_enum,
                                                   hyper_para.cut_threshold,
                                                   hyper_para.both_cell_below_threshold_strategy_enum,
+                                                  hyper_para.discount_rate_per_layer,
                                                   max_cell_redo_cnt_record)
 
             # code_validate_track(new_cell_idx_track_list_dict)
@@ -539,6 +556,7 @@ def _process_and_find_best_cell_track(cell_id_track_list_dict,
                                       cut_strategy_enum: CUT_STRATEGY_ENUM,
                                       cut_threshold: float,
                                       both_cell_below_threshold_strategy_enum: BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM,
+                                      discount_rate_per_layer,
                                       max_cell_redo_cnt_record):
 
     # cell_id_track_list_dict: dict = {}
@@ -675,7 +693,8 @@ def _process_and_find_best_cell_track(cell_id_track_list_dict,
                                                                                                                     cell_id_track_list_dict,
                                                                                                                     cut_strategy_enum,
                                                                                                                     cut_threshold,
-                                                                                                                    both_cell_below_threshold_strategy_enum)
+                                                                                                                    both_cell_below_threshold_strategy_enum,
+                                                                                                                    discount_rate_per_layer)
 
             if ( np.all(multi_layer_value_ab_vec == 0) ):
                 is_zero_track_length = (handling_frame_num == second_frame_num)
@@ -704,6 +723,7 @@ def _process_and_find_best_cell_track(cell_id_track_list_dict,
                                                       handling_cell_id,
                                                       routing_strategy_enum,
                                                       both_cell_below_threshold_strategy_enum,
+                                                      discount_rate_per_layer,
                                                       cell_id_track_list_dict)
 
             if cut_strategy_enum == CUT_STRATEGY_ENUM.AFTER_ROUTING:
@@ -738,7 +758,7 @@ def _process_and_find_best_cell_track(cell_id_track_list_dict,
                         elif frame_num > second_frame_num:                handling_cell_probability: float = cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict[handling_cell_id][frame_num][node_idx]
                         else: raise Exception(frame_num, second_frame_num)
 
-                        discount_rate = derive_discount_rate_from_cell_start_frame_num(handling_cell_id, merge_above_threshold)
+                        discount_rate = derive_discount_rate_from_cell_start_frame_num(handling_cell_id, merge_above_threshold, discount_rate_per_layer)
                         handling_cell_probability *= discount_rate
                     else: raise Exception(routing_strategy_enum)
 
@@ -760,7 +780,7 @@ def _process_and_find_best_cell_track(cell_id_track_list_dict,
                             elif frame_num > occupied_cell_second_frame:    occupied_cell_probability: float = cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict[occupied_cell_id][frame_num][node_idx]
                             else: raise Exception(frame_num, occupied_cell_second_frame)
 
-                            discount_rate = derive_discount_rate_from_cell_start_frame_num(occupied_cell_id, merge_above_threshold)
+                            discount_rate = derive_discount_rate_from_cell_start_frame_num(occupied_cell_id, merge_above_threshold, discount_rate_per_layer)
                             occupied_cell_probability *= discount_rate
                         else: raise Exception(routing_strategy_enum)
 
@@ -923,11 +943,13 @@ def __________unit_function_start_label():
 
 
 
-def derive_discount_rate_from_cell_start_frame_num(cell_id: CellId, merge_above_threshold: float):
+def derive_discount_rate_from_cell_start_frame_num(cell_id: CellId, merge_above_threshold: float, discount_rate_per_layer):
     if merge_above_threshold == 0:
         discount_rate: float = 1.0
-    else:
+    elif discount_rate_per_layer == "merge_above_threshold":
         discount_rate: float = pow(merge_above_threshold, cell_id.start_frame_num - 1)
+    else:
+        discount_rate: float = pow(discount_rate_per_layer, cell_id.start_frame_num - 1)
 
     return discount_rate
 
@@ -1025,7 +1047,8 @@ def derive_best_index_from_specific_layer(handling_cell_id: CellId,
                                           merge_above_threshold: float,
                                           last_frame_adjusted_threshold: float,
                                           routing_strategy_enum,
-                                          both_cell_below_threshold_strategy_enum
+                                          both_cell_below_threshold_strategy_enum,
+                                          discount_rate_per_layer
                                           ):
     # to_redo_cell_id_set: set = set()
     current_maximize_index: float = None
@@ -1056,7 +1079,7 @@ def derive_best_index_from_specific_layer(handling_cell_id: CellId,
                 elif handling_frame_num > handling_cell_sec_frame_num:    handling_cell_probability: float = cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict[handling_cell_id][handling_frame_num][node_idx]
                 else: raise Exception(handling_frame_num, handling_cell_sec_frame_num)
 
-                discount_rate = derive_discount_rate_from_cell_start_frame_num(handling_cell_id, merge_above_threshold)
+                discount_rate = derive_discount_rate_from_cell_start_frame_num(handling_cell_id, merge_above_threshold, discount_rate_per_layer)
                 handling_cell_probability *= discount_rate
             else: raise Exception(routing_strategy_enum)
 
@@ -1072,7 +1095,7 @@ def derive_best_index_from_specific_layer(handling_cell_id: CellId,
                     elif handling_frame_num > occupied_cell_second_frame_num:     occupied_cell_probability: float = cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict[occupied_cell_id][handling_frame_num][node_idx]
                     else: raise Exception(handling_frame_num, occupied_cell_id.__str__)
 
-                    discount_rate = derive_discount_rate_from_cell_start_frame_num(occupied_cell_id, merge_above_threshold)
+                    discount_rate = derive_discount_rate_from_cell_start_frame_num(occupied_cell_id, merge_above_threshold, discount_rate_per_layer)
                     occupied_cell_probability *= discount_rate
                 elif routing_strategy_enum == ROUTING_STRATEGY_ENUM.ONE_LAYER:
                     if handling_frame_num == occupied_cell_id.start_frame_num:  occupied_cell_probability: float = last_frame_adjusted_threshold
@@ -1278,6 +1301,7 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
                             handling_cell_id,
                             routing_strategy_enum,
                             both_cell_below_threshold_strategy_enum: BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM,
+                            discount_rate_per_layer,
                             cell_track_list_dict):
 
     # if handling_cell_id == CellId(1, 5):
@@ -1320,7 +1344,8 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
                                                                    merge_above_threshold,
                                                                    last_frame_adjusted_threshold,
                                                                    routing_strategy_enum,
-                                                                   both_cell_below_threshold_strategy_enum)
+                                                                   both_cell_below_threshold_strategy_enum,
+                                                                   discount_rate_per_layer)
 
 
     is_all_nodes_invalid: bool = (current_maximize_index == None)
@@ -1366,7 +1391,8 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
                                                                        merge_above_threshold,
                                                                        last_frame_adjusted_threshold,
                                                                        routing_strategy_enum,
-                                                                       both_cell_below_threshold_strategy_enum)
+                                                                       both_cell_below_threshold_strategy_enum,
+                                                                       discount_rate_per_layer)
 
         # if handling_cell_id == CellId(1, 5):
         #     time.sleep(1)
@@ -1786,7 +1812,8 @@ def derive_last_layer_each_node_best_track(handling_cell_id,  # CellId
                                            cell_id_track_list_dict,
                                            cut_strategy_enum: CUT_STRATEGY_ENUM,
                                            cut_threshold: float,
-                                           both_cell_below_threshold_strategy_enum: BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM):
+                                           both_cell_below_threshold_strategy_enum: BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM,
+                                           discount_rate_per_layer):
 
     handling_cell_idx: int = handling_cell_id.cell_idx
     start_frame_num: int = handling_cell_id.start_frame_num
@@ -1851,7 +1878,7 @@ def derive_last_layer_each_node_best_track(handling_cell_id,  # CellId
                     elif handling_frame_num > second_frame_num:    handling_cell_probability: float = cell_id_frame_num_node_idx_multi_layer_best_value_list_dict_dict[handling_cell_id][handling_frame_num][node_idx]
                     else: raise Exception(handling_frame_num, second_frame_num)
 
-                    discount_rate = derive_discount_rate_from_cell_start_frame_num(handling_cell_id, merge_above_threshold)
+                    discount_rate = derive_discount_rate_from_cell_start_frame_num(handling_cell_id, merge_above_threshold, discount_rate_per_layer)
                     handling_cell_probability *= discount_rate
                 else: raise Exception(routing_strategy_enum)
 
@@ -1875,7 +1902,7 @@ def derive_last_layer_each_node_best_track(handling_cell_id,  # CellId
                         elif handling_frame_num > occupied_cell_second_frame:    occupied_cell_probability_1: float = cell_id_frame_num_node_idx_multi_layer_best_value_list_dict_dict[occupied_cell_id][handling_frame_num][node_idx]
                         else: raise Exception(occupied_cell_id.__str__(), handling_frame_num, node_idx, occupied_cell_second_frame)
 
-                        discount_rate = derive_discount_rate_from_cell_start_frame_num(occupied_cell_id, merge_above_threshold)
+                        discount_rate = derive_discount_rate_from_cell_start_frame_num(occupied_cell_id, merge_above_threshold, discount_rate_per_layer)
                         occupied_cell_probability_1 *= discount_rate
                     else: raise Exception(routing_strategy_enum)
 
