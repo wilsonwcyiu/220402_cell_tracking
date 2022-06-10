@@ -38,7 +38,7 @@ def main():
     segmentation_folder = folder_path + 'segmentation_unet_seg//'
     video_folder_name = folder_path + '/save_directory_enhancement/trajectory_result_video/'
     save_dir = folder_path + '/save_directory_enhancement/'
-    pkl_file_name: str = "viterbi_results_dict.pkl"
+    pkl_file_name: str = "viterbi_results_dict_adj2.pkl"
 
     series_viterbi_result_list_dict: dict = open_track_dictionary(save_dir + pkl_file_name)
 

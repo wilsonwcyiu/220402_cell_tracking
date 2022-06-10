@@ -30,14 +30,29 @@ def main():
 
     gt_results_dict = open_track_dictionary(save_dir + "gt_results_dict.pkl")
 
-    file_name_list: list = listdir(pkl_dir)
+
+    preload_file_name_list = ['ground_truth_results_dict.pkl',
+                              'delta_results_dict.pkl',
+                              'hungarian_results_dict.pkl',
+                              'kuan_tracks_allseries_unet.pkl',
+                              'viterbi_results_dict_adj2.pkl']
     method_name_pkl_dict = {}
+    for file_name in preload_file_name_list:
+        track = open_track_dictionary(pkl_dir + file_name)
+        file_name = file_name.replace(".pkl", "").replace("_results_dict", "").replace("_allseries_unet", "")
+        method_name_pkl_dict[file_name] = track
+
+    file_name_list: list = listdir(pkl_dir)
+
     for file_name in file_name_list:
+        if file_name in preload_file_name_list:
+            continue
+
         track = open_track_dictionary(pkl_dir + file_name)
 
-        if "_R" in file_name:
-            file_name = file_name[0: file_name.index("_R")]
-            file_name = file_name.replace("__", "_")
+        if "__" in file_name:
+            file_name = file_name[0: file_name.index("__")]
+            print("dfbxdfb", file_name)
         else:
             file_name = file_name.replace(".pkl", "").replace("_results_dict", "").replace("_allseries_unet", "")
 
@@ -84,7 +99,7 @@ def main():
     data = []
     total = len(method_name_pkl_dict.keys())
     for idx, (method_name, result_dict) in enumerate(method_name_pkl_dict.items()):
-        print(f"{idx+1}/{total}; method_name: ", end='')
+        print(f"{idx+1}/{total}; method_name: {method_name}. ", end='')
         tracking_performance_list = []
         for series in series_list:
             #for celltype in celltypes:
