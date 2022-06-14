@@ -99,7 +99,7 @@ def main():
     data = []
     total = len(method_name_pkl_dict.keys())
     for idx, (method_name, result_dict) in enumerate(method_name_pkl_dict.items()):
-        print(f"{idx+1}/{total}; method_name: {method_name}. ", end='')
+        print(f"{idx+1}/{total}; method_name: {method_name}; ", end='')
         tracking_performance_list = []
         for series in series_list:
             #for celltype in celltypes:

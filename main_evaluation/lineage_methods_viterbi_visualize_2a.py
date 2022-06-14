@@ -36,21 +36,32 @@ def main():
     folder_path: str = 'D:/viterbi linkage/dataset/'
 
     segmentation_folder = folder_path + 'segmentation_unet_seg//'
-    video_folder_name = folder_path + '/save_directory_enhancement/trajectory_result_video/'
     save_dir = folder_path + '/save_directory_enhancement/'
+    video_folder_name = folder_path + '/save_directory_enhancement/trajectory_result_video/'
     pkl_file_name: str = "viterbi_results_dict_adj2.pkl"
 
-    series_viterbi_result_list_dict: dict = open_track_dictionary(save_dir + pkl_file_name)
+
 
     #settings
     track_length: int = 30
     is_save_result = True
 
+    to_generate_series_list: list = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
+                                     'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
+
+    # to_generate_series_list1: list = ['S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19']
+    # fail_to_generate_series_list = ['S04', 'S07', 'S08', 'S09', 'S12', 'S20' ]
+    to_generate_series_list: list = ['S01', 'S02', 'S03', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
+                                     'S11', 'S12']
+
+    # fail_to_generate_series_list = ['S04']
 
     start_time = time.perf_counter()
 
+    series_viterbi_result_list_dict: dict = open_track_dictionary(save_dir + pkl_file_name)
+
     output_dir_name: str = pkl_file_name.replace(".pkl", "")
-    draw_and_save_tracks(series_viterbi_result_list_dict, segmentation_folder, video_folder_name, is_save_result, track_length, output_dir_name)
+    draw_and_save_tracks(to_generate_series_list, series_viterbi_result_list_dict, segmentation_folder, video_folder_name, is_save_result, track_length, output_dir_name)
 
 
     execution_time = time.perf_counter() - start_time
@@ -80,27 +91,33 @@ def get_point_color(color):
 
 
 #print (& save) the cell tracks in each frame for a max number of TRACK_LENGTH frames
-def draw_and_save_tracks(series_viterbi_result_list_dict, segmentation_folder, video_folder, is_save_result: bool, track_length: int, dir_name: str):
+def draw_and_save_tracks(to_generate_series_list, series_viterbi_result_list_dict, segmentation_folder, video_folder, is_save_result: bool, track_length: int, dir_name: str):
 
-    is_use_thread: bool = False
+    is_use_thread: bool = True
     if is_use_thread:
 
         pool = ThreadPool(processes=8)
         thread_list: list = []
 
         for series, result_list in series_viterbi_result_list_dict.items():
+            if series not in to_generate_series_list:
+                continue
+
             print("working on series:", series)
 
             args_tuple: tuple = (series, result_list, segmentation_folder, video_folder, is_save_result, track_length, dir_name, ) # tuple of args for foo
             async_result = pool.apply_async(draw_and_save_tracks_single, args_tuple)
             thread_list.append(async_result)
 
-        for thread_idx in range(len(thread_list)):
+        total_threads = len(thread_list)
+        for thread_idx in range(total_threads):
             thread_list[thread_idx].get()
-            print(f"Thread {thread_idx} completed")
+            print(f"Thread {thread_idx+1}/{total_threads}, series {series} completed")
 
     else:
         for series, result_list in series_viterbi_result_list_dict.items():
+            if series not in to_generate_series_list:
+                continue
             print("working on series:", series)
             draw_and_save_tracks_single(series, result_list, segmentation_folder, video_folder, is_save_result, track_length, dir_name)
 
