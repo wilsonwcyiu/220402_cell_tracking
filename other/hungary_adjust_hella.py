@@ -198,6 +198,12 @@ if __name__ == '__main__':
             #which have a high score for multiple cells in the previous frames
             prof_mat_bool = prof_mat > MERGE_THRESHOLD # every cell combination with a score higher than 0.4
 
+            print(prof_mat_bool)
+            # if prof_mat_bool:
+            #     print("true")
+            # else:
+            #     print("false")
+
             #Get all columns and rows with two at least two cell combinations with a score higher than 0.4
             double_match_columns = prof_mat_bool.sum(axis=0)>1
 
