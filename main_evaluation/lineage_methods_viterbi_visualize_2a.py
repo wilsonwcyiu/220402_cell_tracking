@@ -25,6 +25,8 @@ import random
 from itertools import combinations
 import pickle
 
+from other.shared_cell_data import obtain_ground_truth_cell_dict
+
 ROOT = '/content/drive/'     # default for the drive
 # drive.mount(ROOT)           # we mount the drive at /content/drive
 
@@ -38,7 +40,7 @@ def main():
     segmentation_folder = folder_path + 'segmentation_unet_seg//'
     save_dir = folder_path + '/save_directory_enhancement/'
     video_folder_name = folder_path + '/save_directory_enhancement/trajectory_result_video/'
-    pkl_file_name: str = "hungarian_adj_results_dict.pkl"
+    pkl_file_name: str = "ground_truth_results_dict.pkl"
 
 
 
@@ -92,20 +94,20 @@ def get_point_color(color):
 
 #print (& save) the cell tracks in each frame for a max number of TRACK_LENGTH frames
 def draw_and_save_tracks(to_generate_series_list, series_viterbi_result_list_dict, segmentation_folder, video_folder, is_save_result: bool, track_length: int, dir_name: str):
-
+    generation_mode: str = "single"  #{single, all}
     is_use_thread: bool = False
     if is_use_thread:
 
         pool = ThreadPool(processes=8)
         thread_list: list = []
 
-        for series, result_list in series_viterbi_result_list_dict.items():
+        for series, result_list_list in series_viterbi_result_list_dict.items():
             if series not in to_generate_series_list:
                 continue
 
             print("working on series:", series)
 
-            args_tuple: tuple = (series, result_list, segmentation_folder, video_folder, is_save_result, track_length, dir_name, ) # tuple of args for foo
+            args_tuple: tuple = (series, result_list_list, segmentation_folder, video_folder, is_save_result, track_length, dir_name, ) # tuple of args for foo
             async_result = pool.apply_async(draw_and_save_tracks_single, args_tuple)
             thread_list.append(async_result)
 
@@ -115,17 +117,34 @@ def draw_and_save_tracks(to_generate_series_list, series_viterbi_result_list_dic
             print(f"Thread {thread_idx+1}/{total_threads}, series {series} completed")
 
     else:
-        for series, result_list in series_viterbi_result_list_dict.items():
-            if series not in to_generate_series_list:
-                continue
-            print("working on series:", series)
-            draw_and_save_tracks_single(series, result_list, segmentation_folder, video_folder, is_save_result, track_length, dir_name)
+        if generation_mode == "all":
+            for series, result_list_list in series_viterbi_result_list_dict.items():
+                if series not in to_generate_series_list:
+                    continue
+                print("working on series:", series)
+                draw_and_save_tracks_single(series, result_list_list, segmentation_folder, video_folder, is_save_result, track_length, dir_name)
+
+        elif generation_mode == "single":
+            for series, result_list_list in series_viterbi_result_list_dict.items():
+                if series not in to_generate_series_list:
+                    continue
+                print("working on series:", series)
+
+                result_list_list = sorted(result_list_list)
+                for result_list in result_list_list:
+                    print("cell_idx", cell_idx, end='')
+                    cell_idx = result_list[0][0]
+                    dir_suffix = "_cell_idx_" + str(cell_idx)
+                    draw_and_save_tracks_single(series, [result_list], segmentation_folder, video_folder, is_save_result, track_length, dir_name, dir_suffix=dir_suffix)
+        else:
+            raise Exception()
 
 
 
 
 
-def draw_and_save_tracks_single(series, result_list, segmentation_folder, video_folder, is_save_result: bool, TRACK_LENGTH, dir_name: str):
+
+def draw_and_save_tracks_single(series, result_list, segmentation_folder, video_folder, is_save_result: bool, TRACK_LENGTH, dir_name: str, dir_suffix: str=""):
     #get the correct segementation files
     segmented_files = listdir(segmentation_folder)
     segmented_files.sort()
@@ -176,7 +195,7 @@ def draw_and_save_tracks_single(series, result_list, segmentation_folder, video_
 
                 #print a dot at current cell position
                 if track[cell_idx][1] == framenb:
-                    cv2.circle(img,(int(cell_coord_x),int(cell_coord_y)), 2, get_point_color(colorlist[tracknb]), -1)
+                    cv2.circle(img, (int(cell_coord_x), int(cell_coord_y)), 2, get_point_color(colorlist[tracknb]), -1)
                     # cv2.putText(img, str(track[cell_idx][0]), (int(cell_coord_x),int(cell_coord_y-10)), cv2.FONT_HERSHEY_COMPLEX,0.4,(147,20,255),1)
 
                 #skip first frame
@@ -197,7 +216,8 @@ def draw_and_save_tracks_single(series, result_list, segmentation_folder, video_
         # cv2_imshow(img)
         #save the created images
         if is_save_result:
-            output_dir_path: str = video_folder + dir_name + "/" + str(series) + "/"
+            # output_dir_path: str = video_folder + dir_name + "/" + str(series) + "/"
+            output_dir_path: str = video_folder + dir_name + "/" + str(series) + dir_suffix + "/"
             if not os.path.isdir(output_dir_path):
                 os.makedirs(output_dir_path)
             cv2.imwrite(output_dir_path + '/' + str(framenb) +'.png', img)
