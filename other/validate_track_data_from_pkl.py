@@ -127,31 +127,31 @@ def open_track_dictionary(save_file):
     return dictionary
 
 
-
-def obtain_ground_truth_cell_dict():
-    ground_truth_cell_dict = {}
-    ground_truth_cell_dict['S01'] = [(0, 0, -1), (1, 0, -1), (3, 0, -1), (4, 0, -1)]
-    ground_truth_cell_dict['S02'] = [(0, 0, -1), (1, 0, -1), (2, 0, -1), (3, 0, -1)]
-    ground_truth_cell_dict['S03'] = [(6, 0, -1), (7, 0, -1)]
-    ground_truth_cell_dict['S04'] = [(14, 0, -1), (15, 0, -1), (16, 0, -1), (17, 0, -1)]
-    ground_truth_cell_dict['S05'] = [(0, 0, -1), (1, 0, -1), (2, 0, -1), (4, 0, -1)]
-    ground_truth_cell_dict['S06'] = [(1, 0, -1), (2, 0, -1), (3, 0, -1), (4, 0, -1), (5, 0, -1)]
-    ground_truth_cell_dict['S07'] = [(1, 0, -1), (2, 0, -1), (3, 0, -1), (4, 0, -1), (5, 0, -1)]
-    ground_truth_cell_dict['S08'] = [(5, 0, -1), (7, 0, -1)]
-    ground_truth_cell_dict['S09'] = [(7, 0, -1), (10, 0, -1)]
-    ground_truth_cell_dict['S10'] = [(1, 0, -1), (2, 0, -1), (5, 0, -1)]
-    ground_truth_cell_dict['S11'] = [(0, 0, -1), (1, 0, -1), (3, 0, -1)]
-    ground_truth_cell_dict['S12'] = [(6, 0, -1), (7, 0, -1)]
-    ground_truth_cell_dict['S13'] = [(7, 0, -1), (8, 0, -1), (10, 0, -1)]
-    ground_truth_cell_dict['S14'] = [(0, 0, -1), (1, 0, -1)]
-    ground_truth_cell_dict['S15'] = [(1, 0, -1), (2, 0, -1), (3, 0, -1)]
-    ground_truth_cell_dict['S16'] = [(12, 0, -1), (14, 0, -1), (15, 0, -1), (20, 0, -1), (21, 0, -1)]
-    ground_truth_cell_dict['S17'] = [(2, 0, -1), (5, 0, -1)]
-    ground_truth_cell_dict['S18'] = [(1, 0, -1), (2, 0, -1), (3, 0, -1)]
-    ground_truth_cell_dict['S19'] = [(0, 0, -1), (1, 0, -1), (2, 0, -1), (3, 0, -1)]
-    ground_truth_cell_dict['S20'] = [(5, 0, -1)]
-
-    return ground_truth_cell_dict
+#
+# def obtain_ground_truth_cell_dict():
+#     ground_truth_cell_dict = {}
+#     ground_truth_cell_dict['S01'] = [(0, 0, -1), (1, 0, -1), (3, 0, -1), (4, 0, -1)]
+#     ground_truth_cell_dict['S02'] = [(0, 0, -1), (1, 0, -1), (2, 0, -1), (3, 0, -1)]
+#     ground_truth_cell_dict['S03'] = [(6, 0, -1), (7, 0, -1)]
+#     ground_truth_cell_dict['S04'] = [(14, 0, -1), (15, 0, -1), (16, 0, -1), (17, 0, -1)]
+#     ground_truth_cell_dict['S05'] = [(0, 0, -1), (1, 0, -1), (2, 0, -1), (4, 0, -1)]
+#     ground_truth_cell_dict['S06'] = [(1, 0, -1), (2, 0, -1), (3, 0, -1), (4, 0, -1), (5, 0, -1)]
+#     ground_truth_cell_dict['S07'] = [(1, 0, -1), (2, 0, -1), (3, 0, -1), (4, 0, -1), (5, 0, -1)]
+#     ground_truth_cell_dict['S08'] = [(5, 0, -1), (7, 0, -1)]
+#     ground_truth_cell_dict['S09'] = [(7, 0, -1), (10, 0, -1)]
+#     ground_truth_cell_dict['S10'] = [(1, 0, -1), (2, 0, -1), (5, 0, -1)]
+#     ground_truth_cell_dict['S11'] = [(0, 0, -1), (1, 0, -1), (3, 0, -1)]
+#     ground_truth_cell_dict['S12'] = [(6, 0, -1), (7, 0, -1)]
+#     ground_truth_cell_dict['S13'] = [(7, 0, -1), (8, 0, -1), (10, 0, -1)]
+#     ground_truth_cell_dict['S14'] = [(0, 0, -1), (1, 0, -1)]
+#     ground_truth_cell_dict['S15'] = [(1, 0, -1), (2, 0, -1), (3, 0, -1)]
+#     ground_truth_cell_dict['S16'] = [(12, 0, -1), (14, 0, -1), (15, 0, -1), (20, 0, -1), (21, 0, -1)]
+#     ground_truth_cell_dict['S17'] = [(2, 0, -1), (5, 0, -1)]
+#     ground_truth_cell_dict['S18'] = [(1, 0, -1), (2, 0, -1), (3, 0, -1)]
+#     ground_truth_cell_dict['S19'] = [(0, 0, -1), (1, 0, -1), (2, 0, -1), (3, 0, -1)]
+#     ground_truth_cell_dict['S20'] = [(5, 0, -1)]
+#
+#     return ground_truth_cell_dict
 
 
 
