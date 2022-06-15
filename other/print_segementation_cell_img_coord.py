@@ -325,8 +325,8 @@ def derive_frame_cell_label_coord(segmentation_folder_path: str, output_folder_p
             # cell_i = plt.imread(output_folder_path + series + '/' + cell_i_filename)
             cell_i_props = measure.regionprops(label_img, intensity_image=cell_i) #label_img_next是二值图像为255，无intensity。需要与output中的预测的细胞一一对应，预测细胞有intensity
 
-            x, y = cell_i_props[cellnb_i].centroid
-            x, y = int(x), int(y)
+            y, x = cell_i_props[cellnb_i].centroid
+            y, x = int(y), int(x)
 
             cell_coord_tuple_list.append((x, y))
 
