@@ -38,7 +38,7 @@ def main():
     segmentation_folder = folder_path + 'segmentation_unet_seg//'
     save_dir = folder_path + '/save_directory_enhancement/'
     video_folder_name = folder_path + '/save_directory_enhancement/trajectory_result_video/'
-    pkl_file_name: str = "viterbi_results_dict_adj2.pkl"
+    pkl_file_name: str = "hungarian_adj_results_dict.pkl"
 
 
 
@@ -51,8 +51,8 @@ def main():
 
     # to_generate_series_list1: list = ['S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19']
     # fail_to_generate_series_list = ['S04', 'S07', 'S08', 'S09', 'S12', 'S20' ]
-    to_generate_series_list: list = ['S01', 'S02', 'S03', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
-                                     'S11', 'S12']
+    # to_generate_series_list: list = ['S01', 'S02', 'S03', 'S05', 'S06', 'S07', 'S08', 'S10',
+    #                                  'S11', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
 
     # fail_to_generate_series_list = ['S04']
 
@@ -93,7 +93,7 @@ def get_point_color(color):
 #print (& save) the cell tracks in each frame for a max number of TRACK_LENGTH frames
 def draw_and_save_tracks(to_generate_series_list, series_viterbi_result_list_dict, segmentation_folder, video_folder, is_save_result: bool, track_length: int, dir_name: str):
 
-    is_use_thread: bool = True
+    is_use_thread: bool = False
     if is_use_thread:
 
         pool = ThreadPool(processes=8)

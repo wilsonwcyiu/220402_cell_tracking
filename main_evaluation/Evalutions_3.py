@@ -35,7 +35,8 @@ def main():
                               'delta_results_dict.pkl',
                               'hungarian_results_dict.pkl',
                               'kuan_tracks_allseries_unet.pkl',
-                              'viterbi_results_dict_adj2.pkl']
+                              'viterbi_results_dict_adj2.pkl',
+                              'modified_ground_truth_results_dict.pkl']
     method_name_pkl_dict = {}
     for file_name in preload_file_name_list:
         track = open_track_dictionary(pkl_dir + file_name)

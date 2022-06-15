@@ -39,7 +39,7 @@ def main():
     segmentation_folder = folder_path + 'segmentation_unet_seg//'
     save_dir = folder_path + '/save_directory_enhancement/'
     video_folder_name = folder_path + '/save_directory_enhancement/trajectory_result_video/'
-    pkl_file_name: str = "hungarian_adj_results_dict.pkl"
+    pkl_file_name: str = "modified_ground_truth_results_dict.pkl"
     abs_save_dir = save_dir + "track_data_from_pkl/" + pkl_file_name.replace(".pkl", "")
 
 
@@ -56,6 +56,7 @@ def main():
 
 
 
+
     # if pkl_file_name == "hungarian_adj_results_dict.pkl":
     #     tmp_track_tuple_list_dict = defaultdict(list)
     #     for series, track_array in series_viterbi_result_list_dict.items():
@@ -68,7 +69,7 @@ def main():
     ground_truth_cell_dict = obtain_ground_truth_cell_dict()
     for series in to_generate_series_list:
         ground_truth_cell_list = ground_truth_cell_dict[series]
-        print("====hungarian====" + series + "==================")
+        print("=============" + series + "==================")
         for cell_track_list in series_viterbi_result_list_dict[series]:
             is_in_gt_file = (cell_track_list[0] in ground_truth_cell_list)
             if is_in_gt_file:
@@ -95,10 +96,16 @@ def main():
             f.write("\n\n")
 
 
+
+
     # for series, track_tuple_list_list in series_viterbi_result_list_dict.items():
-    #     print("series", series)
+    #     ground_truth_cell_list = ground_truth_cell_dict[series]
+    #     track_tuple_list_list = sorted(track_tuple_list_list)
     #     for track_tuple_list in track_tuple_list_list:
-    #         print(track_tuple_list)
+    #         cell_id = track_tuple_list[0]
+    #         is_in_gt_file = (cell_id in ground_truth_cell_list)
+    #         if is_in_gt_file:
+    #             print(f"series_cell_id_track_dict_dict[\"{series}\"][{cell_id}] = {track_tuple_list}")
 
 
     execution_time = time.perf_counter() - start_time

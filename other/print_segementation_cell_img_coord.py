@@ -61,7 +61,7 @@ def main():
 
     input_series_list = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
                          'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
-    input_series_list = ['S02']
+    # input_series_list = ['S02']
     # input_series_list = ['S02', 'S03', 'S04']
 
     all_segmented_filename_list = listdir(segmentation_folder)
@@ -262,7 +262,6 @@ def save_cell_coord_to_excel(series_frame_num_cell_coord_list_dict_dict, excel_o
 
         tmp_array: np.arrays = np.array(row_list)
 
-        print("fdbsdfb", tmp_array.shape)
         df = pd.DataFrame (tmp_array)
         df.index += 1
         df.to_excel(writer, sheet_name=series, index=True)
