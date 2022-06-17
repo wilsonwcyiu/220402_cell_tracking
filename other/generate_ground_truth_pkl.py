@@ -26,6 +26,8 @@ import random
 from itertools import combinations
 import pickle
 
+from other.shared_cell_data import obtain_original_ground_truth_dict, convert_track_frame_idx_to_frame_num
+
 ROOT = '/content/drive/'     # default for the drive
 # drive.mount(ROOT)           # we mount the drive at /content/drive
 
@@ -41,7 +43,7 @@ def main():
     video_folder_name = folder_path + '/save_directory_enhancement/trajectory_result_video/'
     pkl_file_name: str = "ground_truth_results_dict.pkl"
     abs_save_dir = save_dir + "track_data_from_pkl/" + pkl_file_name.replace(".pkl", "")
-    modified_pkl_file_name: str = "ground_truth_results_dict.pkl"
+    modified_pkl_file_name: str = "modified_ground_truth_results_dict.pkl"
     modified_pkl_abs_save_dir = save_dir + modified_pkl_file_name
 
     #settings
@@ -54,16 +56,36 @@ def main():
     start_time = time.perf_counter()
 
     modified_series_track_list_dict = defaultdict(list)
-    series_cell_id_track_dict_dict = obtain_original_ground_truth_dict(to_generate_series_list)
+    series_cell_id_track_dict_dict = obtain_original_ground_truth_dict()
 
-    add_cell_to_track(series_cell_id_track_dict_dict, series="S01", cell_tuple_id=(0, 0, -1), frame_idx=19, track_tuple=(-1, 19, -1))
+    series_cell_id_track_dict_dict = add_cell_to_track(series_cell_id_track_dict_dict, series="S02", cell_tuple_id=(2, 0, -1), to_add_track_tuple=(0, 24, 0))
+    series_cell_id_track_dict_dict = add_cell_to_track(series_cell_id_track_dict_dict, series="S02", cell_tuple_id=(2, 0, -1), to_add_track_tuple=(0, 39, 0))
+    series_cell_id_track_dict_dict = add_cell_to_track(series_cell_id_track_dict_dict, series="S03", cell_tuple_id=(6, 0, -1), to_add_track_tuple=(5, 35, 5))
 
 
-    print(series_cell_id_track_dict_dict["S01"][(0, 0, -1)])
-    exit()
+
+
+    # print(series_cell_id_track_dict_dict["S02"][(2, 0, -1)])
+    # exit()
 
 
     save_track_dictionary(series_cell_id_track_dict_dict, modified_pkl_abs_save_dir)
+
+
+    is_use_frame_number = True
+    tmp_abs_save_dir: str = save_dir + modified_pkl_file_name.replace(".pkl", "")
+    with open(tmp_abs_save_dir + ".txt", 'w') as f:
+        for series in to_generate_series_list:
+            f.write("======================" + str(series) + "================================")
+            f.write("\n")
+
+            for track_tuple_list in series_cell_id_track_dict_dict[series].values():
+                # for cell_track_list in viterbi_result_dict[series]:
+                if is_use_frame_number:
+                    track_tuple_list = convert_track_frame_idx_to_frame_num(track_tuple_list)
+                f.write(str(track_tuple_list))
+                f.write("\n")
+            f.write("\n\n")
 
 
     # for series, track_tuple_list_list in series_viterbi_result_list_dict.items():
@@ -96,15 +118,23 @@ def save_track_dictionary(dictionary, save_file):
     pickle_out.close()
 
 
-def add_cell_to_track(series_cell_id_track_dict_dict, series, cell_tuple_id, frame_idx, track_tuple):
+def add_cell_to_track(series_cell_id_track_dict_dict, series, cell_tuple_id, to_add_track_tuple):
     original_track_tuple_list = series_cell_id_track_dict_dict[series][cell_tuple_id]
+
+    add_at_frame_idx = to_add_track_tuple[1]
 
     modified_track_tuple_list = []
     for original_track_tuple in original_track_tuple_list:
         original_frame_idx = original_track_tuple[1]
+
+        if (original_frame_idx - 1) == add_at_frame_idx: # modified last tuple value to match with added tuple
+            original_track_tuple = (original_track_tuple[0], original_track_tuple[1], to_add_track_tuple[0])
+
         modified_track_tuple_list.append(original_track_tuple)
-        if (original_frame_idx + 1) == frame_idx:
-            modified_track_tuple_list.append(track_tuple)
+
+        if (original_frame_idx + 1) == add_at_frame_idx:
+            modified_track_tuple_list.append(to_add_track_tuple)
+
 
     series_cell_id_track_dict_dict[series][cell_tuple_id] = modified_track_tuple_list
 

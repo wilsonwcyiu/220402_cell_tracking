@@ -26,6 +26,8 @@ import random
 from itertools import combinations
 import pickle
 
+from other.shared_cell_data import obtain_ground_truth_cell_dict, convert_track_frame_idx_to_frame_num
+
 ROOT = '/content/drive/'     # default for the drive
 # drive.mount(ROOT)           # we mount the drive at /content/drive
 
@@ -65,14 +67,18 @@ def main():
     #
     #     series_viterbi_result_list_dict = tmp_track_tuple_list_dict
 
+    is_use_frame_num: bool = True
 
     ground_truth_cell_dict = obtain_ground_truth_cell_dict()
     for series in to_generate_series_list:
         ground_truth_cell_list = ground_truth_cell_dict[series]
         print("=============" + series + "==================")
-        for cell_track_list in series_viterbi_result_list_dict[series]:
+        for cell_track_list in sorted(series_viterbi_result_list_dict[series]):
             is_in_gt_file = (cell_track_list[0] in ground_truth_cell_list)
             if is_in_gt_file:
+                if is_use_frame_num:
+                    cell_track_list = convert_track_frame_idx_to_frame_num(cell_track_list)
+
                 print(cell_track_list)
 
         print("\n")
@@ -88,9 +94,9 @@ def main():
             f.write("\n")
 
             cell_track_list_list = sorted(series_viterbi_result_list_dict[series])
-            for cell_track_list in cell_track_list_list:
-                # for cell_track_list in viterbi_result_dict[series]:
-                f.write(str(cell_track_list))
+            for cell_track_list_list in cell_track_list_list:
+                # for cell_track_list_list in viterbi_result_dict[series]:
+                f.write(str(cell_track_list_list))
                 f.write("\n")
 
             f.write("\n\n")
@@ -98,14 +104,14 @@ def main():
 
 
 
-    for series, track_tuple_list_list in series_viterbi_result_list_dict.items():
-        ground_truth_cell_list = ground_truth_cell_dict[series]
-        track_tuple_list_list = sorted(track_tuple_list_list)
-        for track_tuple_list in track_tuple_list_list:
-            cell_id = track_tuple_list[0]
-            is_in_gt_file = (cell_id in ground_truth_cell_list)
-            if is_in_gt_file:
-                print(f"series_cell_id_track_dict_dict[\"{series}\"][{cell_id}] = {track_tuple_list}")
+    # for series, track_tuple_list_list in series_viterbi_result_list_dict.items():
+    #     ground_truth_cell_list = ground_truth_cell_dict[series]
+    #     track_tuple_list_list = sorted(track_tuple_list_list)
+    #     for track_tuple_list in track_tuple_list_list:
+    #         cell_id = track_tuple_list[0]
+    #         is_in_gt_file = (cell_id in ground_truth_cell_list)
+    #         if is_in_gt_file:
+    #             print(f"series_cell_id_track_dict_dict[\"{series}\"][{cell_id}] = {track_tuple_list}")
 
 
     execution_time = time.perf_counter() - start_time
