@@ -39,7 +39,6 @@ from multiprocessing.pool import ThreadPool
 
 
 def main():
-
     folder_path: str = 'D:/viterbi linkage/dataset/'
 
     segmentation_folder = folder_path + 'segmentation_unet_seg//'
@@ -227,6 +226,19 @@ def main():
 def __________object_start_label():
     raise Exception("for labeling only")
 
+class DataStore(object):
+
+
+    def __init__(self):
+        profit_mtx_data_dict = {}
+
+
+
+    @staticmethod
+    def obtain_data_a(input_str: str):
+        # return data_map_a_dict[input_str]
+        print("Hi,this tutorial is about static class in python: " + input_str)
+
 
 
 class ROUTING_STRATEGY_ENUM(enum.Enum):
@@ -344,13 +356,18 @@ def __________flow_function_start_label():
 
 def cell_tracking_core_flow(series: str, segmentation_folder: str, all_segmented_filename_list: list, output_folder: str, hyper_para: HyperPara, is_use_cell_dependency_feature: bool):
 
+
+
     segmented_filename_list: list = derive_segmented_filename_list_by_series(series, all_segmented_filename_list)
 
     frame_num_prof_matrix_dict: dict = derive_frame_num_prof_matrix_dict(segmentation_folder, output_folder, series, segmented_filename_list)
 
-    all_track_dict = execute_cell_tracking_task(frame_num_prof_matrix_dict, hyper_para, is_use_cell_dependency_feature)
 
-    all_track_dict = filter_track_dict_by_length(all_track_dict, hyper_para.minimum_track_length)
+    all_track_dict = execute_cell_tracking_task_bon(frame_num_prof_matrix_dict, hyper_para, is_use_cell_dependency_feature)
+
+    # all_track_dict = execute_cell_tracking_task_1(frame_num_prof_matrix_dict, hyper_para, is_use_cell_dependency_feature)
+    #
+    # all_track_dict = filter_track_dict_by_length(all_track_dict, hyper_para.minimum_track_length)
 
     sorted_cell_id_key_list = sorted(list(all_track_dict.keys()), key=cmp_to_key(compare_cell_id))
     sorted_dict: dict = {}
@@ -383,8 +400,189 @@ def __________component_function_start_label():
 
 
 
+def execute_cell_tracking_task_bon(frame_num_prof_matrix_dict: dict, hyper_para, is_use_cell_dependency_feature: bool):
 
-def execute_cell_tracking_task(frame_num_prof_matrix_dict: dict, hyper_para, is_use_cell_dependency_feature: bool):
+
+
+    to_handle_cell_id_list: list = []
+    for frame_num, prof_matrix in frame_num_prof_matrix_dict.items():
+        total_row: int = prof_matrix.shape[0]
+        for row_idx in range(total_row):
+            cell_start_frame: int = frame_num
+            node_idx: int = row_idx
+            to_handle_cell_id_list.append(CellId(cell_start_frame, node_idx))
+
+
+    frame_num_node_idx_occupation_list_list_dict = initiate_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_prof_matrix_dict)
+    total_frame: int = np.max(list(frame_num_prof_matrix_dict.keys())) + 1
+
+    valid_all_cell_track_idx_dict: dict = {}
+    valid_all_cell_track_prob_dict: dict = {}
+
+    while len(to_handle_cell_id_list) != 0:
+        to_handle_cell_id: CellId = to_handle_cell_id_list[0]
+
+        is_node_occupied: bool = (len(frame_num_node_idx_occupation_list_list_dict[to_handle_cell_id.start_frame_num][to_handle_cell_id.cell_idx]) != 0)
+        if is_node_occupied:
+            to_handle_cell_id.remove(to_handle_cell_id)
+            continue
+
+
+        frame_num_cell_track_idx_dict: list = {}
+        frame_num_cell_track_idx_dict[to_handle_cell_id.start_frame_num] = to_handle_cell_id.cell_idx
+        frame_num_cell_prob_dict: dict = {}
+
+        second_frame_num: int = to_handle_cell_id.start_frame_num + 1
+        for frame_num in inclusive_range(second_frame_num, total_frame):
+            previous_frame_num: int = frame_num - 1
+            previous_frame_cell_idx: int = frame_num_cell_track_idx_dict[previous_frame_num]
+            connection_prob_list: list = frame_num_prof_matrix_dict[previous_frame_num][previous_frame_cell_idx, :]
+
+            best_idx: int = np.argmax(connection_prob_list)
+            best_prob: float = connection_prob_list[best_idx]
+
+            is_best_prob_lower_than_threshold: bool = best_prob < hyper_para.cut_threshold
+            if is_best_prob_lower_than_threshold:
+                break
+
+            if frame_num in frame_num_cell_track_idx_dict:  raise Exception("code validation check")
+            if frame_num in frame_num_cell_prob_dict:  raise Exception("code validation check")
+
+            frame_num_cell_track_idx_dict[frame_num] = best_idx
+            frame_num_cell_prob_dict[frame_num] = best_prob
+
+        is_track_above_min_length: bool = (len(frame_num_cell_track_idx_dict.keys()) > hyper_para.minimum_track_length)
+
+        if is_track_above_min_length:
+
+            # use final track to check if any redo cells occur
+
+            # add to occupation list
+            frame_num_node_idx_occupation_list_list_dict = add_track_to_cell_occupation_list_list_dict(frame_num_node_idx_occupation_list_list_dict, to_handle_cell_id, frame_num_cell_track_idx_dict)
+
+            # add track to valid track list
+            valid_all_cell_track_idx_dict[to_handle_cell_id] = frame_num_cell_track_idx_dict
+            valid_all_cell_track_prob_dict[to_handle_cell_id] = frame_num_cell_prob_dict
+
+        to_handle_cell_id_list.remove(to_handle_cell_id)
+
+
+
+
+        all_cell_id_track_list_dict: dict = defaultdict(list)
+        # valid_all_cell_track_idx_dict
+
+        print(frame_num_cell_track_idx_dict)
+        exit()
+
+
+
+
+
+
+
+
+
+
+
+
+
+    #
+    # start_frame_num: int = 1
+    # first_frame_mtx: np.array = frame_num_prof_matrix_dict[start_frame_num]
+    # total_cell_in_first_frame: int = first_frame_mtx.shape[0]
+    # to_handle_cell_id_list: list = [CellId(start_frame_num, cell_idx) for cell_idx in range(0, total_cell_in_first_frame)]
+    #
+    # cell_id_frame_num_node_idx_best_index_list_dict_dict: dict = defaultdict(dict)
+    # cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict: dict = defaultdict(dict)
+    # cell_id_frame_num_node_idx_best_one_layer_value_list_dict_dict: dict = defaultdict(dict)
+    # cell_dependency_dict: dict = defaultdict(list)
+    # cell_id_frame_num_track_progress_dict: dict(int) = {}
+    #
+    # frame_num_node_idx_cell_occupation_list_list_dict: dict = initiate_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_prof_matrix_dict)
+    #
+    # max_cell_redo_cnt_record = 0
+    #
+    # print(f"frame {start_frame_num}: ", end='')
+    # all_cell_id_track_list_dict, \
+    # cell_id_frame_num_node_idx_best_index_list_dict_dict, \
+    # cell_id_frame_num_node_idx_best_one_layer_value_list_dict_dict, \
+    # cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict, \
+    # frame_num_node_idx_cell_occupation_list_list_dict, \
+    # cell_dependency_dict, \
+    # max_cell_redo_cnt_record = \
+    #     _process_and_find_best_cell_track(all_cell_id_track_list_dict,
+    #                                       to_handle_cell_id_list,
+    #                                       frame_num_prof_matrix_dict,
+    #                                       frame_num_node_idx_cell_occupation_list_list_dict,
+    #                                       cell_id_frame_num_node_idx_best_index_list_dict_dict,
+    #                                       cell_id_frame_num_node_idx_best_one_layer_value_list_dict_dict,
+    #                                       cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict,
+    #                                       is_use_cell_dependency_feature,
+    #                                       cell_dependency_dict,
+    #                                       cell_id_frame_num_track_progress_dict,
+    #                                       hyper_para.merge_threshold,
+    #                                       hyper_para.routing_strategy_enum,
+    #                                       hyper_para.cut_strategy_enum,
+    #                                       hyper_para.cut_threshold,
+    #                                       hyper_para.both_cell_below_threshold_strategy_enum,
+    #                                       hyper_para.discount_rate_per_layer,
+    #                                       max_cell_redo_cnt_record)
+    # print("  --> finish")
+    #
+    #
+    # second_frame_num: int = 2
+    # last_frame_num: int = np.max(list(frame_num_prof_matrix_dict.keys())) # should be + 1?
+    #
+    #
+    # for frame_num in range(second_frame_num, last_frame_num):
+    #     print(f"frame {frame_num}: ", end='')
+    #     for cell_row_idx in range(frame_num_prof_matrix_dict[frame_num].shape[0]):  #skip all nodes which are already passed
+    #
+    #         is_new_cell: bool = len(frame_num_node_idx_cell_occupation_list_list_dict[frame_num][cell_row_idx]) == 0
+    #         if not is_new_cell:
+    #             continue
+    #
+    #
+    #
+    #         cell_id = CellId(frame_num, cell_row_idx)
+    #
+    #         to_handle_cell_id_list: list = [cell_id]
+    #
+    #         dev_print(f"\n----------------------> {cell_id.str_short()}")
+    #
+    #         all_cell_id_track_list_dict, \
+    #         cell_id_frame_num_node_idx_best_index_list_dict_dict, \
+    #         cell_id_frame_num_node_idx_best_one_layer_value_list_dict_dict, \
+    #         cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict, \
+    #         frame_num_node_idx_cell_occupation_list_list_dict, \
+    #         cell_dependency_dict, \
+    #         max_cell_redo_cnt_record  = \
+    #             _process_and_find_best_cell_track(all_cell_id_track_list_dict,
+    #                                               to_handle_cell_id_list,
+    #                                               frame_num_prof_matrix_dict,
+    #                                               frame_num_node_idx_cell_occupation_list_list_dict,
+    #                                               cell_id_frame_num_node_idx_best_index_list_dict_dict,
+    #                                               cell_id_frame_num_node_idx_best_one_layer_value_list_dict_dict,
+    #                                               cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict,
+    #                                               is_use_cell_dependency_feature,
+    #                                               cell_dependency_dict,
+    #                                               cell_id_frame_num_track_progress_dict,
+    #                                               hyper_para.merge_threshold,
+    #                                               hyper_para.routing_strategy_enum,
+    #                                               hyper_para.cut_strategy_enum,
+    #                                               hyper_para.cut_threshold,
+    #                                               hyper_para.both_cell_below_threshold_strategy_enum,
+    #                                               hyper_para.discount_rate_per_layer,
+    #                                               max_cell_redo_cnt_record)
+    #
+    #         code_validate_track(all_cell_id_track_list_dict)
+    #
+    #     print("  --> finish")
+
+    return all_cell_id_track_list_dict
+
+def execute_cell_tracking_task_1(frame_num_prof_matrix_dict: dict, hyper_para, is_use_cell_dependency_feature: bool):
     all_cell_id_track_list_dict: dict = defaultdict(list)
 
     start_frame_num: int = 1
@@ -811,7 +1009,7 @@ def _process_and_find_best_cell_track(cell_id_track_list_dict,
 
             cell_id_track_list_dict[handling_cell_id] = cell_track_list
 
-            frame_num_node_idx_cell_occupation_list_list_dict = add_track_to_cell_occupation_list_list_dict(frame_num_node_idx_cell_occupation_list_list_dict, handling_cell_id, cell_track_list)
+            frame_num_node_idx_cell_occupation_list_list_dict = add_track_to_cell_occupation_list_list_dict_old(frame_num_node_idx_cell_occupation_list_list_dict, handling_cell_id, cell_track_list)
 
 
 
@@ -1618,24 +1816,36 @@ def deprecated_derive_frame_num_node_id_occupation_tuple_list_dict(frame_num_pro
 
 
 def initiate_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_prof_matrix_dict: dict):
-    frame_num_node_idx_occupation_tuple_vec_dict: dict = {}
+    frame_num_node_idx_occupation_list_list_dict: dict = {}
 
     # initiate slots from frame 1 to (last_frame-1)
     for frame_num, profit_matrix in frame_num_prof_matrix_dict.items():
         total_cell: int = profit_matrix.shape[0]
-        frame_num_node_idx_occupation_tuple_vec_dict[frame_num] = [[] for _ in range(total_cell)]
+        frame_num_node_idx_occupation_list_list_dict[frame_num] = [[] for _ in range(total_cell)]
 
     # initiate slots for last_frame
     last_frame_num: int = np.max(list(frame_num_prof_matrix_dict.keys())) + 1
     second_last_frame_num: int = last_frame_num - 1
     total_cell_last_frame: int = frame_num_prof_matrix_dict[second_last_frame_num].shape[1]
-    frame_num_node_idx_occupation_tuple_vec_dict[last_frame_num] = [[] for _ in range(total_cell_last_frame)]
+    frame_num_node_idx_occupation_list_list_dict[last_frame_num] = [[] for _ in range(total_cell_last_frame)]
+
+    return frame_num_node_idx_occupation_list_list_dict
+
+
+
+def add_track_to_cell_occupation_list_list_dict(frame_num_node_idx_occupation_tuple_vec_dict: dict, cell_id, frame_num_cell_track_idx_dict: dict):
+    for frame_num, node_idx in frame_num_cell_track_idx_dict.items():
+        if cell_id in frame_num_node_idx_occupation_tuple_vec_dict[frame_num][node_idx]:
+            raise Exception("code validation")
+
+        if cell_id not in frame_num_node_idx_occupation_tuple_vec_dict[frame_num][node_idx]:
+            frame_num_node_idx_occupation_tuple_vec_dict[frame_num][node_idx].append(cell_id)
+
 
     return frame_num_node_idx_occupation_tuple_vec_dict
 
 
-
-def add_track_to_cell_occupation_list_list_dict(frame_num_node_idx_occupation_tuple_vec_dict: dict, cell_id, track_tuple_list: list):
+def add_track_to_cell_occupation_list_list_dict_old(frame_num_node_idx_occupation_tuple_vec_dict: dict, cell_id, track_tuple_list: list):
     for track_tuple in track_tuple_list:
         frame_num: int = track_tuple[1] + 1
         occupied_node_idx: int = track_tuple[0]
@@ -1644,6 +1854,8 @@ def add_track_to_cell_occupation_list_list_dict(frame_num_node_idx_occupation_tu
             frame_num_node_idx_occupation_tuple_vec_dict[frame_num][occupied_node_idx].append(cell_id)
 
     return frame_num_node_idx_occupation_tuple_vec_dict
+
+
 
 
 
@@ -1927,6 +2139,10 @@ def derive_last_layer_each_node_best_track(handling_cell_id,  # CellId
 
 def __________common_function_start_label():
     raise Exception("for labeling only")
+
+
+def inclusive_range(start: int, end: int):
+    return range(start, end+1)
 
 
 
