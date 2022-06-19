@@ -29,13 +29,12 @@ import cv2
 import random
 from itertools import combinations
 import pickle
-from collections import defaultdict
-
+from collections import defaultdict, namedtuple
 
 import time
 from multiprocessing.pool import ThreadPool
 
-
+from other.shared_cell_data import obtain_ground_truth_cell_dict, convert_track_frame_idx_to_frame_num
 
 
 def main():
@@ -116,7 +115,7 @@ def main():
 
         input_series_list = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
                              'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
-        # input_series_list = ['S01']
+        # input_series_list = ['S04']
 
 
         all_segmented_filename_list = listdir(segmentation_folder)
@@ -225,6 +224,8 @@ def main():
 
 def __________object_start_label():
     raise Exception("for labeling only")
+
+CoordTuple = namedtuple("CoordTuple", "x y")
 
 class DataStore(object):
 
@@ -356,14 +357,26 @@ def __________flow_function_start_label():
 
 def cell_tracking_core_flow(series: str, segmentation_folder: str, all_segmented_filename_list: list, output_folder: str, hyper_para: HyperPara, is_use_cell_dependency_feature: bool):
 
-
-
     segmented_filename_list: list = derive_segmented_filename_list_by_series(series, all_segmented_filename_list)
 
-    frame_num_prof_matrix_dict: dict = derive_frame_num_prof_matrix_dict(segmentation_folder, output_folder, series, segmented_filename_list)
+    frame_num_prof_matrix_dict = derive_frame_num_prof_matrix_dict(segmentation_folder, output_folder, series, segmented_filename_list)
 
+    frame_num_node_idx_coord_list_dict = derive_frame_num_node_idx_coord_list_dict(segmentation_folder, segmented_filename_list)
 
-    all_track_dict = execute_cell_tracking_task_bon(frame_num_prof_matrix_dict, hyper_para, is_use_cell_dependency_feature)
+    all_track_dict = execute_cell_tracking_task_bon(frame_num_prof_matrix_dict, frame_num_node_idx_coord_list_dict, hyper_para, is_use_cell_dependency_feature)
+
+    is_use_frame_num: bool = True
+    ground_truth_cell_dict = obtain_ground_truth_cell_dict()
+    series_ground_truth_list = ground_truth_cell_dict[series]
+    for track_tuple_list in all_track_dict.values():
+        cell_id_tuple: tuple = track_tuple_list[0]
+        if cell_id_tuple in series_ground_truth_list:
+            if is_use_frame_num:
+                track_tuple_list = convert_track_frame_idx_to_frame_num(track_tuple_list)
+
+            print(track_tuple_list)
+    # exit()
+
 
     # all_track_dict = execute_cell_tracking_task_1(frame_num_prof_matrix_dict, hyper_para, is_use_cell_dependency_feature)
     #
@@ -400,15 +413,13 @@ def __________component_function_start_label():
 
 
 
-def execute_cell_tracking_task_bon(frame_num_prof_matrix_dict: dict, hyper_para, is_use_cell_dependency_feature: bool):
-
-
+def execute_cell_tracking_task_bon(frame_num_prof_matrix_dict: dict, frame_num_node_idx_coord_list_dict: dict, hyper_para, is_use_cell_dependency_feature: bool):
 
     to_handle_cell_id_list: list = []
-    for frame_num, prof_matrix in frame_num_prof_matrix_dict.items():
+    for connect_to_frame_num, prof_matrix in frame_num_prof_matrix_dict.items():
         total_row: int = prof_matrix.shape[0]
         for row_idx in range(total_row):
-            cell_start_frame: int = frame_num
+            cell_start_frame: int = connect_to_frame_num
             node_idx: int = row_idx
             to_handle_cell_id_list.append(CellId(cell_start_frame, node_idx))
 
@@ -420,61 +431,81 @@ def execute_cell_tracking_task_bon(frame_num_prof_matrix_dict: dict, hyper_para,
     valid_all_cell_track_prob_dict: dict = {}
 
     while len(to_handle_cell_id_list) != 0:
-        to_handle_cell_id: CellId = to_handle_cell_id_list[0]
+        to_handle_cell_id_list.sort(key=cmp_to_key(compare_cell_id))
 
-        is_node_occupied: bool = (len(frame_num_node_idx_occupation_list_list_dict[to_handle_cell_id.start_frame_num][to_handle_cell_id.cell_idx]) != 0)
-        if is_node_occupied:
-            to_handle_cell_id.remove(to_handle_cell_id)
+        to_handle_cell_id: CellId = to_handle_cell_id_list[0]
+        print(f"{to_handle_cell_id.str_short()}", end='')
+
+        is_new_cell: bool = (len(frame_num_node_idx_occupation_list_list_dict[to_handle_cell_id.start_frame_num][to_handle_cell_id.cell_idx]) != 0)
+        if is_new_cell:
+            to_handle_cell_id_list.remove(to_handle_cell_id)
             continue
 
 
-        frame_num_cell_track_idx_dict: list = {}
-        frame_num_cell_track_idx_dict[to_handle_cell_id.start_frame_num] = to_handle_cell_id.cell_idx
+        frame_num_cell_track_idx_dict: dict = { to_handle_cell_id.start_frame_num: to_handle_cell_id.cell_idx}
         frame_num_cell_prob_dict: dict = {}
 
         second_frame_num: int = to_handle_cell_id.start_frame_num + 1
-        for frame_num in inclusive_range(second_frame_num, total_frame):
-            previous_frame_num: int = frame_num - 1
+        for connect_to_frame_num in inclusive_range(second_frame_num, total_frame):
+            previous_frame_num: int = connect_to_frame_num - 1
             previous_frame_cell_idx: int = frame_num_cell_track_idx_dict[previous_frame_num]
             connection_prob_list: list = frame_num_prof_matrix_dict[previous_frame_num][previous_frame_cell_idx, :]
 
-            best_idx: int = np.argmax(connection_prob_list)
-            best_prob: float = connection_prob_list[best_idx]
+
+
+            best_idx, best_prob = derive_best_node_idx_to_connect(connection_prob_list,
+                                                                connect_to_frame_num,
+                                                                frame_num_node_idx_occupation_list_list_dict,
+                                                                valid_all_cell_track_idx_dict,
+                                                                valid_all_cell_track_prob_dict,
+                                                                frame_num_node_idx_coord_list_dict)
+
+
+
 
             is_best_prob_lower_than_threshold: bool = best_prob < hyper_para.cut_threshold
             if is_best_prob_lower_than_threshold:
                 break
 
-            if frame_num in frame_num_cell_track_idx_dict:  raise Exception("code validation check")
-            if frame_num in frame_num_cell_prob_dict:  raise Exception("code validation check")
+            if connect_to_frame_num in frame_num_cell_track_idx_dict:  raise Exception("code validation check")
+            if connect_to_frame_num in frame_num_cell_prob_dict:       raise Exception("code validation check")
 
-            frame_num_cell_track_idx_dict[frame_num] = best_idx
-            frame_num_cell_prob_dict[frame_num] = best_prob
+            frame_num_cell_track_idx_dict[connect_to_frame_num] = best_idx
+            frame_num_cell_prob_dict[connect_to_frame_num] = best_prob
 
         is_track_above_min_length: bool = (len(frame_num_cell_track_idx_dict.keys()) > hyper_para.minimum_track_length)
 
-        if is_track_above_min_length:
+        if not is_track_above_min_length:
+            to_handle_cell_id_list.remove(to_handle_cell_id)
+            continue
 
-            # use final track to check if any redo cells occur
 
-            # add to occupation list
-            frame_num_node_idx_occupation_list_list_dict = add_track_to_cell_occupation_list_list_dict(frame_num_node_idx_occupation_list_list_dict, to_handle_cell_id, frame_num_cell_track_idx_dict)
+        # use final track to check if any redo cells occur
 
-            # add track to valid track list
-            valid_all_cell_track_idx_dict[to_handle_cell_id] = frame_num_cell_track_idx_dict
-            valid_all_cell_track_prob_dict[to_handle_cell_id] = frame_num_cell_prob_dict
+        # add to occupation list
+        frame_num_node_idx_occupation_list_list_dict = add_track_to_cell_occupation_list_list_dict(frame_num_node_idx_occupation_list_list_dict, to_handle_cell_id, frame_num_cell_track_idx_dict)
+
+        # add track to valid track list
+        valid_all_cell_track_idx_dict[to_handle_cell_id] = frame_num_cell_track_idx_dict
+        valid_all_cell_track_prob_dict[to_handle_cell_id] = frame_num_cell_prob_dict
 
         to_handle_cell_id_list.remove(to_handle_cell_id)
 
+    print("----> finish")
 
 
+    all_cell_id_track_list_dict: dict = defaultdict(list)
+    for cell_id, frame_num_cell_track_idx_dict in valid_all_cell_track_idx_dict.items():
+        track_tuple_list: list = []
+        previous_node_idx: int = -1
+        for connect_to_frame_num, node_idx in frame_num_cell_track_idx_dict.items():
+            frame_idx: int = connect_to_frame_num - 1
+            track_tuple_list.append((node_idx, frame_idx, previous_node_idx))
+            previous_node_idx = node_idx
 
-        all_cell_id_track_list_dict: dict = defaultdict(list)
-        # valid_all_cell_track_idx_dict
+        all_cell_id_track_list_dict[cell_id] = track_tuple_list
 
-        print(frame_num_cell_track_idx_dict)
-        exit()
-
+    return all_cell_id_track_list_dict
 
 
 
@@ -535,17 +566,17 @@ def execute_cell_tracking_task_bon(frame_num_prof_matrix_dict: dict, hyper_para,
     # last_frame_num: int = np.max(list(frame_num_prof_matrix_dict.keys())) # should be + 1?
     #
     #
-    # for frame_num in range(second_frame_num, last_frame_num):
-    #     print(f"frame {frame_num}: ", end='')
-    #     for cell_row_idx in range(frame_num_prof_matrix_dict[frame_num].shape[0]):  #skip all nodes which are already passed
+    # for connect_to_frame_num in range(second_frame_num, last_frame_num):
+    #     print(f"frame {connect_to_frame_num}: ", end='')
+    #     for cell_row_idx in range(frame_num_prof_matrix_dict[connect_to_frame_num].shape[0]):  #skip all nodes which are already passed
     #
-    #         is_new_cell: bool = len(frame_num_node_idx_cell_occupation_list_list_dict[frame_num][cell_row_idx]) == 0
+    #         is_new_cell: bool = len(frame_num_node_idx_cell_occupation_list_list_dict[connect_to_frame_num][cell_row_idx]) == 0
     #         if not is_new_cell:
     #             continue
     #
     #
     #
-    #         cell_id = CellId(frame_num, cell_row_idx)
+    #         cell_id = CellId(connect_to_frame_num, cell_row_idx)
     #
     #         to_handle_cell_id_list: list = [cell_id]
     #
@@ -579,8 +610,8 @@ def execute_cell_tracking_task_bon(frame_num_prof_matrix_dict: dict, hyper_para,
     #         code_validate_track(all_cell_id_track_list_dict)
     #
     #     print("  --> finish")
-
-    return all_cell_id_track_list_dict
+    #
+    # return all_cell_id_track_list_dict
 
 def execute_cell_tracking_task_1(frame_num_prof_matrix_dict: dict, hyper_para, is_use_cell_dependency_feature: bool):
     all_cell_id_track_list_dict: dict = defaultdict(list)
@@ -1057,6 +1088,26 @@ def _process_and_find_best_cell_track(cell_id_track_list_dict,
 def __________unit_function_start_label():
     raise Exception("for labeling only")
 
+
+def derive_directional_score(track_coord_list: list(CoordTuple), new_coord: CoordTuple):
+    if len(track_coord_list) <= 1:
+        return 1
+
+
+
+
+
+
+def derive_best_node_idx_to_connect(connection_prob_list,
+                                    connect_to_frame_num,
+                                    frame_num_node_idx_occupation_list_list_dict,
+                                    valid_all_cell_track_idx_dict,
+                                    valid_all_cell_track_prob_dict,
+                                    frame_num_node_idx_coord_list_dict):
+    best_idx: int = np.argmax(connection_prob_list)
+    best_prob: float = connection_prob_list[best_idx]
+
+    return best_idx, best_prob
 
 
 def derive_discount_rate_from_cell_start_frame_num(cell_id: CellId, merge_above_threshold: float, discount_rate_per_layer):
@@ -1949,6 +2000,32 @@ def deprecate_derive_prof_matrix_list(segmentation_folder_path: str, output_fold
 
 
 
+def derive_frame_num_node_idx_coord_list_dict(segmentation_folder_path: str, segmented_filename_list):
+    frame_num_cell_coord_list_dict: dict = {}
+
+    for frame_idx in range(0, len(segmented_filename_list)):
+        frame_num = frame_idx + 1
+        img = plt.imread(segmentation_folder_path + segmented_filename_list[frame_idx])
+        label_img = measure.label(img, background=0, connectivity=1)
+        cellnb_img = np.max(label_img)
+
+        cell_coord_tuple_list = []
+        for cellnb_i in range(cellnb_img):
+
+            cell_i = plt.imread(segmentation_folder_path + segmented_filename_list[0])
+            cell_i_props = measure.regionprops(label_img, intensity_image=cell_i) #label_img_next是二值图像为255，无intensity。需要与output中的预测的细胞一一对应，预测细胞有intensity
+
+            y, x = cell_i_props[cellnb_i].centroid
+            y, x = int(y), int(x)
+
+            cell_coord_tuple_list.append(CoordTuple(x, y))
+
+        frame_num_cell_coord_list_dict[frame_num] = cell_coord_tuple_list
+
+    return frame_num_cell_coord_list_dict
+
+
+
 def derive_frame_num_prof_matrix_dict(segmentation_folder_path: str, output_folder_path: str, series: str, segmented_filename_list):
     frame_num_prof_matrix_dict: dict = {}
 
@@ -1970,11 +2047,13 @@ def derive_frame_num_prof_matrix_dict(segmentation_folder_path: str, output_fold
 
         #loop through all combinations of cells in this and the next frame
         for cellnb_i in range(cellnb_img):
-            #cellnb i + 1 because cellnumbering in output files starts from 1
             cell_i_filename = "mother_" + segmented_filename_list[frame_num][:-4] + "_Cell" + str(cellnb_i + 1).zfill(2) + ".png"
             cell_i = plt.imread(output_folder_path + series + '/' + cell_i_filename)
-            #predictions are for each cell in curr img
+
             cell_i_props = measure.regionprops(label_img_next, intensity_image=cell_i) #label_img_next是二值图像为255，无intensity。需要与output中的预测的细胞一一对应，预测细胞有intensity
+
+
+            #predictions are for each cell in curr img
             for cellnb_j in range(cellnb_img_next):
                 #calculate profit score from mean intensity neural network output in segmented cell area
                 prof_mat[cellnb_i, cellnb_j] = cell_i_props[cellnb_j].mean_intensity         #得到填充矩阵size = max(cellnb_img, cellnb_img_next)：先用预测的每一个细胞的mean_intensity填满cellnb_img, cellnb_img_next行和列
@@ -2139,6 +2218,36 @@ def derive_last_layer_each_node_best_track(handling_cell_id,  # CellId
 
 def __________common_function_start_label():
     raise Exception("for labeling only")
+
+from math import atan2, degrees, radians
+
+def derive_degree_diff_from_two_vectors(vector_coord_tuple_1: CoordTuple, vector_coord_tuple_2: CoordTuple): #These can also be four parameters instead of two arrays
+    dot = vector_coord_tuple_1.x * vector_coord_tuple_2.x + vector_coord_tuple_1.y * vector_coord_tuple_2.y      # dot product
+    det = vector_coord_tuple_1.y * vector_coord_tuple_2.x - vector_coord_tuple_1.x * vector_coord_tuple_2.y      # determinant
+    angle = atan2(det, dot)  # atan2(y, x) or atan2(sin, cos)
+
+    angle = degrees(angle)
+
+    if angle < 0:
+        angle = abs(angle)
+
+    return angle
+
+
+def derive_degree_from_vector(vector_coord_tuple_1: CoordTuple): #These can also be four parameters instead of two arrays
+    default_zero_degree_vector = CoordTuple(0, 1)
+
+    dot = default_zero_degree_vector.x * vector_coord_tuple_1.x + default_zero_degree_vector.y * vector_coord_tuple_1.y      # dot product
+    det = default_zero_degree_vector.y * vector_coord_tuple_1.x - default_zero_degree_vector.x * vector_coord_tuple_1.y      # determinant
+    angle = atan2(det, dot)  # atan2(y, x) or atan2(sin, cos)
+
+    angle = degrees(angle)
+
+    if angle < 0:
+        angle += 360
+
+    return angle
+
 
 
 def inclusive_range(start: int, end: int):
