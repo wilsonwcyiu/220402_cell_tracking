@@ -1209,8 +1209,9 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
 
     best_prob: float = 0
     best_node_idx: int = None
+    min_connection_prob: float = 0.004
     for current_frame_node_idx, connection_prob in enumerate(connection_prob_list):
-        if connection_prob == 0:
+        if connection_prob < min_connection_prob:
             continue
 
         current_node_coord: CoordTuple = frame_num_node_idx_coord_list_dict[connect_to_frame_num][current_frame_node_idx]
@@ -1245,15 +1246,21 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
 
         is_use_distance_score: bool = True
         if is_use_distance_score:
-            distance: float = ((current_node_coord.x - last_frame_node_coord.x)**2 + (current_node_coord.y - last_frame_node_coord.x)**2)**0.5
+            distance: float = ((current_node_coord.x - last_frame_node_coord.x)**2 + (current_node_coord.y - last_frame_node_coord.y)**2)**0.5
             distance = np.round(distance, 4)
 
-            distance = (10 - distance) / 10
+            max_moving_distance = 35
+            if distance > max_moving_distance:
+                # print("sdfgsdfg", connect_to_frame_num-1, last_frame_node_idx, current_frame_node_idx, last_frame_node_coord, current_node_coord, distance)
+                distance_score = 0
+            else:                               distance_score = (max_moving_distance - distance) / max_moving_distance
+
+
 
 
         connection_prob = (weight_tuple.degree * degree_score) + \
                           (weight_tuple.probability * connection_prob) + \
-                          (weight_tuple.distance * distance)
+                          (weight_tuple.distance * distance_score)
 
         if connection_prob > best_prob:
             best_prob = connection_prob
