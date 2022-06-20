@@ -40,8 +40,8 @@ from other.shared_cell_data import obtain_ground_truth_cell_dict, convert_track_
 def main():
     folder_path: str = 'D:/viterbi linkage/dataset/'
 
-    segmentation_folder = folder_path + 'segmentation_unet_seg//'
-    output_folder = folder_path + 'output_unet_seg_finetune//'
+    segmentation_folder = folder_path + 'segmentation_unet_seg/'
+    output_folder = folder_path + 'output_unet_seg_finetune/'
     save_dir = folder_path + 'save_directory_enhancement/'
 
 
@@ -115,7 +115,7 @@ def main():
 
         input_series_list = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
                              'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
-        input_series_list = ['S01', 'S02']
+        input_series_list = ['S02', 'S03']
 
 
         all_segmented_filename_list = listdir(segmentation_folder)
@@ -141,15 +141,20 @@ def main():
 
                 total_threads: int = len(thread_list)
                 for thread_idx in range(total_threads):
-                    return_series, final_result_list = thread_list[thread_idx].get()
+                    return_series, final_result_list, score_log_mtx = thread_list[thread_idx].get()
                     viterbi_result_dict[return_series] = final_result_list
                     print(f"Thread {thread_idx + 1}/ {total_threads} completed")
 
             else:
                 for series in existing_series_list:
                     print(f"working on series: {series}. ")
-                    return_series, final_result_list = cell_tracking_core_flow(series, segmentation_folder, all_segmented_filename_list, output_folder, hyper_para, is_use_cell_dependency_feature)
+                    return_series, final_result_list, score_log_mtx = cell_tracking_core_flow(series, segmentation_folder, all_segmented_filename_list, output_folder, hyper_para, is_use_cell_dependency_feature)
                     viterbi_result_dict[series] = final_result_list
+
+                    score_log_dir = save_dir + "score_log/"
+                    result_file_name: str = Path(__file__).name.replace(".py", "_")
+                    save_score_log_to_excel(series, score_log_mtx, score_log_dir, result_file_name)
+
 
         except Exception as e:
             time.sleep(1)
@@ -400,8 +405,9 @@ def cell_tracking_core_flow(series: str, segmentation_folder: str, all_segmented
     # exit()
 
 
-    all_track_dict = execute_cell_tracking_task_bon(frame_num_prof_matrix_dict, frame_num_node_idx_coord_list_dict,
+    all_track_dict, score_log_mtx = execute_cell_tracking_task_bon(frame_num_prof_matrix_dict, frame_num_node_idx_coord_list_dict,
                                                     hyper_para, is_use_cell_dependency_feature)
+
 
     is_use_frame_num: bool = True
     ground_truth_cell_dict = obtain_ground_truth_cell_dict()
@@ -430,15 +436,17 @@ def cell_tracking_core_flow(series: str, segmentation_folder: str, all_segmented
 
     code_validate_track_list(track_list_list)
 
-    is_do_post_adjustment: bool = hyper_para.is_do_post_adjustment
-    if is_do_post_adjustment:
-        prof_mat_list: list = deprecate_derive_prof_matrix_list(segmentation_folder, output_folder, series, segmented_filename_list)
-        final_track_list = post_adjustment_old(track_list_list, prof_mat_list)
+    # is_do_post_adjustment: bool = hyper_para.is_do_post_adjustment
+    # if is_do_post_adjustment:
+    #     prof_mat_list: list = deprecate_derive_prof_matrix_list(segmentation_folder, output_folder, series, segmented_filename_list)
+    #     final_track_list = post_adjustment_old(track_list_list, prof_mat_list)
+    #
+    #     return series, final_track_list, score_log_mtx
+    #
+    # else:
+    #     return series, track_list_list, score_log_mtx
 
-        return series, final_track_list
-
-    else:
-        return series, track_list_list
+    return series, track_list_list, score_log_mtx
 
 
 
@@ -463,6 +471,9 @@ def execute_cell_tracking_task_bon(frame_num_prof_matrix_dict: dict, frame_num_n
     valid_all_cell_track_prob_dict: dict = {}       # [cell_id][frame_num] = probability
 
     line_space_cnter = 1
+
+    score_log_mtx = init_score_log(frame_num_prof_matrix_dict)
+
     while len(to_handle_cell_id_list) != 0:
         to_handle_cell_id_list.sort(key=cmp_to_key(compare_cell_id))
 
@@ -493,14 +504,15 @@ def execute_cell_tracking_task_bon(frame_num_prof_matrix_dict: dict, frame_num_n
 
 
 
-            best_idx, best_prob = derive_best_node_idx_to_connect(to_handle_cell_id,
+            best_idx, best_prob, score_log_mtx = derive_best_node_idx_to_connect(to_handle_cell_id,
                                                                   handling_cell_frame_num_track_idx_dict,
                                                                   connection_prob_list,
                                                                 connect_to_frame_num,
                                                                 frame_num_node_idx_occupation_list_list_dict,
                                                                 valid_all_cell_track_idx_dict,
                                                                 valid_all_cell_track_prob_dict,
-                                                                frame_num_node_idx_coord_list_dict)
+                                                                frame_num_node_idx_coord_list_dict,
+                                                                  score_log_mtx)
 
 
 
@@ -547,7 +559,7 @@ def execute_cell_tracking_task_bon(frame_num_prof_matrix_dict: dict, frame_num_n
 
         all_cell_id_track_list_dict[cell_id] = track_tuple_list
 
-    return all_cell_id_track_list_dict
+    return all_cell_id_track_list_dict, score_log_mtx
 
 
 
@@ -1131,6 +1143,51 @@ def __________unit_function_start_label():
     raise Exception("for labeling only")
 
 
+def init_score_log(frame_num_prof_matrix_dict):
+    frame_num_score_log_mtx = {}
+    for frame_num, prof_mtx in frame_num_prof_matrix_dict.items():
+        row_list = []
+        for row_idx in range(prof_mtx.shape[0]):
+            col_list = []
+            for col_idx in range(prof_mtx.shape[1]):
+                col_list.append([])
+            row_list.append(col_list)
+        frame_num_score_log_mtx[frame_num] = row_list
+
+        # print("dfndf", type(frame_num_score_log_mtx[frame_num][0][0]))
+        # print("sdbsdbf", frame_num_score_log_mtx[frame_num].shape)
+
+    return frame_num_score_log_mtx
+
+
+
+def save_score_log_to_excel(series: str, frame_num_score_matrix_dict, excel_output_dir_path: str, file_name_prefix: str = ""):
+    import pandas as pd
+    # num_of_segementation_img: int = len(frame_num_prof_matrix_dict)
+
+    file_name: str = file_name_prefix + f"series_{series}.xlsx"
+    filepath = excel_output_dir_path + file_name;
+    writer = pd.ExcelWriter(filepath, engine='xlsxwriter') #pip install xlsxwriter
+
+    for frame_num, prof_matrix in frame_num_score_matrix_dict.items():
+        tmp_array: np.arrays = frame_num_score_matrix_dict[frame_num]
+
+        df = pd.DataFrame (tmp_array)
+
+        # def highlight_cells(val):
+        #     color = 'yellow' if val >= 1  else 'white'
+        #     return 'background-color: {}'.format(color)
+        #
+        # df = df.style.applymap(highlight_cells)
+
+        sheet_name: str = "frame_1" if frame_num == 1 else str(frame_num)
+        df.to_excel(writer, sheet_name=sheet_name, index=True)
+
+    writer.save()
+
+
+
+
 def derive_frame_num_distance_matrix_dict(frame_num_node_idx_coord_list_dict: dict):
     start_frame = min(list(frame_num_node_idx_coord_list_dict.keys()))
     end_frame = max(list(frame_num_node_idx_coord_list_dict.keys()))
@@ -1157,10 +1214,14 @@ def derive_frame_num_distance_matrix_dict(frame_num_node_idx_coord_list_dict: di
 
 
 def derive_vector_from_coord_list(coord_tuple_list: list):
+    if len(coord_tuple_list) == 1:
+        raise Exception("code validation check")
+
     start_vec: CoordTuple = coord_tuple_list[0]
     end_vec: CoordTuple = coord_tuple_list[-1]
 
-    final_coord_tuple = CoordTuple(end_vec.x - start_vec.x, end_vec.y - start_vec.y)
+    reversed_y_coord = -(end_vec.y - start_vec.y) # reverse y because coord raw data of y-axis is reversed
+    final_coord_tuple = CoordTuple(end_vec.x - start_vec.x, reversed_y_coord)
 
     return final_coord_tuple
 
@@ -1195,33 +1256,38 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
                                     frame_num_node_idx_occupation_list_list_dict,
                                     valid_all_cell_track_idx_dict,
                                     valid_all_cell_track_prob_dict,
-                                    frame_num_node_idx_coord_list_dict):
+                                    frame_num_node_idx_coord_list_dict,
+                                    score_log_mtx):
 
-
+    current_frame_num = connect_to_frame_num - 1
     coord_length_for_vector: int = 5
 
-    weight_tuple = WeightTuple(0.5, 0.5, 0)
+    weight_tuple = WeightTuple(0.5, 0.2, 0.3)
     # degree_score_weight: float = 0.3
     # prob_score_weight: float = (1-degree_score_weight)
 
-    last_frame_node_idx: int = handling_cell_frame_num_track_idx_dict[connect_to_frame_num-1]
-    last_frame_node_coord: CoordTuple = frame_num_node_idx_coord_list_dict[connect_to_frame_num-1][last_frame_node_idx]
+    last_frame_node_idx: int = handling_cell_frame_num_track_idx_dict[current_frame_num]
+    last_frame_node_coord: CoordTuple = frame_num_node_idx_coord_list_dict[current_frame_num][last_frame_node_idx]
 
     best_prob: float = 0
     best_node_idx: int = None
     min_connection_prob: float = 0.004
-    for current_frame_node_idx, connection_prob in enumerate(connection_prob_list):
+    for candidate_node_idx, connection_prob in enumerate(connection_prob_list):
         if connection_prob < min_connection_prob:
             continue
 
-        current_node_coord: CoordTuple = frame_num_node_idx_coord_list_dict[connect_to_frame_num][current_frame_node_idx]
+        current_node_coord: CoordTuple = frame_num_node_idx_coord_list_dict[connect_to_frame_num][candidate_node_idx]
 
-        is_use_degree_score: bool = True
+        is_use_degree_score: bool = (weight_tuple.degree > 0)
         if is_use_degree_score:
+
+            if to_handle_cell_id == CellId(1, 3) and current_frame_num == 23:
+                print("asfgsdfg")
+
             previous_coord_list = []
             start_frame = connect_to_frame_num - coord_length_for_vector
             start_frame = max(start_frame, 1, to_handle_cell_id.start_frame_num)
-            end_frame = connect_to_frame_num - 1
+            end_frame = current_frame_num
 
             coord_length: int = (end_frame - start_frame) + 1
             if coord_length > 1:
@@ -1244,32 +1310,36 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
             # connection_prob *= degree_score
 
 
-        is_use_distance_score: bool = True
+        is_use_distance_score: bool = (weight_tuple.distance > 0)
         if is_use_distance_score:
             distance: float = ((current_node_coord.x - last_frame_node_coord.x)**2 + (current_node_coord.y - last_frame_node_coord.y)**2)**0.5
             distance = np.round(distance, 4)
 
             max_moving_distance = 35
             if distance > max_moving_distance:
-                # print("sdfgsdfg", connect_to_frame_num-1, last_frame_node_idx, current_frame_node_idx, last_frame_node_coord, current_node_coord, distance)
+                # print("sdfgsdfg", connect_to_frame_num-1, last_frame_node_idx, candidate_node_idx, last_frame_node_coord, current_node_coord, distance)
                 distance_score = 0
-            else:                               distance_score = (max_moving_distance - distance) / max_moving_distance
+            else:
+                distance_score = (max_moving_distance - distance) / max_moving_distance
 
 
+        round_to = 2
+        weighted_probability_score = np.round(weight_tuple.probability * connection_prob, round_to)
+        weighted_degree_score = np.round(weight_tuple.degree * degree_score, round_to)
+        weighted_distance_score = np.round(weight_tuple.distance * distance_score, round_to)
+        connection_prob = np.round(weighted_probability_score + weighted_degree_score + weighted_distance_score, round_to)
 
-
-        connection_prob = (weight_tuple.degree * degree_score) + \
-                          (weight_tuple.probability * connection_prob) + \
-                          (weight_tuple.distance * distance_score)
+        current_node_idx: int = handling_cell_frame_num_track_idx_dict[current_frame_num]
+        score_log_mtx[current_frame_num][current_node_idx][candidate_node_idx].append(f"{to_handle_cell_id.str_short()} {connection_prob}={weighted_probability_score}+{weighted_degree_score}+{weighted_distance_score}")
 
         if connection_prob > best_prob:
             best_prob = connection_prob
-            best_node_idx = current_frame_node_idx
+            best_node_idx = candidate_node_idx
 
     # best_node_idx: int = np.argmax(connection_prob_list)
     # best_prob: float = connection_prob_list[best_node_idx]
 
-    return best_node_idx, best_prob
+    return best_node_idx, best_prob, score_log_mtx
 
 
 def derive_discount_rate_from_cell_start_frame_num(cell_id: CellId, merge_above_threshold: float, discount_rate_per_layer):
