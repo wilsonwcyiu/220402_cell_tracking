@@ -52,7 +52,7 @@ def main():
     routing_strategy_enum_list: list = [ROUTING_STRATEGY_ENUM.ALL_LAYER]
     merge_threshold_list: list = [0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
     minimum_track_length_list: list = [5]
-    cut_threshold_list: list = [0.01]
+    cut_threshold_list: list = [0.004]
     is_do_post_adjustment_list: list = [False]
     cut_strategy_enum_list: list = [CUT_STRATEGY_ENUM.AFTER_ROUTING, CUT_STRATEGY_ENUM.DURING_ROUTING]
     both_cell_below_threshold_strategy_enum_list: list = [BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM.SHARE]
@@ -154,6 +154,19 @@ def main():
                     score_log_dir = save_dir + "score_log/"
                     result_file_name: str = Path(__file__).name.replace(".py", "_")
                     save_score_log_to_excel(series, score_log_mtx, score_log_dir, result_file_name)
+
+
+
+                    is_use_frame_num: bool = True
+                    ground_truth_cell_dict = obtain_ground_truth_cell_dict()
+                    series_ground_truth_list = ground_truth_cell_dict[series]
+                    for track_tuple_list in final_result_list:
+                        cell_id_tuple: tuple = track_tuple_list[0]
+                        if cell_id_tuple in series_ground_truth_list:
+                            if is_use_frame_num:
+                                track_tuple_list = convert_track_frame_idx_to_frame_num(track_tuple_list)
+
+                            print(track_tuple_list)
 
 
         except Exception as e:
@@ -390,35 +403,13 @@ def cell_tracking_core_flow(series: str, segmentation_folder: str, all_segmented
 
     frame_num_node_idx_coord_list_dict = derive_frame_num_node_idx_coord_list_dict(segmentation_folder, segmented_filename_list)
 
-    # frame_num_distance_matrix_dict = derive_frame_num_distance_matrix_dict(frame_num_node_idx_coord_list_dict)
-
-    # max_d = -1
-    # min_d = 999
-    # for frame_num, distance_matrix in frame_num_distance_matrix_dict.items():
-    #     for row_idx in range(distance_matrix.shape[0]):
-    #         for col_idx in range(distance_matrix.shape[1]):
-    #             distance = distance_matrix[row_idx][col_idx]
-    #             if distance > max_d:    max_d = distance
-    #             if distance < min_d:     min_d = distance
-    #
-    # print(min_d, max_d)
-    # exit()
+    all_track_dict, score_log_mtx = execute_cell_tracking_task_bon(frame_num_prof_matrix_dict,
+                                                                   frame_num_node_idx_coord_list_dict,
+                                                                   hyper_para,
+                                                                   is_use_cell_dependency_feature)
 
 
-    all_track_dict, score_log_mtx = execute_cell_tracking_task_bon(frame_num_prof_matrix_dict, frame_num_node_idx_coord_list_dict,
-                                                    hyper_para, is_use_cell_dependency_feature)
 
-
-    is_use_frame_num: bool = True
-    ground_truth_cell_dict = obtain_ground_truth_cell_dict()
-    series_ground_truth_list = ground_truth_cell_dict[series]
-    for track_tuple_list in all_track_dict.values():
-        cell_id_tuple: tuple = track_tuple_list[0]
-        if cell_id_tuple in series_ground_truth_list:
-            if is_use_frame_num:
-                track_tuple_list = convert_track_frame_idx_to_frame_num(track_tuple_list)
-
-            print(track_tuple_list)
     # exit()
 
 
@@ -512,13 +503,14 @@ def execute_cell_tracking_task_bon(frame_num_prof_matrix_dict: dict, frame_num_n
                                                                 valid_all_cell_track_idx_dict,
                                                                 valid_all_cell_track_prob_dict,
                                                                 frame_num_node_idx_coord_list_dict,
-                                                                  score_log_mtx)
+                                                                  score_log_mtx,
+                                                                 hyper_para.cut_threshold)
 
 
 
 
-            is_best_prob_lower_than_threshold: bool = best_prob < hyper_para.cut_threshold
-            if is_best_prob_lower_than_threshold:
+            # is_best_prob_lower_than_threshold: bool = best_prob < hyper_para.cut_threshold
+            if best_prob == 0:
                 break
 
             if connect_to_frame_num in handling_cell_frame_num_track_idx_dict:  raise Exception("code validation check")
@@ -1143,6 +1135,45 @@ def __________unit_function_start_label():
     raise Exception("for labeling only")
 
 
+def derive_distance_score(current_node_coord, last_frame_node_coord, max_moving_distance):
+    distance: float = ((current_node_coord.x - last_frame_node_coord.x)**2 + (current_node_coord.y - last_frame_node_coord.y)**2)**0.5
+    distance = np.round(distance, 4)
+
+    if distance > max_moving_distance:
+        distance_score = 0
+    else:
+        distance_score = (max_moving_distance - distance) / max_moving_distance
+
+    return distance_score
+
+
+
+def derive_degree_score(to_handle_cell_id, current_frame_num, connect_to_frame_num, last_frame_node_coord, current_node_coord, coord_length_for_vector, handling_cell_frame_num_track_idx_dict, frame_num_node_idx_coord_list_dict):
+    previous_coord_list = []
+    start_frame = connect_to_frame_num - coord_length_for_vector
+    start_frame = max(start_frame, 1, to_handle_cell_id.start_frame_num)
+    end_frame = current_frame_num
+
+    coord_length: int = (end_frame - start_frame) + 1
+    if coord_length > 1:
+        for frame_num in inclusive_range(start_frame, end_frame):
+            previous_node_idx: int = handling_cell_frame_num_track_idx_dict[frame_num]
+            coord_tuple: CoordTuple = frame_num_node_idx_coord_list_dict[frame_num][previous_node_idx]
+            previous_coord_list.append(coord_tuple)
+        previous_vec: CoordTuple = derive_vector_from_coord_list(previous_coord_list)
+
+        new_connection_vec: CoordTuple = derive_vector_from_coord_list([last_frame_node_coord, current_node_coord])
+
+        degree_diff: float = derive_degree_diff_from_two_vectors(previous_vec, new_connection_vec)
+    else:
+        degree_diff = 0
+
+    degree_score: float = (cos(radians(degree_diff)) + 1) * 0.5  # +1 and *0.5 to shift up and make it stay between 1 and 0
+
+    return degree_score
+
+
+
 def init_score_log(frame_num_prof_matrix_dict):
     frame_num_score_log_mtx = {}
     for frame_num, prof_mtx in frame_num_prof_matrix_dict.items():
@@ -1257,70 +1288,36 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
                                     valid_all_cell_track_idx_dict,
                                     valid_all_cell_track_prob_dict,
                                     frame_num_node_idx_coord_list_dict,
-                                    score_log_mtx):
+                                    score_log_mtx,
+                                    cut_threshold):
+
+
 
     current_frame_num = connect_to_frame_num - 1
     coord_length_for_vector: int = 5
 
     weight_tuple = WeightTuple(0.5, 0.2, 0.3)
-    # degree_score_weight: float = 0.3
-    # prob_score_weight: float = (1-degree_score_weight)
 
     last_frame_node_idx: int = handling_cell_frame_num_track_idx_dict[current_frame_num]
     last_frame_node_coord: CoordTuple = frame_num_node_idx_coord_list_dict[current_frame_num][last_frame_node_idx]
 
     best_prob: float = 0
     best_node_idx: int = None
-    min_connection_prob: float = 0.004
     for candidate_node_idx, connection_prob in enumerate(connection_prob_list):
-        if connection_prob < min_connection_prob:
+        if connection_prob < cut_threshold:
             continue
 
         current_node_coord: CoordTuple = frame_num_node_idx_coord_list_dict[connect_to_frame_num][candidate_node_idx]
 
         is_use_degree_score: bool = (weight_tuple.degree > 0)
         if is_use_degree_score:
-
-            if to_handle_cell_id == CellId(1, 3) and current_frame_num == 23:
-                print("asfgsdfg")
-
-            previous_coord_list = []
-            start_frame = connect_to_frame_num - coord_length_for_vector
-            start_frame = max(start_frame, 1, to_handle_cell_id.start_frame_num)
-            end_frame = current_frame_num
-
-            coord_length: int = (end_frame - start_frame) + 1
-            if coord_length > 1:
-                for frame_num in inclusive_range(start_frame, end_frame):
-                    previous_node_idx: int = handling_cell_frame_num_track_idx_dict[frame_num]
-                    coord_tuple: CoordTuple = frame_num_node_idx_coord_list_dict[frame_num][previous_node_idx]
-                    previous_coord_list.append(coord_tuple)
-                previous_vec: CoordTuple = derive_vector_from_coord_list(previous_coord_list)
-
-                new_connection_vec: CoordTuple = derive_vector_from_coord_list([last_frame_node_coord, current_node_coord])
-
-                degree_diff: float = derive_degree_diff_from_two_vectors(previous_vec, new_connection_vec)
-            else:
-                degree_diff = 0
-
-            # by weight
-            degree_score: float = (cos(radians(degree_diff)) + 1) * 0.5  # +1 and *0.5 to shift up and make it stay between 1 and 0
-            # # by multiplier
-            # degree_score: float = (cos(degree_diff) + 3) * 0.25  # +3 and *0.25 to shift up and make it stay between 1 and 0.5
-            # connection_prob *= degree_score
+            degree_score: float = derive_degree_score(to_handle_cell_id, current_frame_num, connect_to_frame_num, last_frame_node_coord, current_node_coord, coord_length_for_vector, handling_cell_frame_num_track_idx_dict, frame_num_node_idx_coord_list_dict)
 
 
+        max_moving_distance = 35
         is_use_distance_score: bool = (weight_tuple.distance > 0)
         if is_use_distance_score:
-            distance: float = ((current_node_coord.x - last_frame_node_coord.x)**2 + (current_node_coord.y - last_frame_node_coord.y)**2)**0.5
-            distance = np.round(distance, 4)
-
-            max_moving_distance = 35
-            if distance > max_moving_distance:
-                # print("sdfgsdfg", connect_to_frame_num-1, last_frame_node_idx, candidate_node_idx, last_frame_node_coord, current_node_coord, distance)
-                distance_score = 0
-            else:
-                distance_score = (max_moving_distance - distance) / max_moving_distance
+            distance_score = derive_distance_score(current_node_coord, last_frame_node_coord, max_moving_distance)
 
 
         round_to = 2
@@ -1336,8 +1333,6 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
             best_prob = connection_prob
             best_node_idx = candidate_node_idx
 
-    # best_node_idx: int = np.argmax(connection_prob_list)
-    # best_prob: float = connection_prob_list[best_node_idx]
 
     return best_node_idx, best_prob, score_log_mtx
 
