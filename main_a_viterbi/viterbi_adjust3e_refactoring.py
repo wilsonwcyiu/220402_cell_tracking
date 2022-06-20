@@ -27,7 +27,7 @@ from collections import defaultdict
 import time
 from multiprocessing.pool import ThreadPool
 
-# from main.viterbi_adjust3e_refactoring import CellId
+# from main_a_viterbi.viterbi_adjust3e_refactoring import CellId
 
 
 def main():
@@ -88,8 +88,22 @@ def main():
     print("save_track_dictionary")
     save_track_dictionary(viterbi_result_dict, save_dir + "viterbi_results_dict.pkl")
 
-    with open(save_dir + "viterbi_results_dict.txt", 'w') as f:
-        f.write(str(viterbi_result_dict[series]))
+
+
+    with open(save_dir + "viterbi_results_dict_3e.txt", 'w') as f:
+        for series in existing_series_list:
+            f.write("======================" + str(series) + "================================")
+            f.write("\n")
+            cell_track_list_list = sorted(viterbi_result_dict[series])
+            for cell_track_list in cell_track_list_list:
+                f.write(str(cell_track_list))
+                f.write("\n")
+
+            f.write("\n")
+            f.write("\n")
+
+    # with open(save_dir + "viterbi_results_dict.txt", 'w') as f:
+    #     f.write(str(viterbi_result_dict[series]))
 
 
     execution_time = time.perf_counter() - start_time
@@ -118,76 +132,37 @@ def cell_tracking_core_flow(series: str, segmentation_folder: str, all_segmented
     all_track_dict = execute_cell_tracking_task(prof_mat_list, frame_num_prof_matrix_dict)
 
 
-    count_dict = {}
-    for key, value_list in all_track_dict.items():
-        seq_length = len(value_list)
-        if seq_length not in count_dict:
-            count_dict[seq_length] = 0
-
-        count_dict[seq_length] += 1
-
-
-    result_list = []
-    for i in range(len(all_track_dict)):
-        if i not in all_track_dict.keys():
-            continue
-        else:
-            min_track_length: int = 5
-            if (len(all_track_dict[i]) > min_track_length):
-                result_list.append(all_track_dict[i])
+    # track_length_count_dict = {}
+    # for track_list_list in all_track_dict.values():
+    #     seq_length = len(track_list_list)
+    #
+    #     if seq_length not in track_length_count_dict:
+    #         track_length_count_dict[seq_length] = 0
+    #
+    #     track_length_count_dict[seq_length] += 1
 
 
-
-
-    # post adjustment
-    for j in range(len(result_list) - 1):
-        for k in range(j + 1, len(result_list)):
-            pre_track_list = result_list[j]
-            next_track_list = result_list[k]
-            overlap_track_list = sorted(set([i[0:2] for i in pre_track_list]) & set([i[0:2] for i in next_track_list]), key = lambda x : (x[1], x[0]))
-            if overlap_track_list == []:
+    track_list_list = []
+    fix_flow: int = 2
+    if fix_flow == 1:
+        for i in range(len(all_track_dict)):
+            if i not in all_track_dict.keys():
                 continue
-
-            overlap_frame1_list = overlap_track_list[0][1]
-            node_combine_list = overlap_track_list[0][0]
-            pre_frame = overlap_frame1_list - 1
-            for i, tuples in enumerate(pre_track_list):
-                if tuples[1] == pre_frame:
-                    index_merge1 = i
-                    break
-                else:
-                    continue
-
-            node_merge1 = pre_track_list[index_merge1][0]
-            for ii, tuples in enumerate(next_track_list):
-                if tuples[1] == pre_frame:
-                    index_merge2 = ii
-                    break
-                else:
-                    continue
-
-            node_merge2 = next_track_list[index_merge2][0]
-            sub_matrix = prof_mat_list[pre_frame]
-            thre_sh1 = sub_matrix[node_merge1][node_combine_list]
-            thre_sh2 = sub_matrix[node_merge2][node_combine_list]
-            if thre_sh1 < thre_sh2:
-                result_list[k] = next_track_list
-                pre_track_new = copy.deepcopy(pre_track_list[0: index_merge1 + 1])
-                result_list[j] = pre_track_new
             else:
-                result_list[j] = pre_track_list
-                next_track_new = copy.deepcopy(next_track_list[0: index_merge2 + 1])
-                result_list[k] = next_track_new
+                min_track_length: int = 5
+                if (len(all_track_dict[i]) > min_track_length):
+                    track_list_list.append(all_track_dict[i])
 
-    #print(result)
-    final_result_list = []
-    for i in range(len(result_list)):
-        if ( len(result_list[i]) > 5 ):
-            final_result_list.append(result_list[i])
+    elif fix_flow == 2:
+        track_list_list = filter_track_list_by_length(all_track_dict.values())
+    else:
+        raise Exception(fix_flow)
 
-    return final_result_list
-    # identifier = series
-    # viterbi_result_dict[identifier] = final_result_list
+
+    final_track_list = post_adjustment(track_list_list, prof_mat_list)
+
+    return final_track_list
+
 
 
 
@@ -254,15 +229,14 @@ def execute_cell_tracking_task(profit_matrix_list: list, frame_num_prof_matrix_d
             for cell_idx, start_list_value_vec_list in next_list_value_vec_list_dict.items():
                 start_list_index_vec_list: list = next_list_index_vec_list_dict[cell_idx]
                 track_list: list = _find_iter_one_track_version1(start_list_index_vec_list, start_list_value_vec_list, profit_matrix_idx, cell_row_idx)
-                new_store_dict[CellId(frame_num, cell_idx)] = track_list
+                new_store_dict[cell_idx] = track_list
 
 
             new_short_Tracks = _cut_iter(new_store_dict, cut_threshold, new_transition_group_list, profit_matrix_idx)
 
             mask_transition_group_mtx_list = _mask_update(new_short_Tracks, mask_transition_group_mtx_list)
-            for cell_id, track_list in new_short_Tracks.items():
-                # all_cell_idx_track_list_dict[max_id_in_dict + cell_id + 1] = track_list
-                all_cell_idx_track_list_dict[cell_id] = track_list
+            for ke, val in new_short_Tracks.items():
+                all_cell_idx_track_list_dict[max_id_in_dict + ke + 1] = val
 
             max_id_in_dict = len(all_cell_idx_track_list_dict)
 
@@ -343,14 +317,14 @@ def _process_and_find_best_cell_track(to_handle_cell_id_list: list, frame_num_pr
                                                                             merge_above_threshold,
                                                                             handling_cell_id)
 
-            cell_id_track_list_dict[handling_cell_id] = cell_track_list
+            cell_id_track_list_dict[handling_cell_idx] = cell_track_list
 
             for to_redo_cell_id in to_redo_cell_id_list:
                 to_redo_cell_idx: int = to_redo_cell_id.cell_idx
-                del cell_id_track_list_dict[to_redo_cell_id]
+                del cell_id_track_list_dict[to_redo_cell_idx]
                 del cell_id_frame_num_node_idx_best_index_list_dict_dict[to_redo_cell_id]
                 del cell_id_frame_num_node_idx_best_value_list_dict_dict[to_redo_cell_id]
-                to_handle_cell_id_list.append(to_redo_cell_id)
+                to_handle_cell_id_list.append(to_redo_cell_idx)
 
             to_handle_cell_id_list.sort(key=cmp_to_key(compare_cell_id))
 
@@ -450,8 +424,63 @@ def __________unit_function_start_label():
     raise Exception("for labeling only")
 
 
+def filter_track_list_by_length(track_list_list: list, min_track_length: int = 5):
+    result_track_list: list = []
+    for track_list in track_list_list:
+        if (len(track_list) > min_track_length):
+            result_track_list.append(track_list)
 
-# _find_iter: find the best track start from current frame, and current node based on dict which returned from _process_iter
+    return result_track_list
+
+
+
+def post_adjustment(track_list_list: list, prof_mat_list: list):
+    for j in range(len(track_list_list) - 1):
+        for k in range(j + 1, len(track_list_list)):
+            pre_track_list = track_list_list[j]
+            next_track_list = track_list_list[k]
+            overlap_track_list = sorted(set([i[0:2] for i in pre_track_list]) & set([i[0:2] for i in next_track_list]), key = lambda x : (x[1], x[0]))
+            if overlap_track_list == []:
+                continue
+
+            overlap_frame1_list = overlap_track_list[0][1]
+            node_combine_list = overlap_track_list[0][0]
+            pre_frame = overlap_frame1_list - 1
+            for i, tuples in enumerate(pre_track_list):
+                if tuples[1] == pre_frame:
+                    index_merge1 = i
+                    break
+                else:
+                    continue
+
+            node_merge1 = pre_track_list[index_merge1][0]
+            for ii, tuples in enumerate(next_track_list):
+                if tuples[1] == pre_frame:
+                    index_merge2 = ii
+                    break
+                else:
+                    continue
+
+            node_merge2 = next_track_list[index_merge2][0]
+            sub_matrix = prof_mat_list[pre_frame]
+            thre_sh1 = sub_matrix[node_merge1][node_combine_list]
+            thre_sh2 = sub_matrix[node_merge2][node_combine_list]
+            if thre_sh1 < thre_sh2:
+                track_list_list[k] = next_track_list
+                pre_track_new = copy.deepcopy(pre_track_list[0: index_merge1 + 1])
+                track_list_list[j] = pre_track_new
+            else:
+                track_list_list[j] = pre_track_list
+                next_track_new = copy.deepcopy(next_track_list[0: index_merge2 + 1])
+                track_list_list[k] = next_track_new
+
+    #print(result)
+    final_result_list = filter_track_list_by_length(track_list_list)
+
+    return final_result_list
+
+
+
 def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict: dict,
                             cell_id_frame_num_node_idx_best_value_list_dict_dict: dict,
                             frame_cell_occupation_vec_list_dict: dict,
@@ -627,36 +656,36 @@ def _find_iter_one_track_version1(start_list_index_vec_list: list, start_list_va
 
 
 # truncate the long tracks
-def _cut_iter(new_store_dict, Threshold, transition_group, start_frame):
+def _cut_iter(longTracks, Threshold, transition_group, start_frame):
     short_Tracks = {}
 
-    for idx, cell_id in enumerate(new_store_dict.keys()):
+    for key, track in enumerate(longTracks):
         short_tracks = []
-        for track_step_idx in range(len(new_store_dict[cell_id]) - 1):
-            current_frame_idx = new_store_dict[cell_id][track_step_idx][1]
-            next_frame = new_store_dict[cell_id][track_step_idx + 1][1]
+        for index in range(len(longTracks[key])-1):
+            current_frame = longTracks[key][index][1]
+            next_frame = longTracks[key][index+1][1]
             #find the correct frame and ID of the nodes on tracks, and find the corresponded prob on transition_group matrix
-            if (track_step_idx == 0):
+            if (index == 0):
                 current_node = 0
-                #print(transition_group[current_frame_idx - start_frame].shape)
-                transition_group[current_frame_idx - start_frame] = transition_group[current_frame_idx - start_frame].reshape(1,-1)
+                #print(transition_group[current_frame - start_frame].shape)
+                transition_group[current_frame - start_frame] = transition_group[current_frame - start_frame].reshape(1,-1)
             else:
-                current_node = new_store_dict[cell_id][track_step_idx][0]
-            next_node = new_store_dict[cell_id][track_step_idx + 1][0]
-            weight_between_nodes = transition_group[current_frame_idx - start_frame][current_node][next_node]
+                current_node = longTracks[key][index][0]
+            next_node = longTracks[key][index+1][0]
+            weight_between_nodes = transition_group[current_frame - start_frame][current_node][next_node]
             #if prob > Threshold, add each node of each track, otherwise, copy all the former nodes which are before the first lower_threshold value into a short track
             if (weight_between_nodes > Threshold):
-                short_tracks.append(new_store_dict[cell_id][track_step_idx])
+                short_tracks.append(longTracks[key][index])
             else:
-                short_tracks = copy.deepcopy(new_store_dict[cell_id][0:track_step_idx])
+                short_tracks = copy.deepcopy(longTracks[key][0:index])
                 break
         #add the final node into tracks
-        if (len(short_tracks)==len(new_store_dict[cell_id])-1):
-            short_tracks.append(new_store_dict[cell_id][-1])
-            short_Tracks[cell_id] = short_tracks
+        if (len(short_tracks)==len(longTracks[key])-1):
+            short_tracks.append(longTracks[key][-1])
+            short_Tracks[key] = short_tracks
         else:
-            short_tracks.append(new_store_dict[cell_id][len(short_tracks)])
-            short_Tracks[cell_id] = short_tracks
+            short_tracks.append(longTracks[key][len(short_tracks)])
+            short_Tracks[key] = short_tracks
     return short_Tracks
 
 
@@ -719,11 +748,11 @@ def _cut_1(original_track_dict: dict, threshold: float, frame_num_prof_matrix_di
     short_track_list_dict: dict = {}
 
 
-    is_first_cell_id_not_zero: bool = list(original_track_dict.keys())[0].cell_idx != 0
+    is_first_cell_id_not_zero: bool = list(original_track_dict.keys())[0] != 0
     if is_first_cell_id_not_zero:
-        for miss_key in range(list(original_track_dict.keys())[0].cell_idx):
+        for miss_key in range(list(original_track_dict.keys())[0]):
             short_track_list = []
-            short_track_list.append((miss_key, 0, -1))
+            short_track_list.append((miss_key,0, -1))
             short_track_list_dict[miss_key] = short_track_list
 
 
@@ -745,7 +774,7 @@ def _cut_1(original_track_dict: dict, threshold: float, frame_num_prof_matrix_di
                 break
 
 
-        if (len(short_track_list) == len(original_track_dict[cell_id]) - 1 ):
+        if (len(short_track_list) == len(original_track_dict[cell_id])-1 ):
             tmp = original_track_dict[cell_id][-1]
             short_track_list.append(tmp)
             short_track_list_dict[cell_id] = short_track_list
@@ -837,7 +866,7 @@ def derive_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_prof_m
         frame_num_node_idx_occupation_tuple_vec_dict[next_frame_num] = [[] for _ in range(total_cell)]
 
 
-    for occupied_cell_id, track_tuple_list in cell_id_track_tuple_list_dict.items():
+    for cell_idx, track_tuple_list in cell_id_track_tuple_list_dict.items():
         start_frame_idx: int = track_tuple_list[0][1]
         start_frame_num: int = start_frame_idx + 1
         for track_idx, track_tuple in enumerate(track_tuple_list):
@@ -848,6 +877,7 @@ def derive_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_prof_m
 
             occupied_node_idx: int = track_tuple[0]
 
+            occupied_cell_id: CellId = CellId(start_frame_num, cell_idx)
             frame_num_node_idx_occupation_tuple_vec_dict[frame_num][occupied_node_idx].append(occupied_cell_id)
 
     return frame_num_node_idx_occupation_tuple_vec_dict
@@ -1038,6 +1068,8 @@ def __________object_start_label():
 
 class CellId():
     def __init__(self, start_frame_num: int, cell_idx: int):
+        if not isinstance(cell_idx, int):
+            raise Exception("cell_idx not isinstance(cell_idx, int)")
         self.start_frame_num = start_frame_num
         self.cell_idx = cell_idx
 

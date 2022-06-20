@@ -7,6 +7,8 @@ Created on Tue Sep 28 09:31:51 2021
 import os
 from os import listdir
 from os.path import join, basename
+from pathlib import Path
+
 import numpy as np
 from skimage import measure, filters
 import matplotlib.pyplot as plt
@@ -53,6 +55,7 @@ def _find(start_list_index, start_list_value):
             #      f'previous_maximize_index: {previous_maximize_index}')
             store_dict[k].append((current_maximize_index_, current_step + 1 - i, previous_maximize_index_))
             previous_maximize_index = previous_maximize_index_
+
         if len(v)!=1:
             store_dict[k].append((previous_maximize_index_, 1, k))
             store_dict[k].append((k, 0, -1))
@@ -189,22 +192,14 @@ def _iteration(transition_group):
     start_list_index, start_list_value = _process(transition_group)
     store_dict = _find(start_list_index, start_list_value)
 
-    # for store_list in store_dict.values():
-    #     if store_list[0] == (14, 0, -1):
-    #         tmp = store_list
 
     short_Tracks = _cut(store_dict, 0.01, transition_group)
-
-    # for store_list in short_Tracks.values():
-    #     if store_list[0] == (14, 0, -1):
-    #         tmp1 = store_list
 
     all_tracks.update(short_Tracks)
 
     length = len(all_tracks)
 
     mask_transition_group =  _mask(short_Tracks, transition_group)
-
 
 
     # bugfix
@@ -240,6 +235,7 @@ def _iteration(transition_group):
 
             length = len(all_tracks)
 
+
     return all_tracks
 
 #loop each node on first frame to find the optimal path using probabilty multiply
@@ -249,9 +245,11 @@ def _process(transition_group):
     start_list_value = defaultdict(list)
     #loop each row on first prob matrix. return the maximum value and index through the whole frames 
     #the first prob matrix in transition_group is a matrix (2D array)
+
     for cell_idx, item in enumerate(transition_group[0]):
 
         for frame_idx in range(1, step):
+
             item = item[:, np.newaxis]
             item = np.repeat(item, transition_group[frame_idx].shape[1], 1)
             index_ab = np.argmax(item * transition_group[frame_idx], 0)
@@ -261,11 +259,6 @@ def _process(transition_group):
             start_list_index[cell_idx].append(index_ab)
             start_list_value[cell_idx].append(value_ab)
             item = value_ab
-
-        # if cell_idx == 14:
-        #     tmp1 = start_list_index[cell_idx]
-        #     tmp2 = start_list_value[cell_idx]
-        #     print("grsdb", "bugfix")
 
     return start_list_index, start_list_value
 #loop each node on the other frames which is not passed by the tracks we've got.
@@ -325,7 +318,7 @@ viterbi_results_dict = {
 }
 
 series = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10', 'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
-# series = ['S13']
+# series = ['S03']
 #celltypes = ['C1'] # enter all tracked celllines
 
 #all tracks shorter than DELTA_TIME are false postives and not included in tracks
@@ -393,6 +386,8 @@ for serie in series:
     all_tracks = _iteration(prof_mat_list)
 
 
+
+
     # result = []
     # for i in range(len(all_tracks)):
     #     if i not in all_tracks.keys():
@@ -412,42 +407,42 @@ for serie in series:
     result = filter_track_list_by_length(all_tracks.values())
 
 
-    #print(result)
-    for j in range(len(result)-1):
-        for k in range(j + 1, len(result)):
-            pre_track = result[j]
-            next_track = result[k]
-            overlap_track = sorted(set([i[0:2] for i in pre_track]) & set([i[0:2] for i in next_track]), key = lambda x : (x[1], x[0]))
-            if overlap_track == []:
-                continue
-            overlap_frame1 =  overlap_track[0][1]
-            node_combine = overlap_track[0][0]
-            pre_frame = overlap_frame1 - 1
-            for i, tuples in enumerate(pre_track):
-                if tuples[1]==pre_frame:
-                    index_merge1 = i
-                    break
-                else:
-                    continue
-            node_merge1 = pre_track[index_merge1][0]
-            for ii, tuples in enumerate(next_track):
-                if tuples[1]==pre_frame:
-                    index_merge2 = ii
-                    break
-                else:
-                    continue
-            node_merge2 = next_track[index_merge2][0]
-            sub_matrix = prof_mat_list[pre_frame]
-            threSh1 = sub_matrix[node_merge1][node_combine]
-            threSh2 = sub_matrix[node_merge2][node_combine]
-            if threSh1 < threSh2:
-                result[k] = next_track
-                pre_track_new = copy.deepcopy(pre_track[0:index_merge1 + 1])
-                result[j] = pre_track_new
-            else:
-                result[j] = pre_track
-                next_track_new = copy.deepcopy(next_track[0:index_merge2 + 1])
-                result[k] = next_track_new
+    # #print(result)
+    # for j in range(len(result)-1):
+    #     for k in range(j + 1, len(result)):
+    #         pre_track = result[j]
+    #         next_track = result[k]
+    #         overlap_track = sorted(set([i[0:2] for i in pre_track]) & set([i[0:2] for i in next_track]), key = lambda x : (x[1], x[0]))
+    #         if overlap_track == []:
+    #             continue
+    #         overlap_frame1 =  overlap_track[0][1]
+    #         node_combine = overlap_track[0][0]
+    #         pre_frame = overlap_frame1 - 1
+    #         for i, tuples in enumerate(pre_track):
+    #             if tuples[1]==pre_frame:
+    #                 index_merge1 = i
+    #                 break
+    #             else:
+    #                 continue
+    #         node_merge1 = pre_track[index_merge1][0]
+    #         for ii, tuples in enumerate(next_track):
+    #             if tuples[1]==pre_frame:
+    #                 index_merge2 = ii
+    #                 break
+    #             else:
+    #                 continue
+    #         node_merge2 = next_track[index_merge2][0]
+    #         sub_matrix = prof_mat_list[pre_frame]
+    #         threSh1 = sub_matrix[node_merge1][node_combine]
+    #         threSh2 = sub_matrix[node_merge2][node_combine]
+    #         if threSh1 < threSh2:
+    #             result[k] = next_track
+    #             pre_track_new = copy.deepcopy(pre_track[0:index_merge1 + 1])
+    #             result[j] = pre_track_new
+    #         else:
+    #             result[j] = pre_track
+    #             next_track_new = copy.deepcopy(next_track[0:index_merge2 + 1])
+    #             result[k] = next_track_new
     #print(result)
     final_result = []    
     for i in range(len(result)):
@@ -474,9 +469,9 @@ def save_track_dictionary(dictionary, save_file):
     pickle_out = open(save_file,"wb")
     pickle.dump(dictionary,pickle_out)
     pickle_out.close()    
-save_dir ='D://viterbi linkage//dataset//save_directory//'
-print(save_dir)
-save_track_dictionary(viterbi_results_dict, save_dir + "viterbi_results_dict.pkl")
+# save_dir ='D://viterbi linkage//dataset//save_directory//'
+# print(save_dir)
+# save_track_dictionary(viterbi_results_dict, save_dir + "viterbi_results_dict.pkl")
 
 
 # with open(save_dir + "viterbi_results_dict.txt", 'w') as f:
@@ -492,7 +487,8 @@ images_folder = folder_path + 'dataset//images//'
 output_folder = folder_path + 'output_unet_seg_finetune//'
 save_dir = folder_path + 'save_directory_enhancement/'
 
-with open(save_dir + "viterbi_adjust2a_add_timer.txt", 'w') as f:
+file_name = Path(__file__).name.replace(".py", "")
+with open(save_dir + file_name + ".txt", 'w') as f:
     for s in series:
         f.write("======================" + str(s) + "================================")
         f.write("\n")
@@ -506,3 +502,8 @@ with open(save_dir + "viterbi_adjust2a_add_timer.txt", 'w') as f:
 
 execution_time = time.perf_counter() - start_time
 print(f"Execution time: {execution_time: 0.4f} seconds")
+
+# cell_track_list_list = viterbi_results_dict['S03']
+# for cell_track_list in cell_track_list_list:
+#     if cell_track_list[0] in [(6, 0, -1), (7, 0, -1)]:
+#         print(cell_track_list)

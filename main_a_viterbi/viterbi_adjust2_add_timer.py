@@ -280,6 +280,8 @@ viterbi_results_dict = {
 }
 
 series = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10', 'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
+series = ['S13']
+
 #celltypes = ['C1'] # enter all tracked celllines
 
 #all tracks shorter than DELTA_TIME are false postives and not included in tracks

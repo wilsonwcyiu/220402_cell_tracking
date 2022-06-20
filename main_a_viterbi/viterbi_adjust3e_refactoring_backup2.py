@@ -27,7 +27,7 @@ from collections import defaultdict
 import time
 from multiprocessing.pool import ThreadPool
 
-# from main.viterbi_adjust3e_refactoring import CellId
+# from main_a_viterbi.viterbi_adjust3e_refactoring import CellId
 
 
 def main():
@@ -128,14 +128,13 @@ def cell_tracking_core_flow(series: str, segmentation_folder: str, all_segmented
 
 
     result_list = []
-    # for i in range(len(all_track_dict)):
-    for track_list in all_track_dict.values():
-        # if i not in all_track_dict.keys():
-        #     continue
-        # else:
-        min_track_length: int = 5
-        if (len(track_list) > min_track_length):
-            result_list.append(track_list)
+    for i in range(len(all_track_dict)):
+        if i not in all_track_dict.keys():
+            continue
+        else:
+            min_track_length: int = 5
+            if (len(all_track_dict[i]) > min_track_length):
+                result_list.append(all_track_dict[i])
 
 
 

@@ -4,6 +4,7 @@ Created on Tue Sep 28 09:31:51 2021
 
 @author: 13784
 """
+import itertools
 from datetime import datetime
 import decimal
 import enum
@@ -33,7 +34,7 @@ from collections import defaultdict
 import time
 from multiprocessing.pool import ThreadPool
 
-# from main.viterbi_adjust3e_refactoring import CellId
+# from main_a_viterbi.viterbi_adjust3e_refactoring import CellId
 
 
 
@@ -50,31 +51,67 @@ def main():
 
     is_use_thread: bool = True
 
+
     ## hyper parameter settings
-    routing_strategy_enum: ROUTING_STRATEGY_ENUM = ROUTING_STRATEGY_ENUM.ALL_LAYER
-    merge_threshold: float = float(0.0)
-    minimum_track_length: int = 5
-    cut_threshold: float = float(0.01)
-    is_do_post_adjustment: bool = True
-    cut_strategy_enum: CUT_STRATEGY_ENUM = CUT_STRATEGY_ENUM.AFTER_ROUTING
-    both_cell_below_threshold_strategy_enum: BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM = BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM.SHARE
-
-    hyper_para: HyperPara = HyperPara(routing_strategy_enum, merge_threshold, minimum_track_length, cut_threshold, is_do_post_adjustment, cut_strategy_enum, both_cell_below_threshold_strategy_enum)
+    routing_strategy_enum_list: list = [ROUTING_STRATEGY_ENUM.ALL_LAYER, ROUTING_STRATEGY_ENUM.ONE_LAYER]
+    merge_threshold_list: list = [0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+    minimum_track_length_list: list = [5]
+    cut_threshold_list: list = [0.01]
+    is_do_post_adjustment_list: list = [False]
+    cut_strategy_enum_list: list = [CUT_STRATEGY_ENUM.AFTER_ROUTING, CUT_STRATEGY_ENUM.DURING_ROUTING]
+    both_cell_below_threshold_strategy_enum_list: list = [BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM.SHARE]
 
 
-    hyper_para_list: list = [hyper_para]
+    # routing_strategy_enum_list: list = [ROUTING_STRATEGY_ENUM.ALL_LAYER]
+    # merge_threshold_list: list = [0.0]
+    # minimum_track_length_list: list = [5]
+    # cut_threshold_list: list = [0.01]
+    # is_do_post_adjustment_list: list = [True]
+    # cut_strategy_enum_list: list = [CUT_STRATEGY_ENUM.AFTER_ROUTING]
+    # both_cell_below_threshold_strategy_enum_list: list = [BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM.SHARE]
+
+    hyper_para_combination_list = list(itertools.product(routing_strategy_enum_list,
+                                                         merge_threshold_list,
+                                                         minimum_track_length_list,
+                                                         cut_threshold_list,
+                                                         is_do_post_adjustment_list,
+                                                         cut_strategy_enum_list,
+                                                         both_cell_below_threshold_strategy_enum_list
+                                                         ))
+
+    hyper_para_list: list = []
+    for hyper_para_combination in hyper_para_combination_list:
+        routing_strategy_enum: ROUTING_STRATEGY_ENUM = hyper_para_combination[0]
+        merge_threshold: float = hyper_para_combination[1]
+        minimum_track_length: int = hyper_para_combination[2]
+        cut_threshold: float = hyper_para_combination[3]
+        is_do_post_adjustment: bool = hyper_para_combination[4]
+        cut_strategy_enum: CUT_STRATEGY_ENUM = hyper_para_combination[5]
+        both_cell_below_threshold_strategy_enum: BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM = hyper_para_combination[6]
+
+        hyper_para: HyperPara = HyperPara(routing_strategy_enum, merge_threshold, minimum_track_length, cut_threshold, is_do_post_adjustment, cut_strategy_enum, both_cell_below_threshold_strategy_enum)
+        hyper_para_list.append(hyper_para)
+
+
+    date_str: str = datetime.now().strftime("%Y%m%d-%H%M%S") + "/"
+    os.makedirs(save_dir + date_str)
 
     total_para_size: int = len(hyper_para_list)
     for idx, hyper_para in enumerate(hyper_para_list):
+
         print(f"start {idx+1}/ {total_para_size}; {hyper_para.__str__()}")
-        time.sleep(2)
+        # if idx <= 23: continue
+        if hyper_para.routing_strategy_enum == ROUTING_STRATEGY_ENUM.ONE_LAYER: continue
+
+
+        # time.sleep(2)
 
         start_time = time.perf_counter()
 
-        # input_series_list = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
-        #                      'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
-        # input_series_list = ['S01']
-        input_series_list = ['S02']#, 'S03', 'S04']
+        input_series_list = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
+                             'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
+        # input_series_list = ['S09']
+        # input_series_list = ['S02', 'S03', 'S04']
 
         all_segmented_filename_list = listdir(segmentation_folder)
         all_segmented_filename_list.sort()
@@ -97,34 +134,35 @@ def main():
                 thread_list.append(async_result)
 
             for thread_idx in range(len(thread_list)):
-                final_result_list = thread_list[thread_idx].get()
-                viterbi_result_dict[series] = final_result_list
+                return_series, final_result_list = thread_list[thread_idx].get()
+                viterbi_result_dict[return_series] = final_result_list
                 print(f"Thread {thread_idx} completed")
 
         else:
             for series in existing_series_list:
                 print(f"working on series: {series}. ")
-                final_result_list = cell_tracking_core_flow(series, segmentation_folder, all_segmented_filename_list, output_folder, hyper_para)
+                return_series, final_result_list = cell_tracking_core_flow(series, segmentation_folder, all_segmented_filename_list, output_folder, hyper_para)
                 viterbi_result_dict[series] = final_result_list
 
 
-        print("save_track_dictionary")
+
 
         result_file_name: str = Path(__file__).name.replace(".py", "")
 
-        date_str: str = datetime.now().strftime("%Y%m%d-%H%M%S")
-        hyper_para_indicator: str = "R(" +  str(hyper_para.routing_strategy_enum.name)[0] + ")_" + \
+
+
+        hyper_para_indicator: str = "R(" +  str(hyper_para.routing_strategy_enum.name)[0:3] + ")_" + \
                                     "M(" + str(merge_threshold) + ")_" + \
                                     "MIN(" + str(minimum_track_length) + ")_" + \
                                     "CT(" + str(cut_threshold) + ")_" + \
-                                    "ADJ(" + ("T" if is_do_post_adjustment else "F") + ")_" + \
+                                    "ADJ(" + ("YES" if is_do_post_adjustment else "NO") + ")_" + \
                                     "CS(" +  str(cut_strategy_enum.name)[0] + ")_" + \
                                     "BB(" + str(both_cell_below_threshold_strategy_enum.name)[0] + ")"
 
 
-        os.makedirs(save_dir + date_str)
 
-        abs_save_dir: str = save_dir + date_str + "/" + result_file_name + "__hp" + str(idx+1) + "_" + hyper_para_indicator
+
+        abs_save_dir: str = save_dir + date_str + result_file_name + "__hp" + str(idx+1) + "_" + hyper_para_indicator
         save_track_dictionary(viterbi_result_dict, abs_save_dir + ".pkl")
 
         with open(abs_save_dir + ".txt", 'w') as f:
@@ -143,6 +181,7 @@ def main():
                 f.write("\n\n")
 
 
+        print("save_track_dictionary: ", abs_save_dir)
 
         execution_time = time.perf_counter() - start_time
         print(f"Execution time: {np.round(execution_time, 4)} seconds")
@@ -259,14 +298,11 @@ def __________flow_function_start_label():
 
 
 
-def cell_tracking_core_flow(series: str, segmentation_folder: str, all_segmented_filename_list: list, output_folder: str, hyper_para: HyperPara, is_create_excel:bool=False):
+def cell_tracking_core_flow(series: str, segmentation_folder: str, all_segmented_filename_list: list, output_folder: str, hyper_para: HyperPara):
 
     segmented_filename_list: list = derive_segmented_filename_list_by_series(series, all_segmented_filename_list)
 
     frame_num_prof_matrix_dict: dict = derive_frame_num_prof_matrix_dict(segmentation_folder, output_folder, series, segmented_filename_list)
-
-    if is_create_excel:
-        save_prof_matrix_to_excel(series, frame_num_prof_matrix_dict, excel_output_dir_path="d:/tmp/")
 
     all_track_dict = execute_cell_tracking_task(frame_num_prof_matrix_dict, hyper_para)
 
@@ -285,10 +321,10 @@ def cell_tracking_core_flow(series: str, segmentation_folder: str, all_segmented
         prof_mat_list: list = deprecate_derive_prof_matrix_list(segmentation_folder, output_folder, series, segmented_filename_list)
         final_track_list = post_adjustment_old(track_list_list, prof_mat_list)
 
-        return final_track_list
+        return series, final_track_list
 
     else:
-        return track_list_list
+        return series, track_list_list
 
 
 
@@ -352,7 +388,7 @@ def execute_cell_tracking_task(frame_num_prof_matrix_dict: dict, hyper_para):
 
     for frame_num in range(second_frame_num, last_frame_num):
         print(f"frame {frame_num}: ", end='')
-        profit_matrix_idx = frame_num - 1
+        # profit_matrix_idx = frame_num - 1
         for cell_row_idx in range(frame_num_prof_matrix_dict[frame_num].shape[0]):  #skip all nodes which are already passed
 
             # is_old_cell: bool = (mask_transition_group_mtx_list[profit_matrix_idx][cell_row_idx] == True)
@@ -766,6 +802,10 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
                             routing_strategy_enum,
                             both_cell_below_threshold_strategy_enum: BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM):
 
+    if handling_cell_id == CellId(3, 11):
+        time.sleep(1)
+        dev_print("bdsfb", "debug")
+
     frame_num_node_idx_best_index_list_dict: dict = cell_id_frame_num_node_idx_best_index_list_dict_dict[handling_cell_id]
     frame_num_node_idx_best_value_list_dict: dict = cell_id_frame_num_node_idx_best_value_list_dict_dict[handling_cell_id]
 
@@ -773,7 +813,10 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
     cell_track_list: list = []
 
     last_frame_num: int = np.max(list(frame_num_node_idx_best_value_list_dict.keys()))
-    second_frame_num: int = np.min(list(frame_num_node_idx_best_value_list_dict.keys()))
+    second_frame_num: int = handling_cell_id.start_frame_num + 1
+
+    if last_frame_num == handling_cell_id.start_frame_num:
+        raise Exception(handling_cell_id.__str__())
 
     current_maximize_index: int = None
     current_maximize_value: float = 0
@@ -805,7 +848,8 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
                     occupied_cell_second_frame_num: int = occupied_cell_id.start_frame_num + 1
                     if last_frame_num == occupied_cell_second_frame_num:      occupied_cell_probability: float = frame_num_prof_matrix_dict[occupied_cell_id.start_frame_num][occupied_cell_idx][node_idx]
                     elif last_frame_num > occupied_cell_second_frame_num:     occupied_cell_probability: float = cell_id_frame_num_node_idx_best_value_list_dict_dict[occupied_cell_id][last_frame_num][node_idx]
-                    else: raise Exception()
+                    elif last_frame_num == occupied_cell_id.start_frame_num:  occupied_cell_probability: float = merge_above_threshold
+                    else: raise Exception(last_frame_num, occupied_cell_id.__str__)
 
                 elif routing_strategy_enum == ROUTING_STRATEGY_ENUM.ONE_LAYER:
                     handling_frame_occupied_cell_idx: int = cell_id_frame_num_node_idx_best_index_list_dict_dict[occupied_cell_id][last_frame_num][node_idx]
@@ -851,7 +895,12 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
     # this could happen because last layer is not checked with occupation (but last layer -1 is checked). Therefore, it happens if:
     # 1) probability value is lower than threshold
     # 2) all node is occupied by another cell which has a value higher than threshold
-    if is_all_nodes_invalid:
+    if is_all_nodes_invalid and last_frame_num == second_frame_num:
+        frame_idx: int = handling_cell_id.start_frame_num - 1
+        cell_track_list.append((handling_cell_id.cell_idx, frame_idx, -1))
+        return cell_track_list, list(to_redo_cell_id_set)
+
+    elif is_all_nodes_invalid and last_frame_num > second_frame_num:
         print("'is_all_nodes_invalid == True' detected, move one layer backward")
 
         # # find the last -1 layer, since as it is checked in previous process it must be valid
@@ -866,7 +915,7 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
 
         current_maximize_index: int = None
         current_maximize_value: float = 0
-        dev_print("ebnsbsbsd", handling_cell_id.start_frame_num)
+        # dev_print("ebnsbsbsd", handling_cell_id.start_frame_num)
 
         handling_cell_second_frame_num: int = handling_cell_id.start_frame_num + 1
         if last_frame_num == handling_cell_second_frame_num:
@@ -942,6 +991,7 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
                         raise Exception(node_probability_value, occupied_cell_probability, merge_above_threshold)
 
 
+
     # debug check
     is_all_nodes_invalid_in_second_last_layer: bool = (current_maximize_index == None)
     if is_all_nodes_invalid_in_second_last_layer:
@@ -950,14 +1000,17 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
 
 
 
-
-
+    if last_frame_num == handling_cell_id.start_frame_num:
+        start_frame_idx: int = handling_cell_id.start_frame_num - 1
+        cell_track_list.append((current_maximize_index, start_frame_idx + 1, handling_cell_idx))
+        cell_track_list.append((handling_cell_idx, start_frame_idx, -1))
+        return cell_track_list, list(to_redo_cell_id_set)
 
 
 
     handling_cell_second_frame_num: int = handling_cell_id.start_frame_num + 1
     if last_frame_num == handling_cell_second_frame_num:
-        previous_maximize_index: int = handling_cell_idx
+        previous_maximize_index: int = current_maximize_index
 
     elif last_frame_num > handling_cell_second_frame_num:
         previous_maximize_index: int = frame_num_node_idx_best_index_list_dict[last_frame_num][current_maximize_index]
@@ -971,7 +1024,7 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
 
 
 
-    for reversed_frame_num in range(last_frame_num-1, second_frame_num-1, -1): #119 to 3 for total_frames = 120
+    for reversed_frame_num in range(last_frame_num-1, second_frame_num, -1): #119 to 3 for total_frames = 120
 
         reversed_frame_idx = reversed_frame_num - 1
 
@@ -1001,7 +1054,8 @@ def derive_final_best_track(cell_id_frame_num_node_idx_best_index_list_dict_dict
 
                 if reversed_frame_num == occupied_cell_second_frame:     occupied_cell_probability: float = frame_num_prof_matrix_dict[occupied_cell_start_frame_num][occupied_cell_idx][current_maximize_index]
                 elif reversed_frame_num > occupied_cell_second_frame:    occupied_cell_probability: float = cell_id_frame_num_node_idx_best_value_list_dict_dict[occupied_cell_id][reversed_frame_num][current_maximize_index]
-
+                elif reversed_frame_num == occupied_cell_start_frame_num: occupied_cell_probability: float = merge_above_threshold
+                else: raise Exception(reversed_frame_num, occupied_cell_second_frame)
                 # occupied_cell_probability: float = cell_id_frame_num_node_idx_best_value_list_dict_dict[occupied_cell_id][reversed_frame_num][current_maximize_index]
 
                 if handling_cell_probability > last_frame_adjusted_threshold and occupied_cell_probability > last_frame_adjusted_threshold:
@@ -1190,6 +1244,9 @@ def add_track_to_cell_occupation_list_list_dict(frame_num_node_idx_occupation_tu
         frame_num: int = track_tuple[1] + 1
         occupied_node_idx: int = track_tuple[0]
 
+        # if frame_num == 4 and occupied_node_idx == 11:
+        #     print("ehrth", frame_num, occupied_node_idx, cell_id.__str__(), len(frame_num_node_idx_occupation_tuple_vec_dict[frame_num]))
+        #     print(track_tuple)
         frame_num_node_idx_occupation_tuple_vec_dict[frame_num][occupied_node_idx].append(cell_id)
 
     return frame_num_node_idx_occupation_tuple_vec_dict
@@ -1392,6 +1449,7 @@ def derive_last_layer_each_node_best_track(handling_cell_id,  # CellId
                     elif handling_frame_num == occupied_cell_second_frame:   occupied_cell_probability_1: float = frame_num_prof_matrix_dict[occupied_cell_start_frame_num][occupied_cell_idx][node_idx]
                     elif handling_frame_num > occupied_cell_second_frame:    occupied_cell_probability_1: float = cell_id_frame_num_node_idx_best_value_list_dict_dict[occupied_cell_id][handling_frame_num][node_idx]
                     else: raise Exception(occupied_cell_id.__str__(), handling_frame_num, node_idx, occupied_cell_second_frame)
+
 
                     code_validate_cell_probability(node_connection_score, occupied_cell_probability_1)
 
