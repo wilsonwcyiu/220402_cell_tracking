@@ -159,6 +159,23 @@ def main():
 
 
 
+        is_print_ground_truth_only: bool = True
+        if is_print_ground_truth_only:
+            series_ground_truth_cell_dict = obtain_ground_truth_cell_dict()
+
+            tmp_dict = defaultdict(list)
+            for series, track_tuple_list_list in viterbi_result_dict.items():
+                ground_truth_cell_id_list = series_ground_truth_cell_dict[series]
+                for track_tuple_list in track_tuple_list_list:
+                    cell_tuple_id = track_tuple_list[0]
+                    if cell_tuple_id in ground_truth_cell_id_list:
+                        tmp_dict[series].append(track_tuple_list)
+
+            viterbi_result_dict = tmp_dict
+
+
+        is_convert_to_frame_num = True
+
         result_file_name: str = Path(__file__).name.replace(".py", "")
 
         hyper_para_indicator: str = "R(" +  str(hyper_para.routing_strategy_enum.name)[0:3] + ")_" + \
@@ -206,6 +223,8 @@ def main():
 
                 cell_track_list_list = sorted(viterbi_result_dict[series])
                 for cell_track_list in cell_track_list_list:
+                    if is_convert_to_frame_num:
+                        cell_track_list = convert_track_frame_idx_to_frame_num(cell_track_list)
                     # for cell_track_list in viterbi_result_dict[series]:
                     f.write(str(cell_track_list))
                     f.write("\n")
@@ -430,11 +449,14 @@ def execute_cell_tracking_task_bon(frame_num_prof_matrix_dict: dict, frame_num_n
     valid_all_cell_track_idx_dict: dict = {}
     valid_all_cell_track_prob_dict: dict = {}
 
+    line_space_cnter = 1
     while len(to_handle_cell_id_list) != 0:
         to_handle_cell_id_list.sort(key=cmp_to_key(compare_cell_id))
 
         to_handle_cell_id: CellId = to_handle_cell_id_list[0]
         print(f"{to_handle_cell_id.str_short()}", end='')
+        if line_space_cnter == 20: print(); line_space_cnter = 0
+        else: line_space_cnter += 1
 
         is_new_cell: bool = (len(frame_num_node_idx_occupation_list_list_dict[to_handle_cell_id.start_frame_num][to_handle_cell_id.cell_idx]) != 0)
         if is_new_cell:
@@ -1089,7 +1111,7 @@ def __________unit_function_start_label():
     raise Exception("for labeling only")
 
 
-def derive_directional_score(track_coord_list: list(CoordTuple), new_coord: CoordTuple):
+def derive_directional_score(track_coord_list: list, new_coord: CoordTuple):
     if len(track_coord_list) <= 1:
         return 1
 

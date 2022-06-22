@@ -401,6 +401,8 @@ def cell_tracking_core_flow(series: str, segmentation_folder: str, all_segmented
 
     frame_num_prof_matrix_dict = derive_frame_num_prof_matrix_dict(segmentation_folder, output_folder, series, segmented_filename_list)
 
+    frame_num_prof_matrix_dict = update_below_cut_threshold_value_to_zero(frame_num_prof_matrix_dict, hyper_para.cut_threshold)
+
     frame_num_node_idx_coord_list_dict = derive_frame_num_node_idx_coord_list_dict(segmentation_folder, segmented_filename_list)
 
     all_track_dict, score_log_mtx = execute_cell_tracking_task_bon(frame_num_prof_matrix_dict,
@@ -469,9 +471,11 @@ def execute_cell_tracking_task_bon(frame_num_prof_matrix_dict: dict, frame_num_n
         to_handle_cell_id_list.sort(key=cmp_to_key(compare_cell_id))
 
         to_handle_cell_id: CellId = to_handle_cell_id_list[0]
-        print(f"{to_handle_cell_id.str_short()}", end='')
-        if line_space_cnter == 20: print(); line_space_cnter = 0
-        else: line_space_cnter += 1
+        # print(f"{to_handle_cell_id.str_short()}", end='')
+        # if line_space_cnter == 20: print(); line_space_cnter = 0
+        # else: line_space_cnter += 1
+
+        print(f"{to_handle_cell_id.str_short()}")
 
         if to_handle_cell_id in valid_all_cell_track_idx_dict:
             frame_num_node_idx_occupation_list_list_dict = remove_track_from_cell_occupation_list_list_dict(frame_num_node_idx_occupation_list_list_dict, to_handle_cell_id, valid_all_cell_track_idx_dict[to_handle_cell_id])
@@ -539,7 +543,7 @@ def execute_cell_tracking_task_bon(frame_num_prof_matrix_dict: dict, frame_num_n
 
         # use final track to check if any redo cells occur
         for redo_cell_id in redo_cell_id_set:
-            print(f"redo cell {redo_cell_id}")
+            # print(f"redo cell {redo_cell_id}. ", end='')
             if redo_cell_id not in to_handle_cell_id_list:
                 to_handle_cell_id_list.append(redo_cell_id)
 
@@ -1150,6 +1154,16 @@ def __________unit_function_start_label():
     raise Exception("for labeling only")
 
 
+def update_below_cut_threshold_value_to_zero(frame_num_prof_matrix_dict: dict, cut_threshold: float):
+    for frame_num, prof_mtx in frame_num_prof_matrix_dict.items():
+        for row_idx in range(prof_mtx.shape[0]):
+            for col_idx in range(prof_mtx.shape[1]):
+                if frame_num_prof_matrix_dict[frame_num][row_idx][col_idx] <= cut_threshold:
+                    frame_num_prof_matrix_dict[frame_num][row_idx][col_idx] = 0
+
+    return frame_num_prof_matrix_dict
+
+
 def derive_distance_score(current_node_coord, last_frame_node_coord, max_moving_distance):
     distance: float = ((current_node_coord.x - last_frame_node_coord.x)**2 + (current_node_coord.y - last_frame_node_coord.y)**2)**0.5
     distance = np.round(distance, 4)
@@ -1181,7 +1195,7 @@ def derive_degree_score(to_handle_cell_id, current_frame_num, connect_to_frame_n
 
         degree_diff: float = derive_degree_diff_from_two_vectors(previous_vec, new_connection_vec)
     else:
-        degree_diff = 0
+        degree_diff = 1
 
     degree_score: float = (cos(radians(degree_diff)) + 1) * 0.5  # +1 and *0.5 to shift up and make it stay between 1 and 0
 
@@ -1196,7 +1210,7 @@ def init_score_log(frame_num_prof_matrix_dict):
         for row_idx in range(prof_mtx.shape[0]):
             col_list = []
             for col_idx in range(prof_mtx.shape[1]):
-                col_list.append([])
+                col_list.append("")
             row_list.append(col_list)
         frame_num_score_log_mtx[frame_num] = row_list
 
@@ -1309,10 +1323,10 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
                                     redo_cell_id_set):
 
 
-
     current_frame_num = connect_to_frame_num - 1
     coord_length_for_vector: int = 5
 
+    # WeightTuple = namedtuple("WeightTuple", "probability degree distance")
     weight_tuple = WeightTuple(0.5, 0.2, 0.3)
     round_to = 2
 
@@ -1345,24 +1359,43 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
         candidate_node_connection_prob = np.round(weighted_probability_score + weighted_degree_score + weighted_distance_score, round_to)
 
         current_node_idx: int = handling_cell_frame_num_track_idx_dict[current_frame_num]
-        score_log_mtx[current_frame_num][current_node_idx][candidate_node_idx].append(f"{to_handle_cell_id.str_short()} {candidate_node_connection_prob}={weighted_probability_score}+{weighted_degree_score}+{weighted_distance_score}")
+        log_msg = f"{to_handle_cell_id.str_short()} {candidate_node_connection_prob}={weighted_probability_score}+{weighted_degree_score}+{weighted_distance_score}"
+        if log_msg not in score_log_mtx[current_frame_num][current_node_idx][candidate_node_idx]:
+            score_log_mtx[current_frame_num][current_node_idx][candidate_node_idx] += log_msg + "\n"
 
 
         occupied_cell_id_list: list = frame_num_node_idx_occupation_list_list_dict[connect_to_frame_num][candidate_node_idx]
         has_cell_occupation: bool = (len(occupied_cell_id_list) > 0)
 
-        if to_handle_cell_id in [CellId(1, 0), CellId(1, 3)] and connect_to_frame_num == 24:
-            print("sdbfsfd")
+
 
         if not has_cell_occupation:
             if candidate_node_connection_prob > best_prob:
                 best_prob = candidate_node_connection_prob
                 best_node_idx = candidate_node_idx
         else:
+
             has_other_connection_option_current_cell: bool = (count_non_zero_data_in_list(connection_prob_list) > 1)
             for occupied_cell_id in occupied_cell_id_list:
+                # redo cell CellId(1, 0); collision at frame 79; node_idx: 1
+                # if to_handle_cell_id in [CellId(1, 0)] and connect_to_frame_num == 80 and candidate_node_idx in [0, 2] and occupied_cell_id == CellId(75, 5):
+                #     print("sdbfsfd")
+
+                if to_handle_cell_id in [CellId(1, 0)] and connect_to_frame_num == 80 and candidate_node_idx in [0]:
+                    print("dfngf")
+
+                # print("dfgsdfg", occupied_cell_id.str_short(), current_frame_num)
+
+                if connect_to_frame_num == occupied_cell_id.start_frame_num:
+                    # directly takeover occupied cell (as occupied cell is no long a new_cell)
+                    if candidate_node_connection_prob > best_prob:
+                        best_prob = candidate_node_connection_prob
+                        best_node_idx = candidate_node_idx
+                        tmp_redo_node_idx_cell_id_dict[best_node_idx].add(occupied_cell_id)
+                    continue
+
+
                 occupied_cell_current_frame_idx = valid_all_cell_track_idx_dict[occupied_cell_id][current_frame_num]
-                # occupied_cell_connect_to_frame_node_idx = valid_all_cell_track_idx_dict[occupied_cell_id][connect_to_frame_num]
                 occupied_cell_node_connection_prob_list = frame_num_prof_matrix_dict[current_frame_num][occupied_cell_current_frame_idx]
 
                 has_other_connection_option_occupied_cell: bool = (count_non_zero_data_in_list(occupied_cell_node_connection_prob_list) > 1)
@@ -1392,15 +1425,18 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
                         #current cell explore other opportunity
                         continue
                     elif occupied_cell_prob < candidate_node_connection_prob:
-                        # occupied cell explore other opportunity
-                        best_prob = candidate_node_connection_prob
-                        best_node_idx = candidate_node_idx
-                        tmp_redo_node_idx_cell_id_dict[candidate_node_idx].add(occupied_cell_id)
+                        if candidate_node_connection_prob > best_prob:
+                            # occupied cell explore other opportunity
+                            best_prob = candidate_node_connection_prob
+                            best_node_idx = candidate_node_idx
+                            tmp_redo_node_idx_cell_id_dict[best_node_idx].add(occupied_cell_id)
 
                     elif occupied_cell_prob == candidate_node_connection_prob:
-                        print("(let them merge for now) to handle biz scenario", occupied_cell_prob, candidate_node_connection_prob, to_handle_cell_id.str_short(), occupied_cell_id.str_short(), current_frame_num)
-                        best_prob = candidate_node_connection_prob
-                        best_node_idx = candidate_node_idx
+                        if candidate_node_connection_prob > best_prob:
+                            # print("(let them share for now) to handle biz scenario", occupied_cell_prob, candidate_node_connection_prob, to_handle_cell_id.str_short(), occupied_cell_id.str_short(), current_frame_num)
+                            best_prob = candidate_node_connection_prob
+                            best_node_idx = candidate_node_idx
+                            # continue
 
                         # raise Exception("Unexpected biz scenario", occupied_cell_prob, candidate_node_connection_prob, to_handle_cell_id.str_short(), occupied_cell_id.str_short(), current_frame_num)
                     else:
@@ -1410,7 +1446,11 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
                 else:
                     raise Exception("code validation check")
 
-    redo_cell_id_set: set = tmp_redo_node_idx_cell_id_dict[best_node_idx] if best_node_idx in tmp_redo_node_idx_cell_id_dict else set()
+    if best_node_idx in tmp_redo_node_idx_cell_id_dict:
+        for redo_cell_id in tmp_redo_node_idx_cell_id_dict[best_node_idx]:
+            occu_cell_prob = valid_all_cell_track_prob_dict[redo_cell_id][connect_to_frame_num]
+            print(f"redo cell {redo_cell_id}; collision at frame {connect_to_frame_num}; node_idx: {best_node_idx}; curr_cell_prob: {best_prob}; occu_cell_prob: {occu_cell_prob}")
+            redo_cell_id_set.add(redo_cell_id)
 
     return best_node_idx, best_prob, score_log_mtx, redo_cell_id_set
 

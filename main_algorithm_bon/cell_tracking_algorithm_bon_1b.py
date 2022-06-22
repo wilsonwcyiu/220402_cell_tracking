@@ -115,7 +115,7 @@ def main():
 
         input_series_list = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
                              'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
-        input_series_list = ['S02', 'S03']
+        input_series_list = ['S02']
 
 
         all_segmented_filename_list = listdir(segmentation_folder)
@@ -1272,6 +1272,12 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
     best_prob: float = 0
     best_node_idx: int = None
     min_connection_prob: float = 0.004
+
+    if to_handle_cell_id in [CellId(1, 2)] and connect_to_frame_num == 51:
+        print("sdbfsfd")
+
+
+
     for candidate_node_idx, connection_prob in enumerate(connection_prob_list):
         if connection_prob < min_connection_prob:
             continue
