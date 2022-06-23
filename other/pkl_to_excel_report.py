@@ -49,13 +49,21 @@ def main():
     save_dir = folder_path + 'save_directory_enhancement/'
     prof_matrix_dir = save_dir + 'profit_matrix_excel/'
     pkl_file_name: str = "ground_truth_results_dict.pkl"
-
+    to_compare_pkl_file_name_list = ['cell_tracking_algorithm_bon.pkl', 'hungarian_adj_results_dict.pkl']
     start_time = time.perf_counter()
 
 
 
     ground_truth_data_dict: dict = open_track_dictionary(save_dir + pkl_file_name)
-    write_to_excel(ground_truth_data_dict, ground_truth_data_dict)
+
+    method_name_track_data_dict = {}
+    for to_compare_pkl_file_name in to_compare_pkl_file_name_list:
+        method_name = to_compare_pkl_file_name.replace(".pkl", "")
+        data_dict = open_track_dictionary(save_dir + to_compare_pkl_file_name)
+        method_name_track_data_dict[method_name] = data_dict
+
+
+    write_to_excel(ground_truth_data_dict, method_name_track_data_dict)
     exit()
 
 
@@ -124,7 +132,7 @@ def main():
 
 
 
-def write_to_excel(group_truth_track_dict, other_track_dict_list):
+def write_to_excel(group_truth_track_dict, method_name_track_data_dict):
     from openpyxl import Workbook
     #creates a new workbook
     wb = Workbook()
@@ -160,22 +168,46 @@ def write_to_excel(group_truth_track_dict, other_track_dict_list):
     total_frame = 140
     ground_truth_series_cell_id_sequence_list_dict = convert_dict_key(group_truth_track_dict, total_frame)
 
+    method_name_series_cell_id_sequence_list_dict = {}
+    for method_name, track_data_dict in method_name_track_data_dict.items():
+        seq_data_dict = convert_dict_key(track_data_dict, total_frame)
+        method_name_series_cell_id_sequence_list_dict[method_name] = seq_data_dict
+
+
 
     row_cnt = 2
     for series, cell_id_seq_list_dict in ground_truth_series_cell_id_sequence_list_dict.items():
-        sheet.cell(row = row_cnt, column = 1, value = series)
-        for cell_id, seq_list in cell_id_seq_list_dict.items():
+        for cell_id, ground_truth_seq_list in cell_id_seq_list_dict.items():
+            sheet.cell(row = row_cnt, column = 1, value = series)
             sheet.cell(row = row_cnt, column = 2, value = "ground_truth")
 
             for frame_num in range(1, total_frame+1):
                 col_idx = data_start_col + frame_num - 1
 
-                ground_truth_node_idx = seq_list[frame_num]
+                ground_truth_node_idx = ground_truth_seq_list[frame_num]
                 cell = sheet.cell(row = row_cnt, column = col_idx, value = ground_truth_node_idx)
 
+            row_cnt += 1
 
+            # handle other method
+            for method_name, series_cell_id_sequence_list_dict in method_name_series_cell_id_sequence_list_dict.items():
+                sheet.cell(row = row_cnt, column = 1, value = series)
+                sheet.cell(row = row_cnt, column = 2, value = method_name)
 
-            row_cnt += 2
+                cell_id_sequence_list_dict = series_cell_id_sequence_list_dict[series]
+                if cell_id in cell_id_sequence_list_dict: sequence_list = cell_id_sequence_list_dict[cell_id]
+                else:                                     sequence_list = ["--"] * (total_frame + 1)
+
+                for frame_num in range(1, total_frame+1):
+                    col_idx = data_start_col + frame_num - 1
+                    node_idx = sequence_list[frame_num]
+                    cell = sheet.cell(row = row_cnt, column = col_idx, value = node_idx)
+
+                    if node_idx != ground_truth_seq_list[frame_num]:
+                        cell.fill = yellow_fill
+
+                row_cnt += 1
+            row_cnt += 1
         row_cnt += 1
 
 
