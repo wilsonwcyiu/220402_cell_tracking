@@ -49,33 +49,28 @@ def main():
     is_use_cell_dependency_feature: bool = False
 
     ## hyper parameter settings
-    routing_strategy_enum_list: list = [ROUTING_STRATEGY_ENUM.ALL_LAYER]
-    merge_threshold_list: list = [0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
-    minimum_track_length_list: list = [5]
-    cut_threshold_list: list = [0.004]
-    is_do_post_adjustment_list: list = [False]
-    cut_strategy_enum_list: list = [CUT_STRATEGY_ENUM.AFTER_ROUTING, CUT_STRATEGY_ENUM.DURING_ROUTING]
-    both_cell_below_threshold_strategy_enum_list: list = [BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM.SHARE]
-    discount_rate_per_layer: list = [0.5] #"merge_threshold",
     weight_tuple_list: list = [WeightTuple(0.5, 0.2, 0.1, 0.2)]
     max_moving_distance_list: list = [35]
     coord_length_for_vector_list: list = [5]
     average_movement_step_length: list = [5]
+    minimum_track_length_list: list = [5]
+    cut_threshold_list: list = [0.004]
 
 
     routing_strategy_enum_list: list = [ROUTING_STRATEGY_ENUM.ALL_LAYER]
-    merge_threshold_list: list = [0.5]
-    minimum_track_length_list: list = [5]
-    cut_threshold_list: list = [0.01]
+    merge_threshold_list: list = [0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
     is_do_post_adjustment_list: list = [False]
     cut_strategy_enum_list: list = [CUT_STRATEGY_ENUM.AFTER_ROUTING]
     both_cell_below_threshold_strategy_enum_list: list = [BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM.SHARE]
-    discount_rate_per_layer: list = [0.5] #"merge_threshold",
+    discount_rate_per_layer: list = [0.5] #{"merge_threshold", any_float},
+
+
+    cut_threshold_list: list = [0.004]
     weight_tuple_list: list = [WeightTuple(0.5, 0.2, 0.1, 0.2)]
     max_moving_distance_list: list = [35]
     coord_length_for_vector_list: list = [5]
     average_movement_step_length: list = [5]
-
+    minimum_track_length_list: list = [5]
 
     hyper_para_combination_list = list(itertools.product(routing_strategy_enum_list,
                                                          merge_threshold_list,
@@ -175,17 +170,19 @@ def main():
                     return_series, final_result_list, score_log_mtx = cell_tracking_core_flow(series, segmentation_folder, all_segmented_filename_list, output_folder, hyper_para, is_use_cell_dependency_feature)
                     viterbi_result_dict[series] = final_result_list
 
-                    score_log_dir = save_dir + "score_log/"
-                    result_file_name: str = Path(__file__).name.replace(".py", "_")
+                    is_generate_score_log = False
+                    if is_generate_score_log:
+                        score_log_dir = save_dir + "score_log/"
+                        result_file_name: str = Path(__file__).name.replace(".py", "_")
 
-                    # remove last \n
-                    for frame_num, mtx_row_list in score_log_mtx.items():
-                        for row_idx in range(len(mtx_row_list)):
-                            for col_idx in range(len(mtx_row_list[row_idx])):
-                                if len(score_log_mtx[frame_num][row_idx][col_idx]) > 2:
-                                    score_log_mtx[frame_num][row_idx][col_idx] = score_log_mtx[frame_num][row_idx][col_idx][0:-2]
+                        # remove last \n
+                        for frame_num, mtx_row_list in score_log_mtx.items():
+                            for row_idx in range(len(mtx_row_list)):
+                                for col_idx in range(len(mtx_row_list[row_idx])):
+                                    if len(score_log_mtx[frame_num][row_idx][col_idx]) > 2:
+                                        score_log_mtx[frame_num][row_idx][col_idx] = score_log_mtx[frame_num][row_idx][col_idx][0:-2]
 
-                    save_score_log_to_excel(series, score_log_mtx, score_log_dir, result_file_name)
+                        save_score_log_to_excel(series, score_log_mtx, score_log_dir, result_file_name)
 
 
 
@@ -1508,8 +1505,8 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
                 # if to_handle_cell_id in [CellId(1, 0)] and connect_to_frame_num == 80 and candidate_node_idx in [0, 2] and occupied_cell_id == CellId(75, 5):
                 #     print("sdbfsfd")
 
-                if to_handle_cell_id in [CellId(1, 0)] and connect_to_frame_num == 80 and candidate_node_idx in [0]:
-                    print("dfngf")
+                # if to_handle_cell_id in [CellId(1, 0)] and connect_to_frame_num == 80 and candidate_node_idx in [0]:
+                #     print("dfngf")
 
                 # print("dfgsdfg", occupied_cell_id.str_short(), current_frame_num)
 
