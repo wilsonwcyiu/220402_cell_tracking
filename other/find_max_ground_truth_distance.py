@@ -35,8 +35,8 @@ import time
 from multiprocessing.pool import ThreadPool
 
 # from main_a_viterbi.viterbi_adjust3e_refactoring import CellId
-
-
+from main_algorithm_bon.cell_tracking_algorithm_bon_1b import derive_frame_num_node_idx_coord_list_dict
+from other.shared_cell_data import split_uncontinuous_track
 
 
 def main():
@@ -60,71 +60,54 @@ def main():
 
     existing_series_list = derive_existing_series_list(input_series_list, listdir(output_folder))
 
-    min_prob = 1
+    max_distance = -1
     for series in existing_series_list:
-        # print(f"working on series: {series}. ")
+        print(f"working on series: {series}. ", end='')
 
         segmented_filename_list: list = derive_segmented_filename_list_by_series(series, all_segmented_filename_list)
 
-        frame_num_prof_matrix_dict: dict = derive_frame_num_prof_matrix_dict(segmentation_folder, output_folder, series, segmented_filename_list)
+        # frame_num_prof_matrix_dict: dict = derive_frame_num_prof_matrix_dict(segmentation_folder, output_folder, series, segmented_filename_list)
 
+        frame_num_node_idx_coord_list_dict = derive_frame_num_node_idx_coord_list_dict(segmentation_folder, segmented_filename_list)
 
         series_viterbi_result_list_dict: dict = open_track_dictionary(save_dir + pkl_file_name)
-        series_prob_list = []
-        series_min_prob = 1
-        series_min_prob_info: str = ""
-        prob_data_list: list = []
-        for track_tuple_list_list in series_viterbi_result_list_dict[series]:
-            last_processed_frame_num = None
-            for track_tuple_list in track_tuple_list_list:
-                frame_num = track_tuple_list[1] + 1
-                if last_processed_frame_num == None:
-                    last_processed_frame_num = frame_num
-                    continue
-                elif frame_num != (last_processed_frame_num+1):
-                    last_processed_frame_num = frame_num
-                    continue
 
-                current_node = track_tuple_list[0]
-                previous_node = track_tuple_list[2]
+        series_max_distance = -1
 
-                prob = frame_num_prof_matrix_dict[frame_num-1][previous_node, current_node]
+        splitted_track_list_list = split_uncontinuous_track(series_viterbi_result_list_dict[series])
+        for track_tuple_list in splitted_track_list_list:
+            track_length = len(track_tuple_list)
+            start_node_idx = track_tuple_list[0][0]
+            start_frame_num = track_tuple_list[0][1] + 1
+            previous_coord = frame_num_node_idx_coord_list_dict[start_frame_num][start_node_idx]
+            previous_frame_num = start_frame_num
+            previous_node_idx = start_node_idx
+            for track_idx in range(1, track_length):
+                next_node_idx = track_tuple_list[track_idx][0]
+                next_frame_num = track_tuple_list[track_idx][1] + 1
 
+                if next_frame_num != (previous_frame_num + 1):
+                    print(previous_frame_num, next_frame_num, track_tuple_list)
+                    raise Exception()
 
-                if prob < series_min_prob:
-                    series_min_prob = prob
-                    series_min_prob_info = f"frame_num-1: {frame_num-1}; current_node: {current_node}; previous_node: {previous_node}"
+                next_coord = frame_num_node_idx_coord_list_dict[next_frame_num][next_node_idx]
 
-                last_processed_frame_num = frame_num
+                distance: float = ((next_coord.x - previous_coord.x)**2 + (next_coord.y - previous_coord.y)**2)**0.5
 
+                if distance > series_max_distance:
+                    series_max_distance_info = f"{previous_frame_num}, {previous_node_idx}, {next_node_idx}"
+                    series_max_distance = distance
 
-                pd = ProbabilityData(series, frame_num-1, previous_node, current_node, prob)
-                prob_data_list.append(pd)
-                series_prob_list.append(prob)
+                previous_frame_num = next_frame_num
+                previous_node_idx = next_node_idx
+                previous_coord = next_coord
 
-        if min_prob < min_prob:
-            min_prob = series_min_prob
+        if series_max_distance > max_distance:
+            max_distance = series_max_distance
 
+        print("series_max_distance", series_max_distance, "series_max_distance_info", series_max_distance_info)
 
-        # print(series, "series_min_prob", series_min_prob, "series_min_prob_info", series_min_prob_info)
-
-        # series_prob_list.sort()
-        # print("series_prob_list", series_prob_list[0:20])
-        # print()
-
-        prob_data_list = sorted(prob_data_list, key=cmp_to_key(compare_probability_data))
-        for pd in prob_data_list:
-            # if pd.probability >= 0.4:
-            #     continue
-            # print(f"{pd.series}: {str(pd.probability).ljust(20)}. frame_num: {str(pd.frame_num).ljust(3)}. from {pd.from_node_idx} to {pd.to_node_idx})")
-
-            print(f"prob_data_list.append(ProbabilityData(\"{pd.series}\", {pd.frame_num}, {pd.from_node_idx}, {pd.to_node_idx}, {pd.probability}))")
-        print()
-
-
-
-    print("min_prob", min_prob)
-
+    print("max_distance", max_distance)
 
     execution_time = time.perf_counter() - start_time
     print(f"Execution time: {np.round(execution_time, 4)} seconds")

@@ -34,9 +34,8 @@ from collections import defaultdict
 import time
 from multiprocessing.pool import ThreadPool
 
-# from main.viterbi_adjust3e_refactoring import CellId
-
-
+# from main_a_viterbi.viterbi_adjust3e_refactoring import CellId
+from other.shared_cell_data import obtain_ground_truth_connection_data
 
 
 def main():
@@ -67,6 +66,15 @@ def main():
         segmented_filename_list: list = derive_segmented_filename_list_by_series(series, all_segmented_filename_list)
 
         frame_num_prof_matrix_dict: dict = derive_frame_num_prof_matrix_dict(segmentation_folder, output_folder, series, segmented_filename_list)
+
+
+        prob_data_list = obtain_ground_truth_connection_data()
+        filtered_prob_data_list = []
+        for prob_data in prob_data_list:
+            if prob_data.series == series: filtered_prob_data_list.append(prob_data)
+
+        for filtered_prob_data in filtered_prob_data_list:
+            frame_num_prof_matrix_dict[filtered_prob_data.frame_num][filtered_prob_data.from_node_idx][filtered_prob_data.to_node_idx] += 1
 
         save_prof_matrix_to_excel(series, frame_num_prof_matrix_dict, excel_output_dir_path=prof_matrix_dir)
 
@@ -508,6 +516,14 @@ def save_prof_matrix_to_excel(series: str, frame_num_prof_matrix_dict, excel_out
         tmp_array: np.arrays = frame_num_prof_matrix_dict[frame_num]
 
         df = pd.DataFrame (tmp_array)
+
+        def highlight_cells(val):
+            color = 'yellow' if val >= 1  else 'white'
+            return 'background-color: {}'.format(color)
+
+        df = df.style.applymap(highlight_cells)
+
+
         sheet_name: str = "frame_1" if frame_num == 1 else str(frame_num)
         df.to_excel(writer, sheet_name=sheet_name, index=True)
 

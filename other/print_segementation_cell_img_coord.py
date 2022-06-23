@@ -29,13 +29,12 @@ import cv2
 import random
 from itertools import combinations
 import pickle
-from collections import defaultdict
-
+from collections import defaultdict, namedtuple
 
 import time
 from multiprocessing.pool import ThreadPool
 
-# from main.viterbi_adjust3e_refactoring import CellId
+# from main_a_viterbi.viterbi_adjust3e_refactoring import CellId
 
 
 
@@ -102,7 +101,7 @@ def main():
 def __________object_start_label():
     raise Exception("for labeling only")
 
-
+CoordTuple = namedtuple("CoordTuple", "x y")
 
 class ROUTING_STRATEGY_ENUM(enum.Enum):
     ALL_LAYER = 1
@@ -221,7 +220,16 @@ def cell_tracking_core_flow(series: str, segmentation_folder: str, all_segmented
 
     segmented_filename_list: list = derive_segmented_filename_list_by_series(series, all_segmented_filename_list)
 
-    frame_num_cell_coord_list_dict = derive_frame_cell_label_coord(segmentation_folder, output_folder, series, segmented_filename_list)
+    frame_num_cell_coord_list_dict = derive_frame_cell_label_coord(segmentation_folder, segmented_filename_list)
+
+    # is_print_code: bool = True
+    # if is_print_code:
+    #     for frame_num, cell_coord_list in frame_num_cell_coord_list_dict.items():
+    #         for cell_coord in cell_coord_list:
+    #             code_str = f"series_frame_num_node_idx_coord_list_dict_dict[\"{series}\"][{frame_num}]["
+    #             print(cell_coord.x, cell_coord.y)
+    #
+    #         exit()
 
     return frame_num_cell_coord_list_dict
 
@@ -298,17 +306,8 @@ def derive_segmented_filename_list_by_series(series: str, segmented_filename_lis
 
 
 #[frame_num] -> idx coord list
-def derive_frame_cell_label_coord(segmentation_folder_path: str, output_folder_path: str, series: str, segmented_filename_list):
+def derive_frame_cell_label_coord(segmentation_folder_path: str, segmented_filename_list):
     frame_num_cell_coord_list_dict: dict = {}
-
-    # max_col: int = 0
-    # for frame_idx in range(0, len(segmented_filename_list)):
-    #     img = plt.imread(segmentation_folder_path + segmented_filename_list[frame_idx])
-    #     label_img = measure.label(img, background=0, connectivity=1)
-    #     cellnb_img = np.max(label_img)
-    #
-    #     max_col = np.max(cellnb_img, max_col)
-
 
     for frame_idx in range(0, len(segmented_filename_list)):
         frame_num = frame_idx + 1
@@ -316,33 +315,18 @@ def derive_frame_cell_label_coord(segmentation_folder_path: str, output_folder_p
         label_img = measure.label(img, background=0, connectivity=1)
         cellnb_img = np.max(label_img)
 
-        #loop through all combinations of cells in this and the next frame
-        # print(f"--------frame_idx: {frame_idx}:")
         cell_coord_tuple_list = []
         for cellnb_i in range(cellnb_img):
-            cell_i_filename = "mother_" + segmented_filename_list[frame_idx][:-4] + "_Cell" + str(cellnb_i + 1).zfill(2) + ".png"
+
             cell_i = plt.imread(segmentation_folder_path + segmented_filename_list[0])
-            # cell_i = plt.imread(output_folder_path + series + '/' + cell_i_filename)
             cell_i_props = measure.regionprops(label_img, intensity_image=cell_i) #label_img_next是二值图像为255，无intensity。需要与output中的预测的细胞一一对应，预测细胞有intensity
 
             y, x = cell_i_props[cellnb_i].centroid
             y, x = int(y), int(x)
 
-            cell_coord_tuple_list.append((x, y))
-
-            # print(f"cell_idx: {cellnb_i}: x,y={x}, {y}.", end='')
-
-            # if (cellnb_i+1) % 4 == 0:
-            #     print()
-
-        # print("\n")
+            cell_coord_tuple_list.append(CoordTuple(x, y))
 
         frame_num_cell_coord_list_dict[frame_num] = cell_coord_tuple_list
-
-
-    # #make next frame current frame
-        # cellnb_img = cellnb_img_next
-        # label_img = label_img_next
 
     return frame_num_cell_coord_list_dict
 
