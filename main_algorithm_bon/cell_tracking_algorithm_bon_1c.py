@@ -57,6 +57,11 @@ def main():
     cut_strategy_enum_list: list = [CUT_STRATEGY_ENUM.AFTER_ROUTING, CUT_STRATEGY_ENUM.DURING_ROUTING]
     both_cell_below_threshold_strategy_enum_list: list = [BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM.SHARE]
     discount_rate_per_layer: list = [0.5] #"merge_threshold",
+    weight_tuple_list: list = [WeightTuple(0.5, 0.2, 0.1, 0.2)]
+    max_moving_distance_list: list = [35]
+    coord_length_for_vector_list: list = [5]
+    average_movement_step_length: list = [5]
+
 
     routing_strategy_enum_list: list = [ROUTING_STRATEGY_ENUM.ALL_LAYER]
     merge_threshold_list: list = [0.5]
@@ -66,6 +71,11 @@ def main():
     cut_strategy_enum_list: list = [CUT_STRATEGY_ENUM.AFTER_ROUTING]
     both_cell_below_threshold_strategy_enum_list: list = [BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM.SHARE]
     discount_rate_per_layer: list = [0.5] #"merge_threshold",
+    weight_tuple_list: list = [WeightTuple(0.5, 0.2, 0.1, 0.2)]
+    max_moving_distance_list: list = [35]
+    coord_length_for_vector_list: list = [5]
+    average_movement_step_length: list = [5]
+
 
     hyper_para_combination_list = list(itertools.product(routing_strategy_enum_list,
                                                          merge_threshold_list,
@@ -74,7 +84,11 @@ def main():
                                                          is_do_post_adjustment_list,
                                                          cut_strategy_enum_list,
                                                          both_cell_below_threshold_strategy_enum_list,
-                                                         discount_rate_per_layer
+                                                         discount_rate_per_layer,
+                                                         weight_tuple_list,
+                                                         max_moving_distance_list,
+                                                         coord_length_for_vector_list,
+                                                         average_movement_step_length
                                                          ))
 
     hyper_para_list: list = []
@@ -87,6 +101,12 @@ def main():
         cut_strategy_enum: CUT_STRATEGY_ENUM = hyper_para_combination[5]
         both_cell_below_threshold_strategy_enum: BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM = hyper_para_combination[6]
         discount_rate_per_layer: [str, float] = hyper_para_combination[7]
+        weight_tuple_list = hyper_para_combination[8]
+        max_moving_distance_list = hyper_para_combination[9]
+        coord_length_for_vector_list = hyper_para_combination[10]
+        average_movement_step_length = hyper_para_combination[11]
+
+
 
         hyper_para: HyperPara = HyperPara(routing_strategy_enum,
                                           merge_threshold,
@@ -95,7 +115,11 @@ def main():
                                           is_do_post_adjustment,
                                           cut_strategy_enum,
                                           both_cell_below_threshold_strategy_enum,
-                                          discount_rate_per_layer)
+                                          discount_rate_per_layer,
+                                          weight_tuple_list,
+                                          max_moving_distance_list,
+                                          coord_length_for_vector_list,
+                                          average_movement_step_length)
 
         hyper_para_list.append(hyper_para)
 
@@ -307,7 +331,7 @@ class BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM(enum.Enum):
 class HyperPara():
     def __init__(self, routing_strategy_enum: ROUTING_STRATEGY_ENUM, merge_threshold: float, minimum_track_length: int, cut_threshold: float, is_do_post_adjustment: bool,
                  cut_strategy_enum: CUT_STRATEGY_ENUM, both_cell_below_threshold_strategy_enum: BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM,
-                 discount_rate_per_layer: [str, int]):
+                 discount_rate_per_layer: [str, int], weight_tuple, max_moving_distance, coord_length_for_vector, average_movement_step_length):
         self.routing_strategy_enum: ROUTING_STRATEGY_ENUM = routing_strategy_enum
         self.merge_threshold: float = merge_threshold
         self.minimum_track_length: int = minimum_track_length
@@ -316,6 +340,11 @@ class HyperPara():
         self.cut_strategy_enum = cut_strategy_enum
         self.both_cell_below_threshold_strategy_enum = both_cell_below_threshold_strategy_enum
         self.discount_rate_per_layer = discount_rate_per_layer   # can be merge_threshold to set as merge_threshold value, or provide an exact value
+        self.weight_tuple: WeightTuple = weight_tuple
+        self.max_moving_distance: int = max_moving_distance
+        self.coord_length_for_vector: int = coord_length_for_vector
+        self.average_movement_step_length: int = average_movement_step_length
+
 
 
     def __str__(self):
@@ -326,7 +355,11 @@ class HyperPara():
                f"is_do_post_adjustment: {self.is_do_post_adjustment}; " \
                f"cut_strategy_enum: {self.cut_strategy_enum.name}; " \
                f"both_cell_below_threshold_strategy_enum: {self.both_cell_below_threshold_strategy_enum.name}; " \
-               f"discount_rate_per_layer: {self.discount_rate_per_layer}; "
+               f"weight_tuple: {self.weight_tuple}; " \
+               f"max_moving_distance: {self.max_moving_distance}; " \
+               f"discount_rate_per_layer: {self.discount_rate_per_layer}; " \
+               f"coord_length_for_vector: {self.coord_length_for_vector}; " \
+               f"average_movement_step_length: {self.average_movement_step_length}; "
 
 
     def __str_newlines__(self):
@@ -337,21 +370,26 @@ class HyperPara():
                f"is_do_post_adjustment: {self.is_do_post_adjustment}; \n" \
                f"cut_strategy_enum: {self.cut_strategy_enum.name}; \n" \
                f"both_cell_below_threshold_strategy_enum: {self.both_cell_below_threshold_strategy_enum.name}; \n" \
-               f"discount_rate_per_layer: {self.discount_rate_per_layer}; "
-
-    def __eq__(self, other):
-        if self.routing_strategy_enum == other.routing_strategy_enum and \
-                self.merge_threshold == other.merge_threshold and \
-                self.minimum_track_length == other.minimum_track_length and \
-                self.cut_threshold == other.cut_threshold:
-
-            return True
-
-        return False
+               f"discount_rate_per_layer: {self.discount_rate_per_layer}; \n" \
+                f"max_moving_distance: {self.max_moving_distance}; \n" \
+                f"discount_rate_per_layer: {self.discount_rate_per_layer}; \n" \
+                f"coord_length_for_vector: {self.coord_length_for_vector}; \n" \
+                f"average_movement_step_length: {self.average_movement_step_length}; \n"
 
 
-    def __hash__(self):
-        return hash((self.routing_strategy_enum, self.merge_threshold, self.minimum_track_length, self.cut_threshold))
+    # def __eq__(self, other):
+    #     if self.routing_strategy_enum == other.routing_strategy_enum and \
+    #             self.merge_threshold == other.merge_threshold and \
+    #             self.minimum_track_length == other.minimum_track_length and \
+    #             self.cut_threshold == other.cut_threshold:
+    #
+    #         return True
+    #
+    #     return False
+    #
+    #
+    # def __hash__(self):
+    #     return hash((self.routing_strategy_enum, self.merge_threshold, self.minimum_track_length, self.cut_threshold))
 
 
 
@@ -460,7 +498,7 @@ def __________component_function_start_label():
 
 
 
-def execute_cell_tracking_task_bon(frame_num_prof_matrix_dict: dict, frame_num_node_idx_coord_list_dict: dict, hyper_para, is_use_cell_dependency_feature: bool):
+def execute_cell_tracking_task_bon(frame_num_prof_matrix_dict: dict, frame_num_node_idx_coord_list_dict: dict, hyper_para: HyperPara, is_use_cell_dependency_feature: bool):
 
     to_handle_cell_id_list: list = derive_initial_cell_id_list(frame_num_prof_matrix_dict)
 
@@ -527,7 +565,11 @@ def execute_cell_tracking_task_bon(frame_num_prof_matrix_dict: dict, frame_num_n
                                                                                                    score_log_mtx,
                                                                                                    hyper_para.cut_threshold,
                                                                                                    frame_num_prof_matrix_dict,
-                                                                                                   redo_cell_id_set)
+                                                                                                   redo_cell_id_set,
+                                                                                                   hyper_para.weight_tuple,
+                                                                                                   hyper_para.max_moving_distance,
+                                                                                                   hyper_para.coord_length_for_vector,
+                                                                                                   hyper_para.average_movement_step_length)
 
 
 
@@ -1384,15 +1426,19 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
                                     score_log_mtx,
                                     cut_threshold,
                                     frame_num_prof_matrix_dict,
-                                    redo_cell_id_set):
+                                    redo_cell_id_set,
+                                    weight_tuple: WeightTuple,
+                                    max_moving_distance: int,
+                                    coord_length_for_vector: int,
+                                    average_movement_step_length: int):
 
 
     current_frame_num = connect_to_frame_num - 1
-    coord_length_for_vector: int = 5
-    average_movement_step_length: int = 5
+    # coord_length_for_vector: int = 5
+    # average_movement_step_length: int = 5
 
     # WeightTuple = namedtuple("WeightTuple", "probability degree distance")
-    weight_tuple = WeightTuple(0.4, 0.2, 0.1, 0.3)
+    # weight_tuple = WeightTuple(0.4, 0.2, 0.1, 0.3)
     round_to = 2
 
     last_frame_node_idx: int = handling_cell_frame_num_track_idx_dict[current_frame_num]
@@ -1423,7 +1469,7 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
             weighted_degree_score = np.round(weight_tuple.degree * degree_score, round_to)
             final_probability += weighted_degree_score
 
-        max_moving_distance = 35
+        # max_moving_distance = 35
         is_use_distance_score: bool = (weight_tuple.distance > 0)
         if is_use_distance_score:
             distance_score = derive_distance_score(candidate_node_coord, last_frame_node_coord, max_moving_distance)
