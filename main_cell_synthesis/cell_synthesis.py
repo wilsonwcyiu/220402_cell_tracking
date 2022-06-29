@@ -48,8 +48,7 @@ def main():
             previous_coord = next_coord_tuple
 
         all_cell_track_list.append(cell_track_list)
-    #     print(cell_track_list)
-    # exit()
+
 
     plt.figure(figsize = (20, 20))
     plt.figure(frameon=False)
@@ -63,22 +62,24 @@ def main():
             cell_track_tuple = cell_track_list[frame_num-1]
             coord_tuple = cell_track_tuple[0]
 
-            radius = 3
-            for x_idx in range(coord_tuple.x - radius, coord_tuple.x + radius + 1):
-                for y_idx in range(coord_tuple.y - radius, coord_tuple.y + radius + 1):
+            cell_radius = 3
+            for x_idx in range(coord_tuple.x - cell_radius, coord_tuple.x + cell_radius + 1):
+                for y_idx in range(coord_tuple.y - cell_radius, coord_tuple.y + cell_radius + 1):
                     if x_idx >= image_width or y_idx >= image_height:
                         continue
 
                     image_array[x_idx][y_idx] = 1
 
 
-        # print(image_array)
+
         plt.gray()
         plt.imshow(image_array, interpolation='nearest')
         image_full_path = folder_path + synthesis_cell_dir_name + "/" + str(frame_num)
         plt.savefig(image_full_path)
+
         # plt.show()
 
+    print()
 
 
     execution_seconds = time.perf_counter() - start_time
