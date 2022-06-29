@@ -9,6 +9,7 @@ from PIL import Image
 
 def main():
     total_cell: int = 10
+    total_frame: int = 30
 
     min_move_distance: int = 0
     max_move_distance: int = 35
@@ -18,10 +19,8 @@ def main():
     image_width: int = 512
     image_height: int = 512
 
-    total_frame: int = 20
 
     start_time = time.perf_counter()
-
 
 
     folder_path: str = 'D:/viterbi linkage/dataset/'
