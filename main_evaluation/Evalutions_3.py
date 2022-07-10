@@ -37,12 +37,20 @@ def main():
                               'DeLTA.pkl',
                               'Hungarian.pkl',
                               'KDE.pkl',
+                              'Viterbi(M)__viterbi_adjust4f_a_hp182__R(ALL)_M(0.89)_MIN(5)_CT(0.48)_ADJ(NO)_CS(D)_BB(S).pkl',
+                              'Viterbi(O)__viterbi_adjust4e_hp056__R(ONE)_M(0.95)_MIN(5)_CT(0.45)_ADJ(NO)_CS(D)_BB(S).pkl',
+                              'Feature_based__cell_tracking_algorithm_bon_1c_hp016__R(ALL)_M(0.4)_MIN(5)_CT(0.5)_ADJ(NO)_CS(A)_BB(S).pkl',
                               # 'viterbi_results_dict_adj2.pkl'
                               ]
     method_name_pkl_dict = {}
     for file_name in preload_file_name_list:
         track = open_track_dictionary(pkl_dir + file_name)
         file_name = file_name.replace(".pkl", "").replace("_results_dict", "").replace("_allseries_unet", "")
+
+        if "__" in file_name:
+            file_name = file_name[0: file_name.index("__")]
+
+        file_name = file_name.replace("_", " ")
 
         method_name_pkl_dict[file_name] = track
 
@@ -207,7 +215,7 @@ def main():
 
     axlist = []
     width = len(method_name_pkl_dict.keys())
-    height = 50
+    height = 25
     total_chart_num = 5
 
     fig = plt.figure(figsize=(width, height))
@@ -222,7 +230,7 @@ def main():
     # ax5 = plt.subplot2grid((total_chart_num, 1), (4,0))
     # axlist = [ax1, ax2, ax3, ax4, ax5]
 
-    value = ['normalized FIT','normalized FIO','normalized TP','normalized OP','average track length']
+    value = ['Falsely Identified Tracker', 'Falsely Identified Object', 'Track Purity', 'Object Purity', 'average track length']
 
     methods = []
     for method_name in method_name_pkl_dict.keys():
