@@ -31,16 +31,19 @@ def main():
     gt_results_dict = open_track_dictionary(save_dir + "gt_results_dict.pkl")
 
 
-    preload_file_name_list = ['ground_truth_results_dict.pkl',
-                              'delta_results_dict.pkl',
-                              'hungarian_results_dict.pkl',
-                              'kuan_tracks_allseries_unet.pkl',
-                              'viterbi_results_dict_adj2.pkl',
-                              'modified_ground_truth_results_dict.pkl']
+    preload_file_name_list = [
+                             # 'ground_truth_results_dict.pkl',
+                             # 'modified_ground_truth_results_dict.pkl',
+                              'DeLTA.pkl',
+                              'Hungarian.pkl',
+                              'KDE.pkl',
+                              # 'viterbi_results_dict_adj2.pkl'
+                              ]
     method_name_pkl_dict = {}
     for file_name in preload_file_name_list:
         track = open_track_dictionary(pkl_dir + file_name)
         file_name = file_name.replace(".pkl", "").replace("_results_dict", "").replace("_allseries_unet", "")
+
         method_name_pkl_dict[file_name] = track
 
     file_name_list: list = listdir(pkl_dir)
@@ -53,7 +56,9 @@ def main():
 
         if "__" in file_name:
             file_name = file_name[0: file_name.index("__")]
-            print("dfbxdfb", file_name)
+
+            #shorten method name
+            file_name = file_name.replace("viterbi_adjust", "")
         else:
             file_name = file_name.replace(".pkl", "").replace("_results_dict", "").replace("_allseries_unet", "")
 
@@ -89,13 +94,20 @@ def main():
     #                 ('viterbi_results_dict',viterbi_results_dict),
     #                 ('viterbi_adj3_results_dict', viterbi_adj3_results_dict)]
 
+
+    min_fit = 0.0151
+    min_fio = 0.2368
+    max_tp = 0.7465
+    max_op = 0.2862
+
     series_list = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
-              'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20'] # enter all tracked images series_list
+                   'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20'] # enter all tracked images series_list
     #celltypes = ['C1'] # enter all tracked celllines
 
     segmented_files = listdir(segmentation_folder)
     segmented_files.sort()
 
+    result_log_list = []
     complete_tracking_performance = []
     data = []
     total = len(method_name_pkl_dict.keys())
@@ -104,7 +116,7 @@ def main():
         tracking_performance_list = []
         for series in series_list:
             #for celltype in celltypes:
-            print(series + ", ", end='')
+            # print(series + ", ", end='')
             #no ground truth tracks for C29 C1
             # identifier = series
             file_list = []
@@ -127,7 +139,7 @@ def main():
             TP_list, OP_list = get_TP_and_OP(len(file_list), gt_idmap, estimate_idmap)
 
             tracking_performance_list.append([FIT_list,FIO_list,TP_list,OP_list,estimate])
-        print()
+        # print()
 
         #average tracking performance
         alltraintestval_list = [tracking_performance_list, #all
@@ -151,6 +163,7 @@ def main():
             sd_FIO = np.std(FIO_complete)
             sd_TP = np.std(TP_complete)
             sd_OP = np.std(OP_complete)
+
             track_lengths = [len(set([cell[1] for cell in track])) for track in estimate_list]
 
             average_track_length = sum(track_lengths)/len(estimate_list)
@@ -158,11 +171,25 @@ def main():
 
             if idx == 2:
                 data.append([FIT_complete, FIO_complete, TP_complete, OP_complete, track_lengths])
+                better_count = 0
+                if norm_FIT < min_fit: better_count += 1
+                if norm_FIO < min_fio: better_count += 1
+                if norm_TP > max_tp:   better_count += 1
+                if norm_OP > max_op:   better_count += 1
+
+                prefix = "\t\t" * better_count
+                log_msg = f"{prefix}better_count: {better_count}; {method_name}, {round(norm_FIT, 4)}, {round(norm_FIO, 4)}, {round(norm_TP, 4)}, {round(norm_OP, 4)}"
+                result_log_list.append(log_msg)
+                print(log_msg)
+
 
             complete_tracking_performance.extend([[norm_FIT, sd_FIT, norm_FIO, sd_FIO,
                                                    norm_TP, sd_TP, norm_OP, sd_OP,
                                                    average_track_length, track_length_sd]])
 
+    result_log_list.sort()
+    for result_log in result_log_list:
+        print(result_log)
 
     data = np.array(data).T
     np.savetxt(output_put_dir + "tracking_performance.csv", complete_tracking_performance, delimiter=",")
