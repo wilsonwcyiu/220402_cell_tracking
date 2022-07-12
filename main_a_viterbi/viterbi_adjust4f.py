@@ -63,14 +63,14 @@ def main():
     both_cell_below_threshold_strategy_enum_list: list = [BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM.SHARE]
     discount_rate_per_layer: list = [0.86, 0.87, 0.88, 0.89, 0.895, 0.9, 0.905, 0.91] # {"merge_threshold" or number}
 
-    # routing_strategy_enum_list: list = [ROUTING_STRATEGY_ENUM.ALL_LAYER]
-    # merge_threshold_list: list = [0.5]
-    # minimum_track_length_list: list = [5]
-    # cut_threshold_list: list = [0.01]
-    # is_do_post_adjustment_list: list = [False]
-    # cut_strategy_enum_list: list = [CUT_STRATEGY_ENUM.AFTER_ROUTING]
-    # both_cell_below_threshold_strategy_enum_list: list = [BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM.SHARE]
-    # discount_rate_per_layer: list = [0.5] #"merge_threshold",
+    routing_strategy_enum_list: list = [ROUTING_STRATEGY_ENUM.ALL_LAYER]
+    merge_threshold_list: list = [0]
+    minimum_track_length_list: list = [5]
+    cut_threshold_list: list = [0.01, 0.445]
+    is_do_post_adjustment_list: list = [True, False]
+    cut_strategy_enum_list: list = [CUT_STRATEGY_ENUM.DURING_ROUTING]
+    both_cell_below_threshold_strategy_enum_list: list = [BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM.SHARE]
+    discount_rate_per_layer: list = [0.5] #"merge_threshold",
 
     # routing_strategy_enum_list: list = [ROUTING_STRATEGY_ENUM.ALL_LAYER]
     # merge_threshold_list: list = [0.875]
@@ -188,12 +188,12 @@ def main():
         result_file_name: str = Path(__file__).name.replace(".py", "")
 
         hyper_para_indicator: str = "R(" +  str(hyper_para.routing_strategy_enum.name)[0:3] + ")_" + \
-                                    "M(" + str(merge_threshold) + ")_" + \
-                                    "MIN(" + str(minimum_track_length) + ")_" + \
-                                    "CT(" + str(cut_threshold) + ")_" + \
-                                    "ADJ(" + ("YES" if is_do_post_adjustment else "NO") + ")_" + \
-                                    "CS(" +  str(cut_strategy_enum.name)[0] + ")_" + \
-                                    "BB(" + str(both_cell_below_threshold_strategy_enum.name)[0] + ")"
+                                    "M(" + str(hyper_para.merge_threshold) + ")_" + \
+                                    "MIN(" + str(hyper_para.minimum_track_length) + ")_" + \
+                                    "CT(" + str(hyper_para.cut_threshold) + ")_" + \
+                                    "ADJ(" + ("YES" if hyper_para.is_do_post_adjustment else "NO") + ")_" + \
+                                    "CS(" +  str(hyper_para.cut_strategy_enum.name)[0] + ")_" + \
+                                    "BB(" + str(hyper_para.both_cell_below_threshold_strategy_enum.name)[0] + ")"
 
         result_dir = save_dir + date_str + "_" + result_file_name + "/"
         if not os.path.exists(result_dir):
