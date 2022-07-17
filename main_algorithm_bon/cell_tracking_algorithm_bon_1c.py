@@ -49,28 +49,42 @@ def main():
     is_use_cell_dependency_feature: bool = False
 
     ## hyper parameter settings
-    weight_tuple_list: list = [WeightTuple(0.5, 0.2, 0.1, 0.2)]
+    weight_tuple_list: list = [WeightTuple(0.25, 0.25, 0.25, 0.25),
+                               WeightTuple(0.8, 0.07, 0.06, 0.07),
+                               WeightTuple(0.7, 0.1, 0.1, 0.1),
+                               WeightTuple(0.6, 0.1, 0.1, 0.2),
+                               WeightTuple(0.5, 0.2, 0.1, 0.2),
+                               WeightTuple(0.4, 0.25, 0.1, 0.25),
+                               WeightTuple(0.3, 0.3, 0.1, 0.3),
+                               WeightTuple(0.2, 0.35, 0.1, 0.35),
+                               WeightTuple(0.2, 0.35, 0.1, 0.35),
+                               WeightTuple(0.2, 0.6, 0.1, 0.1),
+                               WeightTuple(0.2, 0.7, 0.1, 0),
+                               WeightTuple(0.2, 0.1, 0.1, 0.6),
+                               WeightTuple(0.2, 0.0, 0.1, 0.7),
+                               ]
     max_moving_distance_list: list = [35]
-    coord_length_for_vector_list: list = [5]
-    average_movement_step_length: list = [5]
+    coord_length_for_vector_list: list = [6]
+    average_movement_step_length: list = [7]
     minimum_track_length_list: list = [5]
-    cut_threshold_list: list = [0.004]
-
+    cut_threshold_list: list = [0.4]
 
     routing_strategy_enum_list: list = [ROUTING_STRATEGY_ENUM.ALL_LAYER]
-    merge_threshold_list: list = [0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+    merge_threshold_list: list = [None]
     is_do_post_adjustment_list: list = [False]
     cut_strategy_enum_list: list = [CUT_STRATEGY_ENUM.AFTER_ROUTING]
     both_cell_below_threshold_strategy_enum_list: list = [BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM.SHARE]
-    discount_rate_per_layer: list = [0.5] #{"merge_threshold", any_float},
+    discount_rate_per_layer: list = [None] #{"merge_threshold", any_float},
 
 
-    cut_threshold_list: list = [0.004]
-    weight_tuple_list: list = [WeightTuple(0.5, 0.2, 0.1, 0.2)]
-    max_moving_distance_list: list = [35]
-    coord_length_for_vector_list: list = [5]
-    average_movement_step_length: list = [5]
-    minimum_track_length_list: list = [5]
+
+    # cut_threshold_list: list = [0.004]
+    # weight_tuple_list: list = [WeightTuple(0.4, 0.2, 0.1, 0.3)]
+    # max_moving_distance_list: list = [35]
+    # coord_length_for_vector_list: list = [5]
+    # average_movement_step_length: list = [5]
+    # minimum_track_length_list: list = [5]
+
 
     hyper_para_combination_list = list(itertools.product(routing_strategy_enum_list,
                                                          merge_threshold_list,
@@ -96,9 +110,9 @@ def main():
         cut_strategy_enum: CUT_STRATEGY_ENUM = hyper_para_combination[5]
         both_cell_below_threshold_strategy_enum: BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM = hyper_para_combination[6]
         discount_rate_per_layer: [str, float] = hyper_para_combination[7]
-        weight_tuple_list = hyper_para_combination[8]
-        max_moving_distance_list = hyper_para_combination[9]
-        coord_length_for_vector_list = hyper_para_combination[10]
+        weight_tuple = hyper_para_combination[8]
+        max_moving_distance = hyper_para_combination[9]
+        coord_length_for_vector = hyper_para_combination[10]
         average_movement_step_length = hyper_para_combination[11]
 
 
@@ -111,15 +125,15 @@ def main():
                                           cut_strategy_enum,
                                           both_cell_below_threshold_strategy_enum,
                                           discount_rate_per_layer,
-                                          weight_tuple_list,
-                                          max_moving_distance_list,
-                                          coord_length_for_vector_list,
+                                          weight_tuple,
+                                          max_moving_distance,
+                                          coord_length_for_vector,
                                           average_movement_step_length)
 
         hyper_para_list.append(hyper_para)
 
 
-    date_str: str = datetime.now().strftime("%Y%m%d-%H%M%S") + "/"
+    date_str: str = datetime.now().strftime("%Y%m%d-%H%M%S")
 
 
     total_para_size: int = len(hyper_para_list)
@@ -134,7 +148,7 @@ def main():
 
         input_series_list = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
                              'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
-        input_series_list = ['S02']
+        # input_series_list = ['S02']
 
 
         all_segmented_filename_list = listdir(segmentation_folder)
@@ -186,16 +200,17 @@ def main():
 
 
 
-                    is_use_frame_num: bool = True
-                    ground_truth_cell_dict = obtain_ground_truth_cell_dict()
-                    series_ground_truth_list = ground_truth_cell_dict[series]
-                    for track_tuple_list in final_result_list:
-                        cell_id_tuple: tuple = track_tuple_list[0]
-                        if cell_id_tuple in series_ground_truth_list:
-                            if is_use_frame_num:
+
+                    is_only_save_ground_truth_related_data = False
+                    if is_only_save_ground_truth_related_data:
+                        ground_truth_cell_dict = obtain_ground_truth_cell_dict()
+                        series_ground_truth_list = ground_truth_cell_dict[series]
+                        for track_tuple_list in final_result_list:
+                            cell_id_tuple: tuple = track_tuple_list[0]
+                            if cell_id_tuple in series_ground_truth_list:
                                 track_tuple_list = convert_track_frame_idx_to_frame_num(track_tuple_list)
 
-                            print(track_tuple_list)
+                                print(track_tuple_list)
 
 
         except Exception as e:
@@ -203,12 +218,12 @@ def main():
             print()
             traceback.print_exc()
             print(f"series {series}. para {para_set_num}.  hyper_para: {hyper_para.__str__()}")
-            continue
+            exit()
 
 
 
 
-        is_print_ground_truth_only: bool = True
+        is_print_ground_truth_only: bool = False
         if is_print_ground_truth_only:
             series_ground_truth_cell_dict = obtain_ground_truth_cell_dict()
 
@@ -227,18 +242,19 @@ def main():
         result_file_name: str = Path(__file__).name.replace(".py", "")
 
         hyper_para_indicator: str = "R(" +  str(hyper_para.routing_strategy_enum.name)[0:3] + ")_" + \
-                                    "M(" + str(merge_threshold) + ")_" + \
-                                    "MIN(" + str(minimum_track_length) + ")_" + \
-                                    "CT(" + str(cut_threshold) + ")_" + \
-                                    "ADJ(" + ("YES" if is_do_post_adjustment else "NO") + ")_" + \
-                                    "CS(" +  str(cut_strategy_enum.name)[0] + ")_" + \
-                                    "BB(" + str(both_cell_below_threshold_strategy_enum.name)[0] + ")"
+                                    "M(" + str(hyper_para.merge_threshold) + ")_" + \
+                                    "MIN(" + str(hyper_para.minimum_track_length) + ")_" + \
+                                    "CT(" + str(hyper_para.cut_threshold) + ")_" + \
+                                    "ADJ(" + ("YES" if hyper_para.is_do_post_adjustment else "NO") + ")_" + \
+                                    "CS(" +  str(hyper_para.cut_strategy_enum.name)[0] + ")_" + \
+                                    "BB(" + str(hyper_para.both_cell_below_threshold_strategy_enum.name)[0] + ")_" + \
+                                    str(hyper_para.weight_tuple)
 
+        result_dir = save_dir + date_str + "_" + result_file_name + "/"
+        if not os.path.exists(result_dir):
+            os.makedirs(result_dir)
 
-        if not os.path.exists(save_dir + date_str):
-            os.makedirs(save_dir + date_str)
-
-        abs_save_dir: str = save_dir + date_str + result_file_name + "_hp" + str(idx+1).zfill(3) + "__" + hyper_para_indicator
+        abs_save_dir: str = result_dir + result_file_name + "_hp" + str(idx+1).zfill(3) + "__" + hyper_para_indicator
         save_track_dictionary(viterbi_result_dict, abs_save_dir + ".pkl")
 
         execution_time = time.perf_counter() - start_time
@@ -1465,19 +1481,26 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
             degree_score: float = derive_degree_score(to_handle_cell_id, current_frame_num, last_frame_node_coord, candidate_node_coord, coord_length_for_vector, handling_cell_frame_num_track_idx_dict, frame_num_node_idx_coord_list_dict)
             weighted_degree_score = np.round(weight_tuple.degree * degree_score, round_to)
             final_probability += weighted_degree_score
+        else:
+            weighted_degree_score = 0
 
-        # max_moving_distance = 35
+
         is_use_distance_score: bool = (weight_tuple.distance > 0)
         if is_use_distance_score:
             distance_score = derive_distance_score(candidate_node_coord, last_frame_node_coord, max_moving_distance)
             weighted_distance_score = np.round(weight_tuple.distance * distance_score, round_to)
             final_probability += weighted_distance_score
+        else:
+            weighted_distance_score = 0
+
 
         is_use_avg_movement_score: bool = (weight_tuple.average_movement > 0)
         if is_use_avg_movement_score:
             avg_movement_score = derive_average_movement_score(to_handle_cell_id, current_frame_num, last_frame_node_coord, candidate_node_coord, average_movement_step_length, handling_cell_frame_num_track_idx_dict, frame_num_node_idx_coord_list_dict, max_moving_distance)
             weighted_avg_mov_score = np.round(weight_tuple.average_movement * avg_movement_score, round_to)
             final_probability += weighted_avg_mov_score
+        else:
+            weighted_avg_mov_score = 0
 
 
         final_probability = np.round(final_probability, round_to)
