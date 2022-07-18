@@ -141,7 +141,7 @@ def main():
         para_set_num: int = idx+1
 
         print(f"start. Parameter set: {para_set_num}/ {total_para_size}; {hyper_para.__str__()}")
-
+        # continue
 
 
         start_time = time.perf_counter()
@@ -387,8 +387,8 @@ class HyperPara():
                 f"max_moving_distance: {self.max_moving_distance}; \n" \
                 f"discount_rate_per_layer: {self.discount_rate_per_layer}; \n" \
                 f"coord_length_for_vector: {self.coord_length_for_vector}; \n" \
-                f"average_movement_step_length: {self.average_movement_step_length}; \n"
-
+               f"average_movement_step_length: {self.average_movement_step_length}; \n" \
+                f"weight_tuple: {self.weight_tuple}; \n"
 
     # def __eq__(self, other):
     #     if self.routing_strategy_enum == other.routing_strategy_enum and \
@@ -564,7 +564,6 @@ def execute_cell_tracking_task_bon(frame_num_prof_matrix_dict: dict, frame_num_n
             previous_frame_num: int = connect_to_frame_num - 1
             previous_frame_cell_idx: int = handling_cell_frame_num_track_idx_dict[previous_frame_num]
             connection_prob_list: list = frame_num_prof_matrix_dict[previous_frame_num][previous_frame_cell_idx, :]
-
 
 
             best_idx, best_prob, score_log_mtx, redo_cell_id_set = derive_best_node_idx_to_connect(to_handle_cell_id,
@@ -1517,8 +1516,8 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
 
 
         if not has_cell_occupation:
-            if candidate_node_connection_prob > best_prob:
-                best_prob = candidate_node_connection_prob
+            if final_probability > best_prob:
+                best_prob = final_probability
                 best_node_idx = candidate_node_idx
         else:
 
@@ -1535,8 +1534,8 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
 
                 if connect_to_frame_num == occupied_cell_id.start_frame_num:
                     # directly takeover occupied cell (as occupied cell is no long a new_cell)
-                    if candidate_node_connection_prob > best_prob:
-                        best_prob = candidate_node_connection_prob
+                    if final_probability > best_prob:
+                        best_prob = final_probability
                         best_node_idx = candidate_node_idx
                         tmp_redo_node_idx_cell_id_dict[best_node_idx].add(occupied_cell_id)
                     continue
@@ -1549,8 +1548,8 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
 
                 if not has_other_connection_option_current_cell and not has_other_connection_option_occupied_cell:
                     #merge as usual
-                    if candidate_node_connection_prob > best_prob:
-                        best_prob = candidate_node_connection_prob
+                    if final_probability > best_prob:
+                        best_prob = final_probability
                         best_node_idx = candidate_node_idx
 
                 elif has_other_connection_option_current_cell and not has_other_connection_option_occupied_cell:
@@ -1559,8 +1558,8 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
 
                 elif not has_other_connection_option_current_cell and has_other_connection_option_occupied_cell:
                     # occupied cell explore other options
-                    if candidate_node_connection_prob > best_prob:
-                        best_prob = candidate_node_connection_prob
+                    if final_probability > best_prob:
+                        best_prob = final_probability
                         best_node_idx = candidate_node_idx
                         tmp_redo_node_idx_cell_id_dict[candidate_node_idx].add(occupied_cell_id)
 
@@ -1568,20 +1567,20 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
                     # higher probability cell takes over
                     occupied_cell_prob: float = valid_all_cell_track_prob_dict[occupied_cell_id][connect_to_frame_num]
 
-                    if occupied_cell_prob > candidate_node_connection_prob:
+                    if occupied_cell_prob > final_probability:
                         #current cell explore other opportunity
                         continue
-                    elif occupied_cell_prob < candidate_node_connection_prob:
-                        if candidate_node_connection_prob > best_prob:
+                    elif occupied_cell_prob < final_probability:
+                        if final_probability > best_prob:
                             # occupied cell explore other opportunity
-                            best_prob = candidate_node_connection_prob
+                            best_prob = final_probability
                             best_node_idx = candidate_node_idx
                             tmp_redo_node_idx_cell_id_dict[best_node_idx].add(occupied_cell_id)
 
-                    elif occupied_cell_prob == candidate_node_connection_prob:
-                        if candidate_node_connection_prob > best_prob:
+                    elif occupied_cell_prob == final_probability:
+                        if final_probability > best_prob:
                             # print("(let them share for now) to handle biz scenario", occupied_cell_prob, candidate_node_connection_prob, to_handle_cell_id.str_short(), occupied_cell_id.str_short(), current_frame_num)
-                            best_prob = candidate_node_connection_prob
+                            best_prob = final_probability
                             best_node_idx = candidate_node_idx
                             # continue
 
