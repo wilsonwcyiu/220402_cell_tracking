@@ -36,11 +36,11 @@ for img_file in imagePaths:
             img_stack[img_stack==img_stack_label[l]]=0
     labels = np.unique(img_stack)
     
-    start_label=0                     # relabel all cells in order numbers
-    for label in labels:
-        img_stack[img_stack==label]=start_label
-        start_label = start_label+1
-    labels = np.unique(img_stack)
+    # start_label=0                     # relabel all cells in order numbers
+    # for label in labels:
+    #     img_stack[img_stack==label]=start_label
+    #     start_label = start_label+1
+    # labels = np.unique(img_stack)
     """
     img_stack = sitk.GetImageFromArray(img_stack)    #  save the reordered images if necessary
     sitk.WriteImage(img_stack,os.path.join(saved_filtered_small_objects_folder_path,basename))
