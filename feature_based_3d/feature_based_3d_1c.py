@@ -151,6 +151,9 @@ def main():
 
         input_series_list = [input_series.replace(".json", "") for input_series in listdir(coord_dir)]
 
+        # input_series_list = ['1_8layers_mask_data__20200716--1_8layers_M3a_Step98']
+
+
         all_segmented_filename_list = listdir(segmentation_folder)
         all_segmented_filename_list.sort()
 
@@ -198,8 +201,6 @@ def main():
                                         score_log_mtx[frame_num][row_idx][col_idx] = score_log_mtx[frame_num][row_idx][col_idx][0:-2]
 
                         save_score_log_to_excel(series, score_log_mtx, score_log_dir, result_file_name)
-
-
 
 
                     is_only_save_ground_truth_related_data = False
@@ -263,7 +264,7 @@ def main():
             f.write(f"Execution time: {np.round(execution_time, 4)} seconds\n")
             f.write("hyper_para--- ID: " + str(idx+1) + "; \n" + hyper_para.__str_newlines__())
             f.write("\n")
-            for series in existing_series_list:
+            for series in input_series_list:
                 f.write("======================" + str(series) + "================================")
                 f.write("\n")
 
@@ -282,7 +283,7 @@ def main():
             f.write(f"Execution time: {np.round(execution_time, 4)} seconds\n")
             f.write("hyper_para--- ID: " + str(idx+1) + "; \n" + hyper_para.__str_newlines__())
             f.write("\n")
-            for series in existing_series_list:
+            for series in input_series_list:
                 f.write("======================" + str(series) + "================================")
                 f.write("\n")
 
@@ -309,7 +310,7 @@ def main():
 def __________object_start_label():
     raise Exception("for labeling only")
 
-CoordTuple = namedtuple("CoordTuple", "x y")
+CoordTuple = namedtuple("CoordTuple", "x y z")
 WeightTuple = namedtuple("WeightTuple", "profit_probability degree distance average_movement")
 
 
@@ -468,19 +469,29 @@ def cell_tracking_core_flow(series: str, coord_dir: str, all_segmented_filename_
     with open(coord_file_path) as json_file:
         frame_num_str_cell_coord_list_dict = json.load(json_file)
 
-    frame_num_cell_coord_list_dict = {}
+    frame_num_cell_coord_list_dict = defaultdict(list)
     for frame_num_str, cell_coord_list in frame_num_str_cell_coord_list_dict.items():
-        frame_num_cell_coord_list_dict[int(frame_num_str)] = cell_coord_list
+
+        for cell_coord in cell_coord_list:
+            z = cell_coord[0]
+            x = cell_coord[1]
+            y = cell_coord[2]
+            frame_num_cell_coord_list_dict[int(frame_num_str)].append(CoordTuple(x, y, z))
+
+    frame_num_total_cell_dict = {}
+    for frame_num_str, cell_coord_list in frame_num_str_cell_coord_list_dict.items():
+        frame_num_total_cell_dict[int(frame_num_str)] = len(cell_coord_list)
 
     frame_num_prof_matrix_dict = derive_frame_num_prof_matrix_dict(frame_num_cell_coord_list_dict)
     frame_num_node_idx_coord_list_dict = derive_frame_num_node_idx_coord_list_dict(frame_num_cell_coord_list_dict)
 
 
-
     all_track_dict, score_log_mtx = execute_cell_tracking_task_bon(frame_num_prof_matrix_dict,
                                                                    frame_num_node_idx_coord_list_dict,
                                                                    hyper_para,
-                                                                   is_use_cell_dependency_feature)
+                                                                   is_use_cell_dependency_feature,
+                                                                   frame_num_total_cell_dict)
+
 
 
 
@@ -524,18 +535,16 @@ def __________component_function_start_label():
 
 
 
-def execute_cell_tracking_task_bon(frame_num_prof_matrix_dict: dict, frame_num_node_idx_coord_list_dict: dict, hyper_para: HyperPara, is_use_cell_dependency_feature: bool):
+def execute_cell_tracking_task_bon(frame_num_prof_matrix_dict: dict, frame_num_node_idx_coord_list_dict: dict, hyper_para: HyperPara, is_use_cell_dependency_feature: bool, frame_num_total_cell_dict: dict):
 
-    to_handle_cell_id_list: list = derive_initial_cell_id_list(frame_num_prof_matrix_dict)
+    to_handle_cell_id_list: list = derive_initial_cell_id_list(frame_num_total_cell_dict)
 
-    frame_num_node_idx_occupation_list_list_dict = initiate_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_prof_matrix_dict)
+    frame_num_node_idx_occupation_list_list_dict = initiate_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_total_cell_dict)
 
     total_frame: int = np.max(list(frame_num_prof_matrix_dict.keys())) + 1
 
     valid_all_cell_track_idx_dict: dict = {}        # [cell_id][frame_num] = node_idx
     valid_all_cell_track_prob_dict: dict = {}       # [cell_id][frame_num] = probability
-
-    line_space_cnter = 1
 
     score_log_mtx = init_score_log(frame_num_prof_matrix_dict)
 
@@ -543,6 +552,7 @@ def execute_cell_tracking_task_bon(frame_num_prof_matrix_dict: dict, frame_num_n
         to_handle_cell_id_list.sort(key=cmp_to_key(compare_cell_id))
 
         to_handle_cell_id: CellId = to_handle_cell_id_list[0]
+
         # print(f"{to_handle_cell_id.str_short()}", end='')
         # if line_space_cnter == 20: print(); line_space_cnter = 0
         # else: line_space_cnter += 1
@@ -574,6 +584,11 @@ def execute_cell_tracking_task_bon(frame_num_prof_matrix_dict: dict, frame_num_n
 
         second_frame_num: int = to_handle_cell_id.start_frame_num + 1
         for connect_to_frame_num in inclusive_range(second_frame_num, total_frame):
+            is_connect_to_frame_has_no_cell = (frame_num_total_cell_dict[connect_to_frame_num] == 0)
+            if is_connect_to_frame_has_no_cell:
+                break
+
+
             previous_frame_num: int = connect_to_frame_num - 1
             previous_frame_cell_idx: int = handling_cell_frame_num_track_idx_dict[previous_frame_num]
             connection_prob_list: list = frame_num_prof_matrix_dict[previous_frame_num][previous_frame_cell_idx, :]
@@ -653,105 +668,6 @@ def execute_cell_tracking_task_bon(frame_num_prof_matrix_dict: dict, frame_num_n
 
 
 
-
-
-
-
-
-    #
-    # start_frame_num: int = 1
-    # first_frame_mtx: np.array = frame_num_prof_matrix_dict[start_frame_num]
-    # total_cell_in_first_frame: int = first_frame_mtx.shape[0]
-    # to_handle_cell_id_list: list = [CellId(start_frame_num, cell_idx) for cell_idx in range(0, total_cell_in_first_frame)]
-    #
-    # cell_id_frame_num_node_idx_best_index_list_dict_dict: dict = defaultdict(dict)
-    # cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict: dict = defaultdict(dict)
-    # cell_id_frame_num_node_idx_best_one_layer_value_list_dict_dict: dict = defaultdict(dict)
-    # cell_dependency_dict: dict = defaultdict(list)
-    # cell_id_frame_num_track_progress_dict: dict(int) = {}
-    #
-    # frame_num_node_idx_cell_occupation_list_list_dict: dict = initiate_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_prof_matrix_dict)
-    #
-    # max_cell_redo_cnt_record = 0
-    #
-    # print(f"frame {start_frame_num}: ", end='')
-    # all_cell_id_track_list_dict, \
-    # cell_id_frame_num_node_idx_best_index_list_dict_dict, \
-    # cell_id_frame_num_node_idx_best_one_layer_value_list_dict_dict, \
-    # cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict, \
-    # frame_num_node_idx_cell_occupation_list_list_dict, \
-    # cell_dependency_dict, \
-    # max_cell_redo_cnt_record = \
-    #     _process_and_find_best_cell_track(all_cell_id_track_list_dict,
-    #                                       to_handle_cell_id_list,
-    #                                       frame_num_prof_matrix_dict,
-    #                                       frame_num_node_idx_cell_occupation_list_list_dict,
-    #                                       cell_id_frame_num_node_idx_best_index_list_dict_dict,
-    #                                       cell_id_frame_num_node_idx_best_one_layer_value_list_dict_dict,
-    #                                       cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict,
-    #                                       is_use_cell_dependency_feature,
-    #                                       cell_dependency_dict,
-    #                                       cell_id_frame_num_track_progress_dict,
-    #                                       hyper_para.merge_threshold,
-    #                                       hyper_para.routing_strategy_enum,
-    #                                       hyper_para.cut_strategy_enum,
-    #                                       hyper_para.cut_threshold,
-    #                                       hyper_para.both_cell_below_threshold_strategy_enum,
-    #                                       hyper_para.discount_rate_per_layer,
-    #                                       max_cell_redo_cnt_record)
-    # print("  --> finish")
-    #
-    #
-    # second_frame_num: int = 2
-    # last_frame_num: int = np.max(list(frame_num_prof_matrix_dict.keys())) # should be + 1?
-    #
-    #
-    # for connect_to_frame_num in range(second_frame_num, last_frame_num):
-    #     print(f"frame {connect_to_frame_num}: ", end='')
-    #     for cell_row_idx in range(frame_num_prof_matrix_dict[connect_to_frame_num].shape[0]):  #skip all nodes which are already passed
-    #
-    #         is_new_cell: bool = len(frame_num_node_idx_cell_occupation_list_list_dict[connect_to_frame_num][cell_row_idx]) == 0
-    #         if not is_new_cell:
-    #             continue
-    #
-    #
-    #
-    #         cell_id = CellId(connect_to_frame_num, cell_row_idx)
-    #
-    #         to_handle_cell_id_list: list = [cell_id]
-    #
-    #         dev_print(f"\n----------------------> {cell_id.str_short()}")
-    #
-    #         all_cell_id_track_list_dict, \
-    #         cell_id_frame_num_node_idx_best_index_list_dict_dict, \
-    #         cell_id_frame_num_node_idx_best_one_layer_value_list_dict_dict, \
-    #         cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict, \
-    #         frame_num_node_idx_cell_occupation_list_list_dict, \
-    #         cell_dependency_dict, \
-    #         max_cell_redo_cnt_record  = \
-    #             _process_and_find_best_cell_track(all_cell_id_track_list_dict,
-    #                                               to_handle_cell_id_list,
-    #                                               frame_num_prof_matrix_dict,
-    #                                               frame_num_node_idx_cell_occupation_list_list_dict,
-    #                                               cell_id_frame_num_node_idx_best_index_list_dict_dict,
-    #                                               cell_id_frame_num_node_idx_best_one_layer_value_list_dict_dict,
-    #                                               cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict,
-    #                                               is_use_cell_dependency_feature,
-    #                                               cell_dependency_dict,
-    #                                               cell_id_frame_num_track_progress_dict,
-    #                                               hyper_para.merge_threshold,
-    #                                               hyper_para.routing_strategy_enum,
-    #                                               hyper_para.cut_strategy_enum,
-    #                                               hyper_para.cut_threshold,
-    #                                               hyper_para.both_cell_below_threshold_strategy_enum,
-    #                                               hyper_para.discount_rate_per_layer,
-    #                                               max_cell_redo_cnt_record)
-    #
-    #         code_validate_track(all_cell_id_track_list_dict)
-    #
-    #     print("  --> finish")
-    #
-    # return all_cell_id_track_list_dict
 
 def execute_cell_tracking_task_1(frame_num_prof_matrix_dict: dict, hyper_para, is_use_cell_dependency_feature: bool):
     all_cell_id_track_list_dict: dict = defaultdict(list)
@@ -1248,8 +1164,8 @@ def derive_average_movement_score(to_handle_cell_id, current_frame_num, last_fra
             current_node_idx: int = handling_cell_frame_num_track_idx_dict[frame_num]
             current_coord_tuple: CoordTuple = frame_num_node_idx_coord_list_dict[frame_num][current_node_idx]
 
-            distance: float = ((current_coord_tuple.x - previous_coord_tuple.x)**2 + (current_coord_tuple.y - previous_coord_tuple.y)**2)**0.5
-
+            x_y_distance: float = ((current_coord_tuple.x - previous_coord_tuple.x)**2 + (current_coord_tuple.y - previous_coord_tuple.y)**2)**0.5
+            distance: float = (x_y_distance**2 + (current_coord_tuple.z - previous_coord_tuple.z)**2)**0.5
             sum_distance += distance
 
             previous_coord_tuple = current_coord_tuple
@@ -1284,7 +1200,9 @@ def update_below_cut_threshold_value_to_zero(frame_num_prof_matrix_dict: dict, c
 
 
 def derive_distance_score(current_node_coord, last_frame_node_coord, max_moving_distance):
-    distance: float = ((current_node_coord.x - last_frame_node_coord.x)**2 + (current_node_coord.y - last_frame_node_coord.y)**2)**0.5
+    x_y_distance: float = ((current_node_coord.x - last_frame_node_coord.x)**2 + (current_node_coord.y - last_frame_node_coord.y)**2)**0.5
+
+    distance: float = (x_y_distance**2 + (current_node_coord.z - last_frame_node_coord.z)**2)**0.5
     distance = np.round(distance, 4)
 
     if distance > max_moving_distance:
@@ -1313,10 +1231,12 @@ def derive_degree_score(to_handle_cell_id, current_frame_num, last_frame_node_co
         new_connection_vec: CoordTuple = derive_vector_from_coord_list([last_frame_node_coord, candidate_node_coord])
 
         degree_diff: float = derive_degree_diff_from_two_vectors(previous_vec, new_connection_vec)
-    else:
-        degree_diff = 1
 
-    degree_score: float = (cos(radians(degree_diff)) + 1) * 0.5  # +1 and *0.5 to shift up and make it stay between 1 and 0
+        degree_score: float = (cos(radians(degree_diff)) + 1) * 0.5  # +1 and *0.5 to shift up and make it stay between 1 and 0
+
+    else:
+        degree_score: float = 0.5
+
 
     return degree_score
 
@@ -1412,21 +1332,20 @@ def derive_vector_from_coord_list(coord_tuple_list: list):
     end_vec: CoordTuple = coord_tuple_list[-1]
 
     reversed_y_coord = -(end_vec.y - start_vec.y) # reverse y because coord raw data of y-axis is reversed
-    final_coord_tuple = CoordTuple(end_vec.x - start_vec.x, reversed_y_coord)
+    z_coord = end_vec.z - start_vec.z
+    final_coord_tuple = CoordTuple(end_vec.x - start_vec.x, reversed_y_coord, z_coord)
 
     return final_coord_tuple
 
 
 
 
-def derive_initial_cell_id_list(frame_num_prof_matrix_dict: dict):
+def derive_initial_cell_id_list(frame_num_total_cell_dict: dict):
     to_handle_cell_id_list: list = []
-    for connect_to_frame_num, prof_matrix in frame_num_prof_matrix_dict.items():
-        total_row: int = prof_matrix.shape[0]
-        for row_idx in range(total_row):
-            cell_start_frame: int = connect_to_frame_num
-            node_idx: int = row_idx
-            to_handle_cell_id_list.append(CellId(cell_start_frame, node_idx))
+    for frame_num, total_cell in frame_num_total_cell_dict.items():
+        for cell_idx in range(total_cell):
+            cell_start_frame: int = frame_num
+            to_handle_cell_id_list.append(CellId(cell_start_frame, cell_idx))
 
     return to_handle_cell_id_list
 
@@ -1474,11 +1393,11 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
 
     tmp_redo_node_idx_cell_id_dict: dict = defaultdict(set)
     for candidate_node_idx, candidate_node_connection_prob in enumerate(connection_prob_list):
-        if candidate_node_connection_prob == 0:
-            continue
+        # if candidate_node_connection_prob == 0:
+        #     continue
 
-        if candidate_node_connection_prob < cut_threshold:
-            raise Exception("code validation check. Done at update_below_cut_threshold_value_to_zero method, should not exist")
+        # if candidate_node_connection_prob < cut_threshold:
+        #     raise Exception("code validation check. Done at update_below_cut_threshold_value_to_zero method, should not exist")
 
         candidate_node_coord: CoordTuple = frame_num_node_idx_coord_list_dict[connect_to_frame_num][candidate_node_idx]
 
@@ -1487,6 +1406,8 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
         if is_use_profit_score:
             weighted_probability_score = np.round(weight_tuple.profit_probability * candidate_node_connection_prob, round_to)
             final_probability += weighted_probability_score
+        else:
+            weighted_probability_score = 0
 
         is_use_degree_score: bool = (weight_tuple.degree > 0)
         if is_use_degree_score:
@@ -1521,6 +1442,7 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
         log_msg = f"{to_handle_cell_id.str_short()} {final_probability}={weighted_probability_score}+{weighted_degree_score}+{weighted_distance_score}+{weighted_avg_mov_score}"
         if log_msg not in score_log_mtx[current_frame_num][current_node_idx][candidate_node_idx]:
             score_log_mtx[current_frame_num][current_node_idx][candidate_node_idx] += log_msg + "\n"
+
 
 
         occupied_cell_id_list: list = frame_num_node_idx_occupation_list_list_dict[connect_to_frame_num][candidate_node_idx]
@@ -2370,19 +2292,11 @@ def deprecated_derive_frame_num_node_id_occupation_tuple_list_dict(frame_num_pro
 
 
 
-def initiate_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_prof_matrix_dict: dict):
+def initiate_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_total_cell_dict: dict):
     frame_num_node_idx_occupation_list_list_dict: dict = {}
 
-    # initiate slots from frame 1 to (last_frame-1)
-    for frame_num, profit_matrix in frame_num_prof_matrix_dict.items():
-        total_cell: int = profit_matrix.shape[0]
+    for frame_num, total_cell in frame_num_total_cell_dict.items():
         frame_num_node_idx_occupation_list_list_dict[frame_num] = [[] for _ in range(total_cell)]
-
-    # initiate slots for last_frame
-    last_frame_num: int = np.max(list(frame_num_prof_matrix_dict.keys())) + 1
-    second_last_frame_num: int = last_frame_num - 1
-    total_cell_last_frame: int = frame_num_prof_matrix_dict[second_last_frame_num].shape[1]
-    frame_num_node_idx_occupation_list_list_dict[last_frame_num] = [[] for _ in range(total_cell_last_frame)]
 
     return frame_num_node_idx_occupation_list_list_dict
 
@@ -2533,7 +2447,8 @@ def derive_frame_num_prof_matrix_dict(frame_num_cell_coord_list_dict):
             continue
 
         current_frame_total_cell = len(coord_list)
-        frame_num_prof_matrix_dict[frame_num-1] = np.zeros(previous_frame_total_cell, current_frame_total_cell)
+        # print(frame_num-1, previous_frame_total_cell, )
+        frame_num_prof_matrix_dict[frame_num-1] = np.zeros((previous_frame_total_cell, current_frame_total_cell))
 
         previous_frame_total_cell = current_frame_total_cell
 
