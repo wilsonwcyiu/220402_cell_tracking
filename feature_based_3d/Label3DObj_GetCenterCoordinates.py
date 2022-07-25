@@ -16,9 +16,11 @@ def cell_center(seg_img):
             results[label]=[avg_z,avg_x,avg_y]
     return results
 
-raw_folder_path = "E://3D cell tracking//4 3D segmentation//0 Segmented data//222//"
+# raw_folder_path = "E://3D cell tracking//4 3D segmentation//0 Segmented data//222//"
+raw_folder_path = "D:/viterbi linkage/dataset/3D raw data_seg data_find center coordinate/4 Segmentation dataset/" + "1 8layers mask data/20190621++2_8layers_M3a_Step98/"
 imagePaths = sorted(list(paths.list_images(raw_folder_path)))
-saved_filtered_small_objects_folder_path = "E://3D cell tracking//4 3D segmentation//0 Segmented data//333//"
+
+# saved_filtered_small_objects_folder_path = "E://3D cell tracking//4 3D segmentation//0 Segmented data//333//"
 
 threshold = 100   #if the volume of object is small than the threshold, remove the object
 for img_file in imagePaths:
