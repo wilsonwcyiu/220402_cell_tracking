@@ -61,13 +61,15 @@ def main():
                                WeightTuple(0.2, 0.6, 0.1, 0.1),
                                WeightTuple(0.2, 0.7, 0.1, 0),
                                WeightTuple(0.2, 0.1, 0.1, 0.6),
-                               WeightTuple(0.2, 0.0, 0.1, 0.7),
+                               WeightTuple(0.2, 0.3, 0.1, 0.4),
+                               WeightTuple(0.2, 0.2, 0.1, 0.5),
+                               WeightTuple(0.1, 0.2, 0.1, 0.6),
                                ]
     max_moving_distance_list: list = [35]
-    coord_length_for_vector_list: list = [6]
-    average_movement_step_length: list = [7]
+    coord_length_for_vector_list: list = [5, 6]
+    average_movement_step_length: list = [6]
     minimum_track_length_list: list = [5]
-    cut_threshold_list: list = [0.4]
+    cut_threshold_list: list = [0.4, 0.4]
 
     routing_strategy_enum_list: list = [ROUTING_STRATEGY_ENUM.ALL_LAYER]
     merge_threshold_list: list = [None]
