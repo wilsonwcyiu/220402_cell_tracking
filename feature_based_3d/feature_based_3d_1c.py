@@ -5,6 +5,7 @@ Created on Tue Sep 28 09:31:51 2021
 @author: 13784
 """
 import itertools
+import json
 import traceback
 from datetime import datetime
 import decimal
@@ -43,29 +44,50 @@ def main():
     segmentation_folder = folder_path + 'segmentation_unet_seg/'
     output_folder = folder_path + 'output_unet_seg_finetune/'
     save_dir = folder_path + 'save_directory_enhancement/'
-
+    coord_dir = folder_path + "coord_data_3d/"
 
     is_use_thread: bool = False
     is_use_cell_dependency_feature: bool = False
 
     ## hyper parameter settings
-    routing_strategy_enum_list: list = [ROUTING_STRATEGY_ENUM.ALL_LAYER]
-    merge_threshold_list: list = [0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+    weight_tuple_list: list = [WeightTuple(0, 0.4, 0.3, 0.3),
+                               # WeightTuple(0.8, 0.07, 0.06, 0.07),
+                               # WeightTuple(0.7, 0.1, 0.1, 0.1),
+                               # WeightTuple(0.6, 0.1, 0.1, 0.2),
+                               # WeightTuple(0.5, 0.2, 0.1, 0.2),
+                               # WeightTuple(0.4, 0.25, 0.1, 0.25),
+                               # WeightTuple(0.3, 0.3, 0.1, 0.3),
+                               # WeightTuple(0.2, 0.35, 0.1, 0.35),
+                               # WeightTuple(0.2, 0.35, 0.1, 0.35),
+                               # WeightTuple(0.2, 0.6, 0.1, 0.1),
+                               # WeightTuple(0.2, 0.7, 0.1, 0),
+                               # WeightTuple(0.2, 0.1, 0.1, 0.6),
+                               # WeightTuple(0.2, 0.3, 0.1, 0.4),
+                               # WeightTuple(0.2, 0.2, 0.1, 0.5),
+                               # WeightTuple(0.1, 0.2, 0.1, 0.6),
+                               ]
+    max_moving_distance_list: list = [40]
+    coord_length_for_vector_list: list = [6]
+    average_movement_step_length: list = [6]
     minimum_track_length_list: list = [5]
-    cut_threshold_list: list = [0.004]
-    is_do_post_adjustment_list: list = [False]
-    cut_strategy_enum_list: list = [CUT_STRATEGY_ENUM.AFTER_ROUTING, CUT_STRATEGY_ENUM.DURING_ROUTING]
-    both_cell_below_threshold_strategy_enum_list: list = [BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM.SHARE]
-    discount_rate_per_layer: list = [0.5] #"merge_threshold",
+    cut_threshold_list: list = [0.4]
 
     routing_strategy_enum_list: list = [ROUTING_STRATEGY_ENUM.ALL_LAYER]
-    merge_threshold_list: list = [0.5]
-    minimum_track_length_list: list = [5]
-    cut_threshold_list: list = [0.01]
+    merge_threshold_list: list = [None]
     is_do_post_adjustment_list: list = [False]
     cut_strategy_enum_list: list = [CUT_STRATEGY_ENUM.AFTER_ROUTING]
     both_cell_below_threshold_strategy_enum_list: list = [BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM.SHARE]
-    discount_rate_per_layer: list = [0.5] #"merge_threshold",
+    discount_rate_per_layer: list = [None] #{"merge_threshold", any_float},
+
+
+
+    # cut_threshold_list: list = [0.004]
+    # weight_tuple_list: list = [WeightTuple(0.4, 0.2, 0.1, 0.3)]
+    # max_moving_distance_list: list = [35]
+    # coord_length_for_vector_list: list = [5]
+    # average_movement_step_length: list = [5]
+    # minimum_track_length_list: list = [5]
+
 
     hyper_para_combination_list = list(itertools.product(routing_strategy_enum_list,
                                                          merge_threshold_list,
@@ -74,7 +96,11 @@ def main():
                                                          is_do_post_adjustment_list,
                                                          cut_strategy_enum_list,
                                                          both_cell_below_threshold_strategy_enum_list,
-                                                         discount_rate_per_layer
+                                                         discount_rate_per_layer,
+                                                         weight_tuple_list,
+                                                         max_moving_distance_list,
+                                                         coord_length_for_vector_list,
+                                                         average_movement_step_length
                                                          ))
 
     hyper_para_list: list = []
@@ -87,6 +113,12 @@ def main():
         cut_strategy_enum: CUT_STRATEGY_ENUM = hyper_para_combination[5]
         both_cell_below_threshold_strategy_enum: BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM = hyper_para_combination[6]
         discount_rate_per_layer: [str, float] = hyper_para_combination[7]
+        weight_tuple = hyper_para_combination[8]
+        max_moving_distance = hyper_para_combination[9]
+        coord_length_for_vector = hyper_para_combination[10]
+        average_movement_step_length = hyper_para_combination[11]
+
+
 
         hyper_para: HyperPara = HyperPara(routing_strategy_enum,
                                           merge_threshold,
@@ -95,12 +127,16 @@ def main():
                                           is_do_post_adjustment,
                                           cut_strategy_enum,
                                           both_cell_below_threshold_strategy_enum,
-                                          discount_rate_per_layer)
+                                          discount_rate_per_layer,
+                                          weight_tuple,
+                                          max_moving_distance,
+                                          coord_length_for_vector,
+                                          average_movement_step_length)
 
         hyper_para_list.append(hyper_para)
 
 
-    date_str: str = datetime.now().strftime("%Y%m%d-%H%M%S") + "/"
+    date_str: str = datetime.now().strftime("%Y%m%d-%H%M%S")
 
 
     total_para_size: int = len(hyper_para_list)
@@ -108,20 +144,15 @@ def main():
         para_set_num: int = idx+1
 
         print(f"start. Parameter set: {para_set_num}/ {total_para_size}; {hyper_para.__str__()}")
-
+        # continue
 
 
         start_time = time.perf_counter()
 
-        input_series_list = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
-                             'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
-        input_series_list = ['S02']
-
+        input_series_list = [input_series.replace(".json", "") for input_series in listdir(coord_dir)]
 
         all_segmented_filename_list = listdir(segmentation_folder)
         all_segmented_filename_list.sort()
-
-        existing_series_list = derive_existing_series_list(input_series_list, listdir(output_folder))
 
         viterbi_result_dict = {}
 
@@ -133,10 +164,10 @@ def main():
                 pool = ThreadPool(processes=8)
                 thread_list: list = []
 
-                for series in existing_series_list:
+                for series in input_series_list:
                     print(f"working on series: {series}. ")
 
-                    async_result = pool.apply_async(cell_tracking_core_flow, (series, segmentation_folder, all_segmented_filename_list, output_folder, hyper_para, is_use_cell_dependency_feature, )) # tuple of args for foo
+                    async_result = pool.apply_async(cell_tracking_core_flow, (series, coord_dir, all_segmented_filename_list, output_folder, hyper_para, is_use_cell_dependency_feature, )) # tuple of args for foo
                     thread_list.append(async_result)
 
                 total_threads: int = len(thread_list)
@@ -146,35 +177,41 @@ def main():
                     print(f"Thread {thread_idx + 1}/ {total_threads} completed")
 
             else:
-                for series in existing_series_list:
+
+
+
+                for series in input_series_list:
                     print(f"working on series: {series}. ")
-                    return_series, final_result_list, score_log_mtx = cell_tracking_core_flow(series, segmentation_folder, all_segmented_filename_list, output_folder, hyper_para, is_use_cell_dependency_feature)
+                    return_series, final_result_list, score_log_mtx = cell_tracking_core_flow(series, coord_dir, all_segmented_filename_list, output_folder, hyper_para, is_use_cell_dependency_feature)
                     viterbi_result_dict[series] = final_result_list
 
-                    score_log_dir = save_dir + "score_log/"
-                    result_file_name: str = Path(__file__).name.replace(".py", "_")
+                    is_generate_score_log = False
+                    if is_generate_score_log:
+                        score_log_dir = save_dir + "score_log/"
+                        result_file_name: str = Path(__file__).name.replace(".py", "_")
 
-                    # # remove last \n
-                    # for frame_num, mtx_row_list in score_log_mtx.items():
-                    #     for row_idx in range(len(mtx_row_list)):
-                    #         for col_idx in range(len(mtx_row_list[row_idx])):
-                    #             if len(score_log_mtx[frame_num][row_idx][col_idx]) > 2:
-                    #                 score_log_mtx[frame_num][row_idx][col_idx] = score_log_mtx[frame_num][row_idx][col_idx][0:-2]
+                        # remove last \n
+                        for frame_num, mtx_row_list in score_log_mtx.items():
+                            for row_idx in range(len(mtx_row_list)):
+                                for col_idx in range(len(mtx_row_list[row_idx])):
+                                    if len(score_log_mtx[frame_num][row_idx][col_idx]) > 2:
+                                        score_log_mtx[frame_num][row_idx][col_idx] = score_log_mtx[frame_num][row_idx][col_idx][0:-2]
 
-                    save_score_log_to_excel(series, score_log_mtx, score_log_dir, result_file_name)
+                        save_score_log_to_excel(series, score_log_mtx, score_log_dir, result_file_name)
 
 
 
-                    is_use_frame_num: bool = True
-                    ground_truth_cell_dict = obtain_ground_truth_cell_dict()
-                    series_ground_truth_list = ground_truth_cell_dict[series]
-                    for track_tuple_list in final_result_list:
-                        cell_id_tuple: tuple = track_tuple_list[0]
-                        if cell_id_tuple in series_ground_truth_list:
-                            if is_use_frame_num:
+
+                    is_only_save_ground_truth_related_data = False
+                    if is_only_save_ground_truth_related_data:
+                        ground_truth_cell_dict = obtain_ground_truth_cell_dict()
+                        series_ground_truth_list = ground_truth_cell_dict[series]
+                        for track_tuple_list in final_result_list:
+                            cell_id_tuple: tuple = track_tuple_list[0]
+                            if cell_id_tuple in series_ground_truth_list:
                                 track_tuple_list = convert_track_frame_idx_to_frame_num(track_tuple_list)
 
-                            print(track_tuple_list)
+                                print(track_tuple_list)
 
 
         except Exception as e:
@@ -182,12 +219,12 @@ def main():
             print()
             traceback.print_exc()
             print(f"series {series}. para {para_set_num}.  hyper_para: {hyper_para.__str__()}")
-            continue
+            exit()
 
 
 
 
-        is_print_ground_truth_only: bool = True
+        is_print_ground_truth_only: bool = False
         if is_print_ground_truth_only:
             series_ground_truth_cell_dict = obtain_ground_truth_cell_dict()
 
@@ -206,18 +243,19 @@ def main():
         result_file_name: str = Path(__file__).name.replace(".py", "")
 
         hyper_para_indicator: str = "R(" +  str(hyper_para.routing_strategy_enum.name)[0:3] + ")_" + \
-                                    "M(" + str(merge_threshold) + ")_" + \
-                                    "MIN(" + str(minimum_track_length) + ")_" + \
-                                    "CT(" + str(cut_threshold) + ")_" + \
-                                    "ADJ(" + ("YES" if is_do_post_adjustment else "NO") + ")_" + \
-                                    "CS(" +  str(cut_strategy_enum.name)[0] + ")_" + \
-                                    "BB(" + str(both_cell_below_threshold_strategy_enum.name)[0] + ")"
+                                    "M(" + str(hyper_para.merge_threshold) + ")_" + \
+                                    "MIN(" + str(hyper_para.minimum_track_length) + ")_" + \
+                                    "CT(" + str(hyper_para.cut_threshold) + ")_" + \
+                                    "ADJ(" + ("YES" if hyper_para.is_do_post_adjustment else "NO") + ")_" + \
+                                    "CS(" +  str(hyper_para.cut_strategy_enum.name)[0] + ")_" + \
+                                    "BB(" + str(hyper_para.both_cell_below_threshold_strategy_enum.name)[0] + ")_" + \
+                                    str(hyper_para.weight_tuple)
 
+        result_dir = save_dir + date_str + "_" + result_file_name + "/"
+        if not os.path.exists(result_dir):
+            os.makedirs(result_dir)
 
-        if not os.path.exists(save_dir + date_str):
-            os.makedirs(save_dir + date_str)
-
-        abs_save_dir: str = save_dir + date_str + result_file_name + "_hp" + str(idx+1).zfill(3) + "__" + hyper_para_indicator
+        abs_save_dir: str = result_dir + result_file_name + "_hp" + str(idx+1).zfill(3) + "__" + hyper_para_indicator
         save_track_dictionary(viterbi_result_dict, abs_save_dir + ".pkl")
 
         execution_time = time.perf_counter() - start_time
@@ -307,7 +345,7 @@ class BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM(enum.Enum):
 class HyperPara():
     def __init__(self, routing_strategy_enum: ROUTING_STRATEGY_ENUM, merge_threshold: float, minimum_track_length: int, cut_threshold: float, is_do_post_adjustment: bool,
                  cut_strategy_enum: CUT_STRATEGY_ENUM, both_cell_below_threshold_strategy_enum: BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM,
-                 discount_rate_per_layer: [str, int]):
+                 discount_rate_per_layer: [str, int], weight_tuple, max_moving_distance, coord_length_for_vector, average_movement_step_length):
         self.routing_strategy_enum: ROUTING_STRATEGY_ENUM = routing_strategy_enum
         self.merge_threshold: float = merge_threshold
         self.minimum_track_length: int = minimum_track_length
@@ -316,6 +354,11 @@ class HyperPara():
         self.cut_strategy_enum = cut_strategy_enum
         self.both_cell_below_threshold_strategy_enum = both_cell_below_threshold_strategy_enum
         self.discount_rate_per_layer = discount_rate_per_layer   # can be merge_threshold to set as merge_threshold value, or provide an exact value
+        self.weight_tuple: WeightTuple = weight_tuple
+        self.max_moving_distance: int = max_moving_distance
+        self.coord_length_for_vector: int = coord_length_for_vector
+        self.average_movement_step_length: int = average_movement_step_length
+
 
 
     def __str__(self):
@@ -326,7 +369,11 @@ class HyperPara():
                f"is_do_post_adjustment: {self.is_do_post_adjustment}; " \
                f"cut_strategy_enum: {self.cut_strategy_enum.name}; " \
                f"both_cell_below_threshold_strategy_enum: {self.both_cell_below_threshold_strategy_enum.name}; " \
-               f"discount_rate_per_layer: {self.discount_rate_per_layer}; "
+               f"weight_tuple: {self.weight_tuple}; " \
+               f"max_moving_distance: {self.max_moving_distance}; " \
+               f"discount_rate_per_layer: {self.discount_rate_per_layer}; " \
+               f"coord_length_for_vector: {self.coord_length_for_vector}; " \
+               f"average_movement_step_length: {self.average_movement_step_length}; "
 
 
     def __str_newlines__(self):
@@ -337,21 +384,26 @@ class HyperPara():
                f"is_do_post_adjustment: {self.is_do_post_adjustment}; \n" \
                f"cut_strategy_enum: {self.cut_strategy_enum.name}; \n" \
                f"both_cell_below_threshold_strategy_enum: {self.both_cell_below_threshold_strategy_enum.name}; \n" \
-               f"discount_rate_per_layer: {self.discount_rate_per_layer}; "
+               f"discount_rate_per_layer: {self.discount_rate_per_layer}; \n" \
+                f"max_moving_distance: {self.max_moving_distance}; \n" \
+                f"discount_rate_per_layer: {self.discount_rate_per_layer}; \n" \
+                f"coord_length_for_vector: {self.coord_length_for_vector}; \n" \
+               f"average_movement_step_length: {self.average_movement_step_length}; \n" \
+                f"weight_tuple: {self.weight_tuple}; \n"
 
-    def __eq__(self, other):
-        if self.routing_strategy_enum == other.routing_strategy_enum and \
-                self.merge_threshold == other.merge_threshold and \
-                self.minimum_track_length == other.minimum_track_length and \
-                self.cut_threshold == other.cut_threshold:
-
-            return True
-
-        return False
-
-
-    def __hash__(self):
-        return hash((self.routing_strategy_enum, self.merge_threshold, self.minimum_track_length, self.cut_threshold))
+    # def __eq__(self, other):
+    #     if self.routing_strategy_enum == other.routing_strategy_enum and \
+    #             self.merge_threshold == other.merge_threshold and \
+    #             self.minimum_track_length == other.minimum_track_length and \
+    #             self.cut_threshold == other.cut_threshold:
+    #
+    #         return True
+    #
+    #     return False
+    #
+    #
+    # def __hash__(self):
+    #     return hash((self.routing_strategy_enum, self.merge_threshold, self.minimum_track_length, self.cut_threshold))
 
 
 
@@ -403,15 +455,27 @@ def __________flow_function_start_label():
 
 
 
-def cell_tracking_core_flow(series: str, segmentation_folder: str, all_segmented_filename_list: list, output_folder: str, hyper_para: HyperPara, is_use_cell_dependency_feature: bool):
+def cell_tracking_core_flow(series: str, coord_dir: str, all_segmented_filename_list: list, output_folder: str, hyper_para: HyperPara, is_use_cell_dependency_feature: bool):
 
-    segmented_filename_list: list = derive_segmented_filename_list_by_series(series, all_segmented_filename_list)
+    # segmented_filename_list: list = derive_segmented_filename_list_by_series(series, all_segmented_filename_list)
 
-    frame_num_prof_matrix_dict = derive_frame_num_prof_matrix_dict(segmentation_folder, output_folder, series, segmented_filename_list)
+    # frame_num_prof_matrix_dict = derive_frame_num_prof_matrix_dict(segmentation_folder, output_folder, series, segmented_filename_list)
 
-    frame_num_prof_matrix_dict = update_below_cut_threshold_value_to_zero(frame_num_prof_matrix_dict, hyper_para.cut_threshold)
+    # frame_num_prof_matrix_dict = update_below_cut_threshold_value_to_zero(frame_num_prof_matrix_dict, hyper_para.cut_threshold)
 
-    frame_num_node_idx_coord_list_dict = derive_frame_num_node_idx_coord_list_dict(segmentation_folder, segmented_filename_list)
+    coord_file_path = coord_dir + series + ".json"
+
+    with open(coord_file_path) as json_file:
+        frame_num_str_cell_coord_list_dict = json.load(json_file)
+
+    frame_num_cell_coord_list_dict = {}
+    for frame_num_str, cell_coord_list in frame_num_str_cell_coord_list_dict.items():
+        frame_num_cell_coord_list_dict[int(frame_num_str)] = cell_coord_list
+
+    frame_num_prof_matrix_dict = derive_frame_num_prof_matrix_dict(frame_num_cell_coord_list_dict)
+    frame_num_node_idx_coord_list_dict = derive_frame_num_node_idx_coord_list_dict(frame_num_cell_coord_list_dict)
+
+
 
     all_track_dict, score_log_mtx = execute_cell_tracking_task_bon(frame_num_prof_matrix_dict,
                                                                    frame_num_node_idx_coord_list_dict,
@@ -460,7 +524,7 @@ def __________component_function_start_label():
 
 
 
-def execute_cell_tracking_task_bon(frame_num_prof_matrix_dict: dict, frame_num_node_idx_coord_list_dict: dict, hyper_para, is_use_cell_dependency_feature: bool):
+def execute_cell_tracking_task_bon(frame_num_prof_matrix_dict: dict, frame_num_node_idx_coord_list_dict: dict, hyper_para: HyperPara, is_use_cell_dependency_feature: bool):
 
     to_handle_cell_id_list: list = derive_initial_cell_id_list(frame_num_prof_matrix_dict)
 
@@ -515,19 +579,22 @@ def execute_cell_tracking_task_bon(frame_num_prof_matrix_dict: dict, frame_num_n
             connection_prob_list: list = frame_num_prof_matrix_dict[previous_frame_num][previous_frame_cell_idx, :]
 
 
-
             best_idx, best_prob, score_log_mtx, redo_cell_id_set = derive_best_node_idx_to_connect(to_handle_cell_id,
-                                                                                 handling_cell_frame_num_track_idx_dict,
-                                                                                 connection_prob_list,
-                                                                                 connect_to_frame_num,
-                                                                                 frame_num_node_idx_occupation_list_list_dict,
-                                                                                 valid_all_cell_track_idx_dict,
-                                                                                 valid_all_cell_track_prob_dict,
-                                                                                 frame_num_node_idx_coord_list_dict,
-                                                                                 score_log_mtx,
-                                                                                 hyper_para.cut_threshold,
-                                                                                 frame_num_prof_matrix_dict,
-                                                                                 redo_cell_id_set)
+                                                                                                   handling_cell_frame_num_track_idx_dict,
+                                                                                                   connection_prob_list,
+                                                                                                   connect_to_frame_num,
+                                                                                                   frame_num_node_idx_occupation_list_list_dict,
+                                                                                                   valid_all_cell_track_idx_dict,
+                                                                                                   valid_all_cell_track_prob_dict,
+                                                                                                   frame_num_node_idx_coord_list_dict,
+                                                                                                   score_log_mtx,
+                                                                                                   hyper_para.cut_threshold,
+                                                                                                   frame_num_prof_matrix_dict,
+                                                                                                   redo_cell_id_set,
+                                                                                                   hyper_para.weight_tuple,
+                                                                                                   hyper_para.max_moving_distance,
+                                                                                                   hyper_para.coord_length_for_vector,
+                                                                                                   hyper_para.average_movement_step_length)
 
 
 
@@ -712,23 +779,23 @@ def execute_cell_tracking_task_1(frame_num_prof_matrix_dict: dict, hyper_para, i
     frame_num_node_idx_cell_occupation_list_list_dict, \
     cell_dependency_dict, \
     max_cell_redo_cnt_record = \
-                                _process_and_find_best_cell_track(all_cell_id_track_list_dict,
-                                                                  to_handle_cell_id_list,
-                                                                  frame_num_prof_matrix_dict,
-                                                                  frame_num_node_idx_cell_occupation_list_list_dict,
-                                                                  cell_id_frame_num_node_idx_best_index_list_dict_dict,
-                                                                  cell_id_frame_num_node_idx_best_one_layer_value_list_dict_dict,
-                                                                  cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict,
-                                                                  is_use_cell_dependency_feature,
-                                                                  cell_dependency_dict,
-                                                                  cell_id_frame_num_track_progress_dict,
-                                                                  hyper_para.merge_threshold,
-                                                                  hyper_para.routing_strategy_enum,
-                                                                  hyper_para.cut_strategy_enum,
-                                                                  hyper_para.cut_threshold,
-                                                                  hyper_para.both_cell_below_threshold_strategy_enum,
-                                                                  hyper_para.discount_rate_per_layer,
-                                                                  max_cell_redo_cnt_record)
+        _process_and_find_best_cell_track(all_cell_id_track_list_dict,
+                                          to_handle_cell_id_list,
+                                          frame_num_prof_matrix_dict,
+                                          frame_num_node_idx_cell_occupation_list_list_dict,
+                                          cell_id_frame_num_node_idx_best_index_list_dict_dict,
+                                          cell_id_frame_num_node_idx_best_one_layer_value_list_dict_dict,
+                                          cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict,
+                                          is_use_cell_dependency_feature,
+                                          cell_dependency_dict,
+                                          cell_id_frame_num_track_progress_dict,
+                                          hyper_para.merge_threshold,
+                                          hyper_para.routing_strategy_enum,
+                                          hyper_para.cut_strategy_enum,
+                                          hyper_para.cut_threshold,
+                                          hyper_para.both_cell_below_threshold_strategy_enum,
+                                          hyper_para.discount_rate_per_layer,
+                                          max_cell_redo_cnt_record)
     print("  --> finish")
 
 
@@ -759,23 +826,23 @@ def execute_cell_tracking_task_1(frame_num_prof_matrix_dict: dict, hyper_para, i
             frame_num_node_idx_cell_occupation_list_list_dict, \
             cell_dependency_dict, \
             max_cell_redo_cnt_record  = \
-                                        _process_and_find_best_cell_track(all_cell_id_track_list_dict,
-                                                                          to_handle_cell_id_list,
-                                                                          frame_num_prof_matrix_dict,
-                                                                          frame_num_node_idx_cell_occupation_list_list_dict,
-                                                                          cell_id_frame_num_node_idx_best_index_list_dict_dict,
-                                                                          cell_id_frame_num_node_idx_best_one_layer_value_list_dict_dict,
-                                                                          cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict,
-                                                                          is_use_cell_dependency_feature,
-                                                                          cell_dependency_dict,
-                                                                          cell_id_frame_num_track_progress_dict,
-                                                                          hyper_para.merge_threshold,
-                                                                          hyper_para.routing_strategy_enum,
-                                                                          hyper_para.cut_strategy_enum,
-                                                                          hyper_para.cut_threshold,
-                                                                          hyper_para.both_cell_below_threshold_strategy_enum,
-                                                                          hyper_para.discount_rate_per_layer,
-                                                                          max_cell_redo_cnt_record)
+                _process_and_find_best_cell_track(all_cell_id_track_list_dict,
+                                                  to_handle_cell_id_list,
+                                                  frame_num_prof_matrix_dict,
+                                                  frame_num_node_idx_cell_occupation_list_list_dict,
+                                                  cell_id_frame_num_node_idx_best_index_list_dict_dict,
+                                                  cell_id_frame_num_node_idx_best_one_layer_value_list_dict_dict,
+                                                  cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict,
+                                                  is_use_cell_dependency_feature,
+                                                  cell_dependency_dict,
+                                                  cell_id_frame_num_track_progress_dict,
+                                                  hyper_para.merge_threshold,
+                                                  hyper_para.routing_strategy_enum,
+                                                  hyper_para.cut_strategy_enum,
+                                                  hyper_para.cut_threshold,
+                                                  hyper_para.both_cell_below_threshold_strategy_enum,
+                                                  hyper_para.discount_rate_per_layer,
+                                                  max_cell_redo_cnt_record)
 
             code_validate_track(all_cell_id_track_list_dict)
 
@@ -835,12 +902,12 @@ def _process_and_find_best_cell_track(cell_id_track_list_dict,
             cell_id_frame_num_node_idx_best_index_list_dict_dict, \
             cell_id_frame_num_node_idx_best_one_layer_value_list_dict_dict, \
             cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict = \
-                                                                                remove_cell_data_from_specific_frame_num(handling_cell_id, delete_from_frame_num,
-                                                                                                                         cell_id_track_list_dict,
-                                                                                                                         frame_num_node_idx_cell_occupation_list_list_dict,
-                                                                                                                         cell_id_frame_num_node_idx_best_index_list_dict_dict,
-                                                                                                                         cell_id_frame_num_node_idx_best_one_layer_value_list_dict_dict,
-                                                                                                                         cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict)
+                remove_cell_data_from_specific_frame_num(handling_cell_id, delete_from_frame_num,
+                                                         cell_id_track_list_dict,
+                                                         frame_num_node_idx_cell_occupation_list_list_dict,
+                                                         cell_id_frame_num_node_idx_best_index_list_dict_dict,
+                                                         cell_id_frame_num_node_idx_best_one_layer_value_list_dict_dict,
+                                                         cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict)
 
 
 
@@ -867,12 +934,12 @@ def _process_and_find_best_cell_track(cell_id_track_list_dict,
                 cell_id_frame_num_node_idx_best_index_list_dict_dict, \
                 cell_id_frame_num_node_idx_best_one_layer_value_list_dict_dict, \
                 cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict = \
-                                                            remove_cell_data_from_specific_frame_num(handling_cell_id, handling_cell_id.start_frame_num,
-                                                                                                     cell_id_track_list_dict,
-                                                                                                     frame_num_node_idx_cell_occupation_list_list_dict,
-                                                                                                     cell_id_frame_num_node_idx_best_index_list_dict_dict,
-                                                                                                     cell_id_frame_num_node_idx_best_one_layer_value_list_dict_dict,
-                                                                                                     cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict)
+                    remove_cell_data_from_specific_frame_num(handling_cell_id, handling_cell_id.start_frame_num,
+                                                             cell_id_track_list_dict,
+                                                             frame_num_node_idx_cell_occupation_list_list_dict,
+                                                             cell_id_frame_num_node_idx_best_index_list_dict_dict,
+                                                             cell_id_frame_num_node_idx_best_one_layer_value_list_dict_dict,
+                                                             cell_id_frame_num_node_idx_best_multi_layer_value_list_dict_dict)
 
             to_handle_cell_id_list.remove(handling_cell_id)
             time.sleep(1)
@@ -1296,7 +1363,12 @@ def save_score_log_to_excel(series: str, frame_num_score_matrix_dict, excel_outp
 
         df.to_excel(writer, sheet_name=sheet_name, index=True)
 
+        workbook = writer.book
+        cell_format = workbook.add_format({'text_wrap': True})        # to make \n work
+
         worksheet = writer.sheets[sheet_name]
+        worksheet.set_column('A:BO', cell_format=cell_format)
+
         for col_idx in range(40):
             if col_idx == 0:    col_width = 3
             else:               col_width = 25
@@ -1379,15 +1451,19 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
                                     score_log_mtx,
                                     cut_threshold,
                                     frame_num_prof_matrix_dict,
-                                    redo_cell_id_set):
+                                    redo_cell_id_set,
+                                    weight_tuple: WeightTuple,
+                                    max_moving_distance: int,
+                                    coord_length_for_vector: int,
+                                    average_movement_step_length: int):
 
 
     current_frame_num = connect_to_frame_num - 1
-    coord_length_for_vector: int = 5
-    average_movement_step_length: int = 5
+    # coord_length_for_vector: int = 5
+    # average_movement_step_length: int = 5
 
     # WeightTuple = namedtuple("WeightTuple", "probability degree distance")
-    weight_tuple = WeightTuple(0.4, 0.2, 0.1, 0.3)
+    # weight_tuple = WeightTuple(0.4, 0.2, 0.1, 0.3)
     round_to = 2
 
     last_frame_node_idx: int = handling_cell_frame_num_track_idx_dict[current_frame_num]
@@ -1398,7 +1474,10 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
 
     tmp_redo_node_idx_cell_id_dict: dict = defaultdict(set)
     for candidate_node_idx, candidate_node_connection_prob in enumerate(connection_prob_list):
-        if candidate_node_connection_prob > 0 and candidate_node_connection_prob < cut_threshold:
+        if candidate_node_connection_prob == 0:
+            continue
+
+        if candidate_node_connection_prob < cut_threshold:
             raise Exception("code validation check. Done at update_below_cut_threshold_value_to_zero method, should not exist")
 
         candidate_node_coord: CoordTuple = frame_num_node_idx_coord_list_dict[connect_to_frame_num][candidate_node_idx]
@@ -1414,19 +1493,26 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
             degree_score: float = derive_degree_score(to_handle_cell_id, current_frame_num, last_frame_node_coord, candidate_node_coord, coord_length_for_vector, handling_cell_frame_num_track_idx_dict, frame_num_node_idx_coord_list_dict)
             weighted_degree_score = np.round(weight_tuple.degree * degree_score, round_to)
             final_probability += weighted_degree_score
+        else:
+            weighted_degree_score = 0
 
-        max_moving_distance = 35
+
         is_use_distance_score: bool = (weight_tuple.distance > 0)
         if is_use_distance_score:
             distance_score = derive_distance_score(candidate_node_coord, last_frame_node_coord, max_moving_distance)
             weighted_distance_score = np.round(weight_tuple.distance * distance_score, round_to)
             final_probability += weighted_distance_score
+        else:
+            weighted_distance_score = 0
+
 
         is_use_avg_movement_score: bool = (weight_tuple.average_movement > 0)
         if is_use_avg_movement_score:
             avg_movement_score = derive_average_movement_score(to_handle_cell_id, current_frame_num, last_frame_node_coord, candidate_node_coord, average_movement_step_length, handling_cell_frame_num_track_idx_dict, frame_num_node_idx_coord_list_dict, max_moving_distance)
             weighted_avg_mov_score = np.round(weight_tuple.average_movement * avg_movement_score, round_to)
             final_probability += weighted_avg_mov_score
+        else:
+            weighted_avg_mov_score = 0
 
 
         final_probability = np.round(final_probability, round_to)
@@ -1443,8 +1529,8 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
 
 
         if not has_cell_occupation:
-            if candidate_node_connection_prob > best_prob:
-                best_prob = candidate_node_connection_prob
+            if final_probability > best_prob:
+                best_prob = final_probability
                 best_node_idx = candidate_node_idx
         else:
 
@@ -1454,15 +1540,15 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
                 # if to_handle_cell_id in [CellId(1, 0)] and connect_to_frame_num == 80 and candidate_node_idx in [0, 2] and occupied_cell_id == CellId(75, 5):
                 #     print("sdbfsfd")
 
-                if to_handle_cell_id in [CellId(1, 0)] and connect_to_frame_num == 80 and candidate_node_idx in [0]:
-                    print("dfngf")
+                # if to_handle_cell_id in [CellId(1, 0)] and connect_to_frame_num == 80 and candidate_node_idx in [0]:
+                #     print("dfngf")
 
                 # print("dfgsdfg", occupied_cell_id.str_short(), current_frame_num)
 
                 if connect_to_frame_num == occupied_cell_id.start_frame_num:
                     # directly takeover occupied cell (as occupied cell is no long a new_cell)
-                    if candidate_node_connection_prob > best_prob:
-                        best_prob = candidate_node_connection_prob
+                    if final_probability > best_prob:
+                        best_prob = final_probability
                         best_node_idx = candidate_node_idx
                         tmp_redo_node_idx_cell_id_dict[best_node_idx].add(occupied_cell_id)
                     continue
@@ -1475,8 +1561,8 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
 
                 if not has_other_connection_option_current_cell and not has_other_connection_option_occupied_cell:
                     #merge as usual
-                    if candidate_node_connection_prob > best_prob:
-                        best_prob = candidate_node_connection_prob
+                    if final_probability > best_prob:
+                        best_prob = final_probability
                         best_node_idx = candidate_node_idx
 
                 elif has_other_connection_option_current_cell and not has_other_connection_option_occupied_cell:
@@ -1485,8 +1571,8 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
 
                 elif not has_other_connection_option_current_cell and has_other_connection_option_occupied_cell:
                     # occupied cell explore other options
-                    if candidate_node_connection_prob > best_prob:
-                        best_prob = candidate_node_connection_prob
+                    if final_probability > best_prob:
+                        best_prob = final_probability
                         best_node_idx = candidate_node_idx
                         tmp_redo_node_idx_cell_id_dict[candidate_node_idx].add(occupied_cell_id)
 
@@ -1494,20 +1580,20 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
                     # higher probability cell takes over
                     occupied_cell_prob: float = valid_all_cell_track_prob_dict[occupied_cell_id][connect_to_frame_num]
 
-                    if occupied_cell_prob > candidate_node_connection_prob:
+                    if occupied_cell_prob > final_probability:
                         #current cell explore other opportunity
                         continue
-                    elif occupied_cell_prob < candidate_node_connection_prob:
-                        if candidate_node_connection_prob > best_prob:
+                    elif occupied_cell_prob < final_probability:
+                        if final_probability > best_prob:
                             # occupied cell explore other opportunity
-                            best_prob = candidate_node_connection_prob
+                            best_prob = final_probability
                             best_node_idx = candidate_node_idx
                             tmp_redo_node_idx_cell_id_dict[best_node_idx].add(occupied_cell_id)
 
-                    elif occupied_cell_prob == candidate_node_connection_prob:
-                        if candidate_node_connection_prob > best_prob:
+                    elif occupied_cell_prob == final_probability:
+                        if final_probability > best_prob:
                             # print("(let them share for now) to handle biz scenario", occupied_cell_prob, candidate_node_connection_prob, to_handle_cell_id.str_short(), occupied_cell_id.str_short(), current_frame_num)
-                            best_prob = candidate_node_connection_prob
+                            best_prob = final_probability
                             best_node_idx = candidate_node_idx
                             # continue
 
@@ -2432,69 +2518,25 @@ def deprecate_derive_prof_matrix_list(segmentation_folder_path: str, output_fold
 
 
 
-def derive_frame_num_node_idx_coord_list_dict(segmentation_folder_path: str, segmented_filename_list):
-    frame_num_cell_coord_list_dict: dict = {}
-
-    for frame_idx in range(0, len(segmented_filename_list)):
-        frame_num = frame_idx + 1
-        img = plt.imread(segmentation_folder_path + segmented_filename_list[frame_idx])
-        label_img = measure.label(img, background=0, connectivity=1)
-        cellnb_img = np.max(label_img)
-
-        cell_coord_tuple_list = []
-        for cellnb_i in range(cellnb_img):
-
-            cell_i = plt.imread(segmentation_folder_path + segmented_filename_list[0])
-            cell_i_props = measure.regionprops(label_img, intensity_image=cell_i) #label_img_next是二值图像为255，无intensity。需要与output中的预测的细胞一一对应，预测细胞有intensity
-
-            y, x = cell_i_props[cellnb_i].centroid
-            y, x = int(y), int(x)
-
-            cell_coord_tuple_list.append(CoordTuple(x, y))
-
-        frame_num_cell_coord_list_dict[frame_num] = cell_coord_tuple_list
+def derive_frame_num_node_idx_coord_list_dict(frame_num_cell_coord_list_dict):
 
     return frame_num_cell_coord_list_dict
 
 
 
-def derive_frame_num_prof_matrix_dict(segmentation_folder_path: str, output_folder_path: str, series: str, segmented_filename_list):
+def derive_frame_num_prof_matrix_dict(frame_num_cell_coord_list_dict):
     frame_num_prof_matrix_dict: dict = {}
 
-    #get the first image (frame 0) and label the cells:
-    img = plt.imread(segmentation_folder_path + segmented_filename_list[0])
+    for frame_num, coord_list in frame_num_cell_coord_list_dict.items():
+        if frame_num == 1:
+            previous_frame_total_cell = len(coord_list)
+            continue
 
-    label_img = measure.label(img, background=0, connectivity=1)
-    cellnb_img = np.max(label_img)
+        current_frame_total_cell = len(coord_list)
+        frame_num_prof_matrix_dict[frame_num-1] = np.zeros(previous_frame_total_cell, current_frame_total_cell)
 
-    for frame_num in range(1, len(segmented_filename_list)):
-        # get next frame and number of cells next frame
-        img_next = plt.imread(segmentation_folder_path + '/' + segmented_filename_list[frame_num])
+        previous_frame_total_cell = current_frame_total_cell
 
-        label_img_next = measure.label(img_next, background=0, connectivity=1)
-        cellnb_img_next = np.max(label_img_next)
-
-        #create empty dataframe for element of profit matrix C
-        prof_mat = np.zeros( (cellnb_img, cellnb_img_next), dtype=float)
-
-        #loop through all combinations of cells in this and the next frame
-        for cellnb_i in range(cellnb_img):
-            cell_i_filename = "mother_" + segmented_filename_list[frame_num][:-4] + "_Cell" + str(cellnb_i + 1).zfill(2) + ".png"
-            cell_i = plt.imread(output_folder_path + series + '/' + cell_i_filename)
-
-            cell_i_props = measure.regionprops(label_img_next, intensity_image=cell_i) #label_img_next是二值图像为255，无intensity。需要与output中的预测的细胞一一对应，预测细胞有intensity
-
-
-            #predictions are for each cell in curr img
-            for cellnb_j in range(cellnb_img_next):
-                #calculate profit score from mean intensity neural network output in segmented cell area
-                prof_mat[cellnb_i, cellnb_j] = cell_i_props[cellnb_j].mean_intensity         #得到填充矩阵size = max(cellnb_img, cellnb_img_next)：先用预测的每一个细胞的mean_intensity填满cellnb_img, cellnb_img_next行和列
-
-        frame_num_prof_matrix_dict[frame_num] = prof_mat
-
-        #make next frame current frame
-        cellnb_img = cellnb_img_next
-        label_img = label_img_next
 
     return frame_num_prof_matrix_dict
 
