@@ -19,19 +19,19 @@ def derive_series_name(image_file_abs_path: str, raw_folder_abs_path: str):
 
 
 def cell_center(seg_img):
-    coord_tuple_list = []
+    label_coord_tuple_dict = {}
     for label in np.unique(seg_img):
         if label != 0:
             all_points_z,all_points_x,all_points_y = np.where(seg_img==label)
             avg_z = np.round(np.mean(all_points_z))
             avg_x = np.round(np.mean(all_points_x))
             avg_y = np.round(np.mean(all_points_y))
-            # coord_tuple_list[label]=[avg_z,avg_x,avg_y]
+            # label_coord_tuple_dict[label]=[avg_z,avg_x,avg_y]
 
 
-            coord_tuple_list.append((avg_z, avg_x, avg_y))
+            label_coord_tuple_dict[label] = (avg_z, avg_x, avg_y)
 
-    return coord_tuple_list
+    return label_coord_tuple_dict
 
 # raw_folder_path = "E://3D cell tracking//4 3D segmentation//0 Segmented data//222//"
 raw_folder_path = "D:/viterbi linkage/dataset/3D raw data_seg data_find center coordinate/4 Segmentation dataset/"
@@ -87,11 +87,17 @@ for idx, (series_name, img_path_list) in enumerate(series_image_path_list_dict.i
                 img_stack[img_stack==img_stack_label[l]]=0
         labels = np.unique(img_stack)
 
-        coord_tuple_list = cell_center(img_stack)
+        label_coord_tuple_dict = cell_center(img_stack)
 
-        frame_num_coord_tuple_list_dict[frame_num] = coord_tuple_list
+        for label, coord_tuple in label_coord_tuple_dict.items():
+            key = str(frame_num) + ":" + str(label)
+            frame_num_coord_tuple_list_dict[key] = coord_tuple
 
-
+    # for frame_num, label_coord_tuple_list_dict in frame_num_coord_tuple_list_dict.items():
+    #     for label, coord_tuple_list_dict in label_coord_tuple_list_dict.items():
+    #         print("asdfas", frame_num, label, coord_tuple_list_dict)
+    #
+    # exit()
     json_string = json.dumps(frame_num_coord_tuple_list_dict)
     # print()
     # print(json_string)
