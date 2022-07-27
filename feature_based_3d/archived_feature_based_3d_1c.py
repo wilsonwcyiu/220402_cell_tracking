@@ -467,30 +467,48 @@ def cell_tracking_core_flow(series: str, coord_dir: str, all_segmented_filename_
     coord_file_path = coord_dir + series + ".json"
 
     with open(coord_file_path) as json_file:
-        frame_num_str_cell_coord_list_dict = json.load(json_file)
+        key_str_cell_coord_list_dict = json.load(json_file)
 
-    frame_num_cell_coord_list_dict = defaultdict(list)
-    for frame_num_str, cell_coord_list in frame_num_str_cell_coord_list_dict.items():
 
-        for cell_coord in cell_coord_list:
-            z = cell_coord[0]
-            x = cell_coord[1]
-            y = cell_coord[2]
-            frame_num_cell_coord_list_dict[int(frame_num_str)].append(CoordTuple(x, y, z))
+    # find max node
+    frame_num_max_node_num_dict = {}
+    for key_str, cell_coord_list in key_str_cell_coord_list_dict.items():
+        frame_num = int(key_str.split(":")[0])
+        node_num = int(key_str.split(":")[1])
 
-    frame_num_total_cell_dict = {}
-    for frame_num_str, cell_coord_list in frame_num_str_cell_coord_list_dict.items():
-        frame_num_total_cell_dict[int(frame_num_str)] = len(cell_coord_list)
+        if frame_num not in frame_num_max_node_num_dict:
+            frame_num_max_node_num_dict[frame_num] = node_num
+        elif node_num > frame_num_max_node_num_dict[frame_num]:
+            frame_num_max_node_num_dict[frame_num] = node_num
 
-    frame_num_prof_matrix_dict = derive_frame_num_prof_matrix_dict(frame_num_cell_coord_list_dict)
-    frame_num_node_idx_coord_list_dict = derive_frame_num_node_idx_coord_list_dict(frame_num_cell_coord_list_dict)
+
+    # initiate frame_num_node_num_cell_coord_list_dict
+    frame_num_node_num_cell_coord_list_dict = defaultdict(list)
+    for frame_num, max_node_num in frame_num_max_node_num_dict.items():
+        frame_num_node_num_cell_coord_list_dict[frame_num] = [None] * (max_node_num+1)
+
+    for key_str, cell_coord_list in key_str_cell_coord_list_dict.items():
+        frame_num = int(key_str.split(":")[0])
+        node_num = int(key_str.split(":")[1])
+
+        z = cell_coord_list[0]
+        x = cell_coord_list[1]
+        y = cell_coord_list[2]
+        frame_num_node_num_cell_coord_list_dict[frame_num][node_num] = CoordTuple(x, y, z)
+
+    # frame_num_max_node_num_dict = {}
+    # for frame_num_str, cell_coord_list in key_str_cell_coord_list_dict.items():
+    #     frame_num_max_node_num_dict[int(frame_num_str)] = len(cell_coord_list)
+
+    frame_num_prof_matrix_dict = derive_frame_num_prof_matrix_dict(frame_num_node_num_cell_coord_list_dict)
+    frame_num_node_idx_coord_list_dict = derive_frame_num_node_idx_coord_list_dict(frame_num_node_num_cell_coord_list_dict)
 
 
     all_track_dict, score_log_mtx = execute_cell_tracking_task_bon(frame_num_prof_matrix_dict,
                                                                    frame_num_node_idx_coord_list_dict,
                                                                    hyper_para,
                                                                    is_use_cell_dependency_feature,
-                                                                   frame_num_total_cell_dict)
+                                                                   frame_num_max_node_num_dict)
 
 
 
@@ -1393,8 +1411,8 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
 
     tmp_redo_node_idx_cell_id_dict: dict = defaultdict(set)
     for candidate_node_idx, candidate_node_connection_prob in enumerate(connection_prob_list):
-        # if candidate_node_connection_prob == 0:
-        #     continue
+        if candidate_node_connection_prob == 0:
+            continue
 
         # if candidate_node_connection_prob < cut_threshold:
         #     raise Exception("code validation check. Done at update_below_cut_threshold_value_to_zero method, should not exist")
@@ -1444,7 +1462,7 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
             score_log_mtx[current_frame_num][current_node_idx][candidate_node_idx] += log_msg + "\n"
 
 
-
+        # print("sadbfsdf", connect_to_frame_num, candidate_node_idx)
         occupied_cell_id_list: list = frame_num_node_idx_occupation_list_list_dict[connect_to_frame_num][candidate_node_idx]
         has_cell_occupation: bool = (len(occupied_cell_id_list) > 0)
 
@@ -1529,6 +1547,10 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
 
     if best_node_idx in tmp_redo_node_idx_cell_id_dict:
         for redo_cell_id in tmp_redo_node_idx_cell_id_dict[best_node_idx]:
+            if redo_cell_id == CellId(84, 6) and connect_to_frame_num == 84:
+                tmp = valid_all_cell_track_prob_dict[redo_cell_id]
+                print("sadg", redo_cell_id.str_short(), connect_to_frame_num)
+
             occu_cell_prob = valid_all_cell_track_prob_dict[redo_cell_id][connect_to_frame_num]
             print(f"redo cell {redo_cell_id}; collision at frame {connect_to_frame_num}; node_idx: {best_node_idx}; curr_cell_prob: {best_prob}; occu_cell_prob: {occu_cell_prob}")
             redo_cell_id_set.add(redo_cell_id)
@@ -2296,7 +2318,7 @@ def initiate_frame_num_node_idx_cell_id_occupation_list_list_dict(frame_num_tota
     frame_num_node_idx_occupation_list_list_dict: dict = {}
 
     for frame_num, total_cell in frame_num_total_cell_dict.items():
-        frame_num_node_idx_occupation_list_list_dict[frame_num] = [[] for _ in range(total_cell)]
+        frame_num_node_idx_occupation_list_list_dict[frame_num] = [[] for _ in range(total_cell+1)]
 
     return frame_num_node_idx_occupation_list_list_dict
 
@@ -2438,19 +2460,35 @@ def derive_frame_num_node_idx_coord_list_dict(frame_num_cell_coord_list_dict):
 
 
 
-def derive_frame_num_prof_matrix_dict(frame_num_cell_coord_list_dict):
+def derive_frame_num_prof_matrix_dict(frame_num_node_num_cell_coord_list_dict):
     frame_num_prof_matrix_dict: dict = {}
 
-    for frame_num, coord_list in frame_num_cell_coord_list_dict.items():
+    for frame_num, node_num_cell_coord_list in frame_num_node_num_cell_coord_list_dict.items():
         if frame_num == 1:
-            previous_frame_total_cell = len(coord_list)
+            previous_frame_total_cell = len(node_num_cell_coord_list)
             continue
 
-        current_frame_total_cell = len(coord_list)
+        current_frame_total_cell = len(node_num_cell_coord_list)
         # print(frame_num-1, previous_frame_total_cell, )
         frame_num_prof_matrix_dict[frame_num-1] = np.zeros((previous_frame_total_cell, current_frame_total_cell))
 
         previous_frame_total_cell = current_frame_total_cell
+
+
+    total_frame = max(frame_num_node_num_cell_coord_list_dict.keys())
+    for frame_num in range(1, total_frame):
+        current_frame_coord_list = frame_num_node_num_cell_coord_list_dict[frame_num]
+        next_frame_coord_list = frame_num_node_num_cell_coord_list_dict[frame_num + 1]
+
+        for current_frame_idx, current_frame_coord in enumerate(current_frame_coord_list):
+            if current_frame_coord == None:
+                continue
+
+            for next_frame_idx, next_frame_coord in enumerate(next_frame_coord_list):
+                if next_frame_coord == None:
+                    continue
+
+                frame_num_prof_matrix_dict[frame_num][current_frame_idx][next_frame_idx] = 1
 
 
     return frame_num_prof_matrix_dict
