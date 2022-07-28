@@ -36,7 +36,7 @@ import time
 from multiprocessing.pool import ThreadPool
 
 from other.shared_cell_data import obtain_ground_truth_cell_dict, convert_track_frame_idx_to_frame_num
-
+from math import atan2, degrees, radians, cos
 
 def main():
     folder_path: str = 'D:/viterbi linkage/dataset/'
@@ -340,49 +340,10 @@ def __________flow_function_start_label():
 
 def cell_tracking_core_flow(series: str, frame_num_node_id_coord_dict_dict: dict, hyper_para: HyperPara):
 
-    # segmented_filename_list: list = derive_segmented_filename_list_by_series(series, all_segmented_filename_list)
-
-    # frame_num_prof_matrix_dict = derive_frame_num_prof_matrix_dict(segmentation_folder, output_folder, series, segmented_filename_list)
-
-    # frame_num_prof_matrix_dict = update_below_cut_threshold_value_to_zero(frame_num_prof_matrix_dict, hyper_para.cut_threshold)
-
-
-    #
-    # # initiate frame_num_node_num_cell_coord_list_dict
-    # frame_num_node_num_cell_coord_list_dict = defaultdict(list)
-    # for frame_num, max_node_num in frame_num_max_node_num_dict.items():
-    #     frame_num_node_num_cell_coord_list_dict[frame_num] = [None] * (max_node_num+1)
-    #
-    # for key_str, cell_coord_list in key_str_cell_coord_list_dict.items():
-    #     frame_num = int(key_str.split(":")[0])
-    #     node_num = int(key_str.split(":")[1])
-    #
-    #     z = cell_coord_list[0]
-    #     x = cell_coord_list[1]
-    #     y = cell_coord_list[2]
-    #     frame_num_node_num_cell_coord_list_dict[frame_num][node_num] = CoordTuple(x, y, z)
-
-    # frame_num_max_node_num_dict = {}
-    # for frame_num_str, cell_coord_list in key_str_cell_coord_list_dict.items():
-    #     frame_num_max_node_num_dict[int(frame_num_str)] = len(cell_coord_list)
-
-    # frame_num_prof_matrix_dict = derive_frame_num_prof_matrix_dict(frame_num_node_num_cell_coord_list_dict)
-    # frame_num_node_idx_coord_list_dict = derive_frame_num_node_idx_coord_list_dict(frame_num_node_num_cell_coord_list_dict)
-
-
     all_track_dict, score_log_mtx = execute_cell_tracking_task_bon(frame_num_node_id_coord_dict_dict,
                                                                    hyper_para
                                                                    )
 
-
-
-
-    # exit()
-
-
-    # all_track_dict = execute_cell_tracking_task_1(frame_num_prof_matrix_dict, hyper_para, is_use_cell_dependency_feature)
-    #
-    # all_track_dict = filter_track_dict_by_length(all_track_dict, hyper_para.minimum_track_length)
 
     sorted_cell_id_key_list = sorted(list(all_track_dict.keys()), key=cmp_to_key(compare_cell_id))
     sorted_dict: dict = {}
@@ -393,16 +354,6 @@ def cell_tracking_core_flow(series: str, frame_num_node_id_coord_dict_dict: dict
     track_list_list: list = list(all_track_dict.values())
 
     code_validate_track_list(track_list_list)
-
-    # is_do_post_adjustment: bool = hyper_para.is_do_post_adjustment
-    # if is_do_post_adjustment:
-    #     prof_mat_list: list = deprecate_derive_prof_matrix_list(segmentation_folder, output_folder, series, segmented_filename_list)
-    #     final_track_list = post_adjustment_old(track_list_list, prof_mat_list)
-    #
-    #     return series, final_track_list, score_log_mtx
-    #
-    # else:
-    #     return series, track_list_list, score_log_mtx
 
     return series, track_list_list, score_log_mtx
 
@@ -455,7 +406,6 @@ def execute_cell_tracking_task_bon(frame_num_node_id_coord_dict_dict: dict, hype
             continue
 
 
-
         handling_cell_frame_num_track_idx_dict: dict = { to_handle_cell_id.start_frame_num: to_handle_cell_id.cell_idx}
         handling_cell_frame_num_score_dict: dict = {}
 
@@ -470,7 +420,7 @@ def execute_cell_tracking_task_bon(frame_num_node_id_coord_dict_dict: dict, hype
 
 
             previous_frame_num: int = connect_to_frame_num - 1
-            previous_frame_cell_idx: int = handling_cell_frame_num_track_idx_dict[previous_frame_num]
+            # previous_frame_cell_idx: int = handling_cell_frame_num_track_idx_dict[previous_frame_num]
             node_id_coord_dict: dict = frame_num_node_id_coord_dict_dict[connect_to_frame_num]
 
             cut_threshold = 1000
@@ -1054,7 +1004,8 @@ def derive_average_movement_score(to_handle_cell_id,
                                   candidate_node_coord,
                                   step_length,
                                   handling_cell_frame_num_track_idx_dict,
-                                  frame_num_node_idx_coord_list_dict, max_moving_distance: float):
+                                  frame_num_node_id_coord_dict_dict,
+                                  max_moving_distance: float):
 
     start_frame = current_frame_num - step_length
     start_frame = max(start_frame, 1, to_handle_cell_id.start_frame_num)
@@ -1066,10 +1017,10 @@ def derive_average_movement_score(to_handle_cell_id,
         sum_distance: float = 0
 
         previous_node_idx: int = handling_cell_frame_num_track_idx_dict[start_frame]
-        previous_coord_tuple: CoordTuple = frame_num_node_idx_coord_list_dict[start_frame][previous_node_idx]
+        previous_coord_tuple: CoordTuple = frame_num_node_id_coord_dict_dict[start_frame][previous_node_idx]
         for frame_num in inclusive_range(start_frame+1, end_frame):
             current_node_idx: int = handling_cell_frame_num_track_idx_dict[frame_num]
-            current_coord_tuple: CoordTuple = frame_num_node_idx_coord_list_dict[frame_num][current_node_idx]
+            current_coord_tuple: CoordTuple = frame_num_node_id_coord_dict_dict[frame_num][current_node_idx]
 
             x_y_distance: float = ((current_coord_tuple.x - previous_coord_tuple.x)**2 + (current_coord_tuple.y - previous_coord_tuple.y)**2)**0.5
             distance: float = (x_y_distance**2 + (current_coord_tuple.z - previous_coord_tuple.z)**2)**0.5
@@ -1118,7 +1069,6 @@ def derive_distance_score(current_node_coord, last_frame_node_coord, max_moving_
         distance_score = (max_moving_distance - x_y_z_distance) / max_moving_distance
 
     return distance_score
-
 
 
 def derive_degree_score(to_handle_cell_id, current_frame_num, last_frame_node_coord, candidate_node_coord,
@@ -1297,26 +1247,20 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
     tmp_redo_node_idx_cell_id_dict: dict = defaultdict(set)
     for candidate_node_id, candidate_node_coord in node_id_coord_dict.items():
         final_score: float = 0
-        # is_use_profit_score: bool = (weight_tuple.profit_probability > 0)
-        # if is_use_profit_score:
-        #     weighted_probability_score = np.round(weight_tuple.profit_probability * candidate_node_coord, round_to)
-        #     final_score += weighted_probability_score
-        # else:
-        #     weighted_probability_score = 0
 
-        # is_use_degree_score: bool = (weight_tuple.degree > 0)
-        # if is_use_degree_score:
-        #     degree_score: float = derive_degree_score(to_handle_cell_id,
-        #                                               current_frame_num,
-        #                                               current_frame_node_coord,
-        #                                               candidate_node_coord,
-        #                                               coord_length_for_vector,
-        #                                               handling_cell_frame_num_track_idx_dict,
-        #                                               frame_num_node_id_coord_dict_dict)
-        #     weighted_degree_score = np.round(weight_tuple.degree * degree_score, round_to)
-        #     final_score += weighted_degree_score
-        # else:
-        #     weighted_degree_score = 0
+        is_use_degree_score: bool = (weight_tuple.degree > 0)
+        if is_use_degree_score:
+            degree_score: float = derive_degree_score(to_handle_cell_id,
+                                                      current_frame_num,
+                                                      current_frame_node_coord,
+                                                      candidate_node_coord,
+                                                      coord_length_for_vector,
+                                                      handling_cell_frame_num_track_idx_dict,
+                                                      frame_num_node_id_coord_dict_dict)
+            weighted_degree_score = np.round(weight_tuple.degree * degree_score, round_to)
+            final_score += weighted_degree_score
+        else:
+            weighted_degree_score = 0.5
 
 
         is_use_distance_score: bool = (weight_tuple.distance > 0)
@@ -1325,16 +1269,23 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
             weighted_distance_score = np.round(weight_tuple.distance * distance_score, round_to)
             final_score += weighted_distance_score
         else:
-            weighted_distance_score = 0
+            weighted_distance_score = 0.5
 
 
-        # is_use_avg_movement_score: bool = (weight_tuple.average_movement > 0)
-        # if is_use_avg_movement_score:
-        #     avg_movement_score = derive_average_movement_score(to_handle_cell_id, current_frame_num, current_frame_node_coord, candidate_node_coord, average_movement_step_length, handling_cell_frame_num_track_idx_dict, frame_num_node_idx_coord_list_dict, max_moving_distance)
-        #     weighted_avg_mov_score = np.round(weight_tuple.average_movement * avg_movement_score, round_to)
-        #     final_score += weighted_avg_mov_score
-        # else:
-        #     weighted_avg_mov_score = 0
+        is_use_avg_movement_score: bool = (weight_tuple.average_movement > 0)
+        if is_use_avg_movement_score:
+            avg_movement_score = derive_average_movement_score(to_handle_cell_id,
+                                                               current_frame_num,
+                                                               current_frame_node_coord,
+                                                               candidate_node_coord,
+                                                               average_movement_step_length,
+                                                               handling_cell_frame_num_track_idx_dict,
+                                                               frame_num_node_id_coord_dict_dict,
+                                                               max_moving_distance)
+            weighted_avg_mov_score = np.round(weight_tuple.average_movement * avg_movement_score, round_to)
+            final_score += weighted_avg_mov_score
+        else:
+            weighted_avg_mov_score = 0.5
 
 
         final_score = np.round(final_score, round_to)
@@ -2529,20 +2480,37 @@ def count_non_zero_data_in_list(data_list: list):
     return total_non_zero_data
 
 
-from math import atan2, degrees, radians, cos
-
 
 def derive_degree_diff_from_two_vectors(vector_coord_tuple_1: CoordTuple, vector_coord_tuple_2: CoordTuple): #These can also be four parameters instead of two arrays
-    dot = vector_coord_tuple_1.x * vector_coord_tuple_2.x + vector_coord_tuple_1.y * vector_coord_tuple_2.y      # dot product
-    det = vector_coord_tuple_1.y * vector_coord_tuple_2.x - vector_coord_tuple_1.x * vector_coord_tuple_2.y      # determinant
-    angle = atan2(det, dot)  # atan2(y, x) or atan2(sin, cos)
+    """ Returns the angle in radians between vectors 'v1' and 'v2'::
 
-    angle = degrees(angle)
+        angle_between((1, 0, 0), (0, 1, 0))
+        1.5707963267948966
+        angle_between((1, 0, 0), (1, 0, 0))
+        0.0
+        angle_between((1, 0, 0), (-1, 0, 0))
+        3.141592653589793
+    """
 
-    if angle < 0:
-        angle = abs(angle)
+    vec1_unit = unit_vector(vector_coord_tuple_1)
+    vec2_unit = unit_vector(vector_coord_tuple_2)
 
-    return angle
+    diff_radius: float = np.arccos(np.clip(np.dot(vec1_unit, vec2_unit), -1.0, 1.0))
+    diff_degree: float = degrees(diff_radius)
+
+    if diff_degree < 0:
+        diff_degree = abs(diff_degree)
+
+    return diff_degree
+
+
+
+def unit_vector(vector):
+    """ Returns the unit vector of the vector.  """
+    return vector / np.linalg.norm(vector)
+
+
+
 
 
 def derive_degree_from_vector(vector_coord_tuple_1: CoordTuple): #These can also be four parameters instead of two arrays
