@@ -63,6 +63,7 @@ def main():
                                  # WeightTuple(0.2, 0.1, 0.5),
                                  # WeightTuple(0.2, 0.1, 0.6)
                                ]
+    merge_threshold_list: list = [1]
     max_moving_distance_list: list = [40]
     coord_length_for_vector_list: list = [6]
     average_movement_step_length_list: list = [6]
@@ -75,6 +76,7 @@ def main():
 
     hyper_para_combination_list = list(itertools.product(
                                                          weight_tuple_list,
+                                                         merge_threshold_list,
                                                          max_moving_distance_list,
                                                          coord_length_for_vector_list,
                                                          average_movement_step_length_list,
@@ -85,14 +87,16 @@ def main():
     hyper_para_list: list = []
     for hyper_para_combination in hyper_para_combination_list:
         weight_tuple = hyper_para_combination[0]
-        max_moving_distance = hyper_para_combination[1]
-        coord_length_for_vector = hyper_para_combination[2]
-        average_movement_step_length = hyper_para_combination[3]
-        minimum_track_length: int = hyper_para_combination[4]
-        discount_rate_per_layer: [str, float] = hyper_para_combination[5]
+        merge_threshold = hyper_para_combination[1]
+        max_moving_distance = hyper_para_combination[2]
+        coord_length_for_vector = hyper_para_combination[3]
+        average_movement_step_length = hyper_para_combination[4]
+        minimum_track_length: int = hyper_para_combination[5]
+        discount_rate_per_layer: [str, float] = hyper_para_combination[6]
 
         hyper_para: HyperPara = HyperPara(
                                             weight_tuple,
+                                            merge_threshold,
                                             max_moving_distance,
                                             coord_length_for_vector,
                                             average_movement_step_length,
@@ -256,6 +260,7 @@ class BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM(enum.Enum):
 class HyperPara():
     def __init__(self,
                  weight_tuple: tuple,
+                 merge_threshold: float,
                  max_moving_distance: int,
                  coord_length_for_vector: int,
                  average_movement_step_length: int,
@@ -263,6 +268,7 @@ class HyperPara():
                  discount_rate_per_layer: float):
 
         self.weight_tuple                     = weight_tuple
+        self.merge_threshold                  = merge_threshold
         self.max_moving_distance              = max_moving_distance
         self.coord_length_for_vector          = coord_length_for_vector
         self.average_movement_step_length     = average_movement_step_length
@@ -273,6 +279,7 @@ class HyperPara():
 
     def __str__(self):
         return  f"weight_tuple: {self.weight_tuple}; " \
+                f"merge_threshold: {self.merge_threshold}; " \
                 f"max_moving_distance: {self.max_moving_distance}; " \
                 f"coord_length_for_vector: {self.coord_length_for_vector}; " \
                 f"average_movement_step_length: {self.average_movement_step_length}; " \
@@ -282,6 +289,7 @@ class HyperPara():
 
     def __str_newlines__(self):
         return f"weight_tuple: {self.weight_tuple}; \n" \
+               f"merge_threshold: {self.merge_threshold}; \n" \
                f"max_moving_distance: {self.max_moving_distance}; \n" \
                f"coord_length_for_vector: {self.coord_length_for_vector}; \n" \
                f"average_movement_step_length: {self.average_movement_step_length}; \n" \
@@ -406,7 +414,7 @@ def execute_cell_tracking_task_bon(frame_num_node_id_coord_dict_dict: dict, hype
             continue
 
 
-        handling_cell_frame_num_track_idx_dict: dict = { to_handle_cell_id.start_frame_num: to_handle_cell_id.cell_idx}
+        handling_cell_frame_num_track_id_dict: dict = { to_handle_cell_id.start_frame_num: to_handle_cell_id.cell_idx}
         handling_cell_frame_num_score_dict: dict = {}
 
         redo_cell_id_set: set = set()
@@ -420,12 +428,13 @@ def execute_cell_tracking_task_bon(frame_num_node_id_coord_dict_dict: dict, hype
 
 
             previous_frame_num: int = connect_to_frame_num - 1
-            # previous_frame_cell_idx: int = handling_cell_frame_num_track_idx_dict[previous_frame_num]
+            # previous_frame_cell_idx: int = handling_cell_frame_num_track_id_dict[previous_frame_num]
             node_id_coord_dict: dict = frame_num_node_id_coord_dict_dict[connect_to_frame_num]
 
             cut_threshold = 1000
+            adjusted_merge_threshold = 1
             best_idx, best_prob, score_log_mtx, redo_cell_id_set = derive_best_node_idx_to_connect(to_handle_cell_id,
-                                                                                                   handling_cell_frame_num_track_idx_dict,
+                                                                                                   handling_cell_frame_num_track_id_dict,
                                                                                                    node_id_coord_dict,
                                                                                                    connect_to_frame_num,
                                                                                                    frame_num_node_idx_occupation_list_list_dict,
@@ -433,6 +442,7 @@ def execute_cell_tracking_task_bon(frame_num_node_id_coord_dict_dict: dict, hype
                                                                                                    all_valid_cell_track_score_dict,
                                                                                                    frame_num_node_id_coord_dict_dict,
                                                                                                    score_log_mtx,
+                                                                                                   adjusted_merge_threshold,
                                                                                                    cut_threshold,
                                                                                                    redo_cell_id_set,
                                                                                                    hyper_para.weight_tuple,
@@ -441,48 +451,67 @@ def execute_cell_tracking_task_bon(frame_num_node_id_coord_dict_dict: dict, hype
                                                                                                    hyper_para.average_movement_step_length)
 
 
-
-
             # is_best_prob_lower_than_threshold: bool = best_prob < hyper_para.cut_threshold
             if best_prob == 0:
                 break
 
-            if connect_to_frame_num in handling_cell_frame_num_track_idx_dict:   raise Exception("code validation check")
-            if connect_to_frame_num in handling_cell_frame_num_score_dict:       raise Exception("code validation check")
+            if connect_to_frame_num in handling_cell_frame_num_track_id_dict:   raise Exception("code validation check")
+            if connect_to_frame_num in handling_cell_frame_num_score_dict:      raise Exception("code validation check")
 
-            handling_cell_frame_num_track_idx_dict[connect_to_frame_num] = best_idx
+            handling_cell_frame_num_track_id_dict[connect_to_frame_num] = best_idx
             handling_cell_frame_num_score_dict[connect_to_frame_num] = best_prob
 
-        is_track_above_min_length: bool = (len(handling_cell_frame_num_track_idx_dict.keys()) > hyper_para.minimum_track_length)
+        is_track_above_min_length: bool = (len(handling_cell_frame_num_track_id_dict.keys()) > hyper_para.minimum_track_length)
 
         if not is_track_above_min_length:
             to_handle_cell_id_list.remove(to_handle_cell_id)
             continue
 
 
-        # use final track to check if any redo cells occur
+        for frame_num, node_id in handling_cell_frame_num_track_id_dict[connect_to_frame_num].item():
+            adjusted_merge_threshold: float = 1
+
+            handling_track_score: float = handling_cell_frame_num_score_dict[frame_num]
+            is_handling_track_score_above_threshold: bool = (handling_track_score >= adjusted_merge_threshold)
+
+            if not is_handling_track_score_above_threshold:
+                continue
+
+            occupied_cell_id_list: list = frame_num_node_idx_occupation_list_list_dict[frame_num][node_id]
+            has_cell_occupation: bool = (len(occupied_cell_id_list) > 0)
+
+            if has_cell_occupation:
+                for occupied_cell_id in occupied_cell_id_list:
+                    occupied_cell_score: float = all_valid_cell_track_score_dict[occupied_cell_id][frame_num]
+                    if occupied_cell_score < adjusted_merge_threshold:
+                        redo_cell_id_set.add(occupied_cell_id)
+
+                    break
+
+
+        # # use final track to check if any redo cells occur
         for redo_cell_id in redo_cell_id_set:
-            # print(f"redo cell {redo_cell_id}. ", end='')
             if redo_cell_id not in to_handle_cell_id_list:
                 to_handle_cell_id_list.append(redo_cell_id)
 
         # add to occupation list
-        frame_num_node_idx_occupation_list_list_dict = add_track_to_cell_occupation_list_list_dict(frame_num_node_idx_occupation_list_list_dict, to_handle_cell_id, handling_cell_frame_num_track_idx_dict)
+        frame_num_node_idx_occupation_list_list_dict = add_track_to_cell_occupation_list_list_dict(frame_num_node_idx_occupation_list_list_dict, to_handle_cell_id, handling_cell_frame_num_track_id_dict)
 
         # add track to valid track list
-        all_valid_cell_track_idx_dict[to_handle_cell_id] = handling_cell_frame_num_track_idx_dict
+        all_valid_cell_track_idx_dict[to_handle_cell_id] = handling_cell_frame_num_track_id_dict
         all_valid_cell_track_score_dict[to_handle_cell_id] = handling_cell_frame_num_score_dict
 
         to_handle_cell_id_list.remove(to_handle_cell_id)
+
 
     print("----> finish")
 
 
     all_cell_id_track_list_dict: dict = defaultdict(list)
-    for cell_id, handling_cell_frame_num_track_idx_dict in all_valid_cell_track_idx_dict.items():
+    for cell_id, handling_cell_frame_num_track_id_dict in all_valid_cell_track_idx_dict.items():
         track_tuple_list: list = []
         previous_node_idx: int = -1
-        for connect_to_frame_num, node_idx in handling_cell_frame_num_track_idx_dict.items():
+        for connect_to_frame_num, node_idx in handling_cell_frame_num_track_id_dict.items():
             frame_idx: int = connect_to_frame_num - 1
             track_tuple_list.append((node_idx, frame_idx, previous_node_idx))
             previous_node_idx = node_idx
@@ -1224,9 +1253,10 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
                                     connect_to_frame_num,
                                     frame_num_node_idx_occupation_list_list_dict,
                                     all_valid_cell_track_idx_dict,
-                                    all_valid_cell_track_prob_dict,
+                                    all_valid_cell_track_score_dict,
                                     frame_num_node_id_coord_dict_dict,
                                     score_log_mtx,
+                                    adjusted_merge_threshold,
                                     cut_threshold,
                                     redo_cell_id_set,
                                     weight_tuple: WeightTuple,
@@ -1297,78 +1327,38 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
 
 
         # print("sadbfsdf", connect_to_frame_num, candidate_node_id)
-        occupied_cell_id_list: list = frame_num_node_idx_occupation_list_list_dict[connect_to_frame_num][candidate_node_id]
-        has_cell_occupation: bool = (len(occupied_cell_id_list) > 0)
-        has_cell_occupation = False
 
-        if not has_cell_occupation:
-            if final_score > best_prob:
-                best_prob = final_score
-                best_node_idx = candidate_node_id
-        else:
+        if final_score < best_prob:
             continue
 
-            # has_other_connection_option_current_cell: bool = (count_non_zero_data_in_list(node_id_coord_dict) > 1)
-            # for occupied_cell_id in occupied_cell_id_list:
-            #
-            #     if node_id_coord_dict == occupied_cell_id.start_frame_num:
-            #         if final_score > best_prob:
-            #             best_prob = final_score
-            #             best_node_idx = candidate_node_id
-            #             tmp_redo_node_idx_cell_id_dict[best_node_idx].add(occupied_cell_id)
-            #         continue
-            #
-            #
-            #     occupied_cell_current_frame_idx = all_valid_cell_track_idx_dict[occupied_cell_id][current_frame_num]
-            #     occupied_cell_node_connection_prob_list = frame_num_prof_matrix_dict[current_frame_num][occupied_cell_current_frame_idx]
-            #
-            #     has_other_connection_option_occupied_cell: bool = (count_non_zero_data_in_list(occupied_cell_node_connection_prob_list) > 1)
-            #
-            #     if not has_other_connection_option_current_cell and not has_other_connection_option_occupied_cell:
-            #         #merge as usual
-            #         if final_score > best_prob:
-            #             best_prob = final_score
-            #             best_node_idx = candidate_node_id
-            #
-            #     elif has_other_connection_option_current_cell and not has_other_connection_option_occupied_cell:
-            #         # current cell explore other options
-            #         continue
-            #
-            #     elif not has_other_connection_option_current_cell and has_other_connection_option_occupied_cell:
-            #         # occupied cell explore other options
-            #         if final_score > best_prob:
-            #             best_prob = final_score
-            #             best_node_idx = candidate_node_id
-            #             tmp_redo_node_idx_cell_id_dict[candidate_node_id].add(occupied_cell_id)
-            #
-            #     elif has_other_connection_option_current_cell and has_other_connection_option_occupied_cell:
-            #         # higher probability cell takes over
-            #         occupied_cell_prob: float = all_valid_cell_track_prob_dict[occupied_cell_id][node_id_coord_dict]
-            #
-            #         if occupied_cell_prob > final_score:
-            #             #current cell explore other opportunity
-            #             continue
-            #         elif occupied_cell_prob < final_score:
-            #             if final_score > best_prob:
-            #                 # occupied cell explore other opportunity
-            #                 best_prob = final_score
-            #                 best_node_idx = candidate_node_id
-            #                 tmp_redo_node_idx_cell_id_dict[best_node_idx].add(occupied_cell_id)
-            #
-            #         elif occupied_cell_prob == final_score:
-            #             if final_score > best_prob:
-            #                 # print("(let them share for now) to handle biz scenario", occupied_cell_prob, candidate_node_coord, to_handle_cell_id.str_short(), occupied_cell_id.str_short(), current_frame_num)
-            #                 best_prob = final_score
-            #                 best_node_idx = candidate_node_id
-            #                 # continue
-            #
-            #             # raise Exception("Unexpected biz scenario", occupied_cell_prob, candidate_node_coord, to_handle_cell_id.str_short(), occupied_cell_id.str_short(), current_frame_num)
-            #         else:
-            #             raise Exception("code validation check")
-            #
-            #
-            #     else:
-            #         raise Exception("code validation check")
+        occupied_cell_id_list: list = frame_num_node_idx_occupation_list_list_dict[connect_to_frame_num][candidate_node_id]
+        has_cell_occupation: bool = (len(occupied_cell_id_list) > 0)
+        # has_cell_occupation = False
+
+        if not has_cell_occupation:
+            best_prob = final_score
+            best_node_idx = candidate_node_id
+
+        elif has_cell_occupation and final_score >= adjusted_merge_threshold:
+            best_prob = final_score
+            best_node_idx = candidate_node_id
+
+        else:
+            is_all_occupied_cell_below_threshold: bool = False
+            for occupied_cell_id in occupied_cell_id_list:
+                occupied_cell_score: float = all_valid_cell_track_score_dict[occupied_cell_id][connect_to_frame_num]
+                if occupied_cell_score < adjusted_merge_threshold:
+                    is_all_occupied_cell_below_threshold = True
+
+                break
+
+            if is_all_occupied_cell_below_threshold:
+                best_prob = final_score
+                best_node_idx = candidate_node_id
+
+            else:
+                continue
+
 
     # if best_node_idx in tmp_redo_node_idx_cell_id_dict:
     #     for redo_cell_id in tmp_redo_node_idx_cell_id_dict[best_node_idx]:
@@ -2164,13 +2154,13 @@ def remove_track_from_cell_occupation_list_list_dict(frame_num_node_idx_occupati
 
 
 
-def add_track_to_cell_occupation_list_list_dict(frame_num_node_idx_occupation_tuple_vec_dict: dict, cell_id, frame_num_cell_track_idx_dict: dict):
-    for frame_num, node_idx in frame_num_cell_track_idx_dict.items():
-        if cell_id in frame_num_node_idx_occupation_tuple_vec_dict[frame_num][node_idx]:
+def add_track_to_cell_occupation_list_list_dict(frame_num_node_idx_occupation_tuple_vec_dict: dict, cell_id, frame_num_cell_track_id_dict: dict):
+    for frame_num, node_id in frame_num_cell_track_id_dict.items():
+        if cell_id in frame_num_node_idx_occupation_tuple_vec_dict[frame_num][node_id]:
             raise Exception("code validation")
 
-        # if cell_id not in frame_num_node_idx_occupation_tuple_vec_dict[frame_num][node_idx]:
-        frame_num_node_idx_occupation_tuple_vec_dict[frame_num][node_idx].append(cell_id)
+        # if cell_id not in frame_num_node_idx_occupation_tuple_vec_dict[frame_num][node_id]:
+        frame_num_node_idx_occupation_tuple_vec_dict[frame_num][node_id].append(cell_id)
 
 
     return frame_num_node_idx_occupation_tuple_vec_dict
