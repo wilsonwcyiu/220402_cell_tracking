@@ -63,12 +63,12 @@ def main():
                                  # WeightTuple(0.2, 0.1, 0.5),
                                  # WeightTuple(0.2, 0.1, 0.6)
                                ]
-    merge_threshold_list: list = [1]
+    merge_threshold_list: list = [0.5]
     max_moving_distance_list: list = [40]
     coord_length_for_vector_list: list = [6]
     average_movement_step_length_list: list = [6]
     minimum_track_length_list: list = [5]
-    discount_rate_per_layer_list: list = [0.9] #{"merge_threshold", any_float},
+    discount_rate_per_layer_list: list = [0.5] #{"merge_threshold", any_float},
 
 
 
@@ -114,7 +114,7 @@ def main():
         start_time = time.perf_counter()
 
         input_series_name_list = [input_series.replace(".json", "") for input_series in listdir(coord_dir)]
-        # input_series_name_list = ['6_33layers_inter_mask_data__20200802--2_inter_33layers_mask_3a']
+        # input_series_name_list = ['2_9layers_mask_data__20200829++2_9layers_M3a_Step98']
 
         feature_based_result_dict = {}
 
@@ -306,7 +306,7 @@ class CellId():
 
 
     def str_short(self):
-        return f"{self.start_frame_num}-{self.cell_idx};"
+        return f"{self.start_frame_num}-{self.cell_idx}"
 
 
     def __str__(self):
@@ -394,7 +394,7 @@ def execute_cell_tracking_task_bon(frame_num_node_id_coord_dict_dict: dict, hype
 
         to_handle_cell_id: CellId = to_handle_cell_id_list[0]
 
-        print(f"{to_handle_cell_id.str_short()}")
+        print(f"{to_handle_cell_id.str_short()}; ", end='')
 
         if to_handle_cell_id in all_valid_cell_track_idx_dict:
             frame_num_node_idx_occupation_list_list_dict = remove_track_from_cell_occupation_list_list_dict(frame_num_node_idx_occupation_list_list_dict, to_handle_cell_id, all_valid_cell_track_idx_dict[to_handle_cell_id])
@@ -432,8 +432,8 @@ def execute_cell_tracking_task_bon(frame_num_node_id_coord_dict_dict: dict, hype
             node_id_coord_dict: dict = frame_num_node_id_coord_dict_dict[connect_to_frame_num]
 
             cut_threshold = 1000
-            adjusted_merge_threshold = 1
-            best_idx, best_prob, score_log_mtx, redo_cell_id_set = derive_best_node_idx_to_connect(to_handle_cell_id,
+            adjusted_merge_threshold = derive_merge_threshold_in_layer(hyper_para.merge_threshold, connect_to_frame_num)
+            best_node_id, best_score, score_log_mtx, redo_cell_id_set = derive_best_node_idx_to_connect(to_handle_cell_id,
                                                                                                    handling_cell_frame_num_track_id_dict,
                                                                                                    node_id_coord_dict,
                                                                                                    connect_to_frame_num,
@@ -442,24 +442,26 @@ def execute_cell_tracking_task_bon(frame_num_node_id_coord_dict_dict: dict, hype
                                                                                                    all_valid_cell_track_score_dict,
                                                                                                    frame_num_node_id_coord_dict_dict,
                                                                                                    score_log_mtx,
+                                                                                                   hyper_para.merge_threshold,
                                                                                                    adjusted_merge_threshold,
                                                                                                    cut_threshold,
                                                                                                    redo_cell_id_set,
                                                                                                    hyper_para.weight_tuple,
                                                                                                    hyper_para.max_moving_distance,
                                                                                                    hyper_para.coord_length_for_vector,
-                                                                                                   hyper_para.average_movement_step_length)
+                                                                                                   hyper_para.average_movement_step_length,
+                                                                                                   hyper_para.discount_rate_per_layer)
 
 
-            # is_best_prob_lower_than_threshold: bool = best_prob < hyper_para.cut_threshold
-            if best_prob == 0:
+            # is_best_prob_lower_than_threshold: bool = best_score < hyper_para.cut_threshold
+            if best_score == 0:
                 break
 
             if connect_to_frame_num in handling_cell_frame_num_track_id_dict:   raise Exception("code validation check")
             if connect_to_frame_num in handling_cell_frame_num_score_dict:      raise Exception("code validation check")
 
-            handling_cell_frame_num_track_id_dict[connect_to_frame_num] = best_idx
-            handling_cell_frame_num_score_dict[connect_to_frame_num] = best_prob
+            handling_cell_frame_num_track_id_dict[connect_to_frame_num] = best_node_id
+            handling_cell_frame_num_score_dict[connect_to_frame_num] = best_score
 
         is_track_above_min_length: bool = (len(handling_cell_frame_num_track_id_dict.keys()) > hyper_para.minimum_track_length)
 
@@ -468,8 +470,16 @@ def execute_cell_tracking_task_bon(frame_num_node_id_coord_dict_dict: dict, hype
             continue
 
 
-        for frame_num, node_id in handling_cell_frame_num_track_id_dict[connect_to_frame_num].item():
-            adjusted_merge_threshold: float = 1
+        # print("asgasd", to_handle_cell_id.str_short())
+        second_frame_num: int = min(handling_cell_frame_num_track_id_dict.keys()) + 1
+        last_frame_num: int = max(handling_cell_frame_num_track_id_dict.keys())
+        for frame_num in inclusive_range(second_frame_num, last_frame_num): #, node_id in handling_cell_frame_num_track_id_dict.items():
+            node_id: int = handling_cell_frame_num_track_id_dict[frame_num]
+
+            # print("fadsv", frame_num)
+            # print(handling_cell_frame_num_track_id_dict.keys())
+            # print(handling_cell_frame_num_score_dict.keys())
+            adjusted_merge_threshold = derive_merge_threshold_in_layer(hyper_para.merge_threshold, frame_num)
 
             handling_track_score: float = handling_cell_frame_num_score_dict[frame_num]
             is_handling_track_score_above_threshold: bool = (handling_track_score >= adjusted_merge_threshold)
@@ -484,6 +494,8 @@ def execute_cell_tracking_task_bon(frame_num_node_id_coord_dict_dict: dict, hype
                 for occupied_cell_id in occupied_cell_id_list:
                     occupied_cell_score: float = all_valid_cell_track_score_dict[occupied_cell_id][frame_num]
                     if occupied_cell_score < adjusted_merge_threshold:
+                        # check score
+                        print(f"\n-->reroute {occupied_cell_id}; handling_cell: {to_handle_cell_id.str_short()}; best_score: {best_score}; occupied_cell_score: {occupied_cell_score}; adjusted_merge_threshold: {adjusted_merge_threshold}")
                         redo_cell_id_set.add(occupied_cell_id)
 
                     break
@@ -591,7 +603,7 @@ def execute_cell_tracking_task_1(frame_num_prof_matrix_dict: dict, hyper_para, i
 
             to_handle_cell_id_list: list = [cell_id]
 
-            dev_print(f"\n----------------------> {cell_id.str_short()}")
+            dev_print(f"\n----------------------> {cell_id.str_short()};")
 
             all_cell_id_track_list_dict, \
             cell_id_frame_num_node_idx_best_index_list_dict_dict, \
@@ -1256,13 +1268,15 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
                                     all_valid_cell_track_score_dict,
                                     frame_num_node_id_coord_dict_dict,
                                     score_log_mtx,
+                                    merge_threshold,
                                     adjusted_merge_threshold,
                                     cut_threshold,
                                     redo_cell_id_set,
                                     weight_tuple: WeightTuple,
                                     max_moving_distance: int,
                                     coord_length_for_vector: int,
-                                    average_movement_step_length: int):
+                                    average_movement_step_length: int,
+                                    discount_rate_per_layer: float):
 
 
     current_frame_num = connect_to_frame_num - 1
@@ -1318,7 +1332,9 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
             weighted_avg_mov_score = 0.5
 
 
-        final_score = np.round(final_score, round_to)
+        discount_rate = derive_discount_rate_from_cell_start_frame_num(to_handle_cell_id, merge_threshold, discount_rate_per_layer)
+        final_discounted_score = final_score * discount_rate
+        final_discounted_score = np.round(final_discounted_score, round_to)
 
         # current_node_idx: int = handling_cell_frame_num_track_idx_dict[current_frame_num]
         # log_msg = f"{to_handle_cell_id.str_short()} {final_score}={weighted_probability_score}+{weighted_degree_score}+{weighted_distance_score}+{weighted_avg_mov_score}"
@@ -1328,47 +1344,42 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
 
         # print("sadbfsdf", connect_to_frame_num, candidate_node_id)
 
-        if final_score < best_prob:
+        if final_discounted_score < best_prob:
             continue
 
         occupied_cell_id_list: list = frame_num_node_idx_occupation_list_list_dict[connect_to_frame_num][candidate_node_id]
         has_cell_occupation: bool = (len(occupied_cell_id_list) > 0)
-        # has_cell_occupation = False
 
         if not has_cell_occupation:
-            best_prob = final_score
+            best_prob = final_discounted_score
             best_node_idx = candidate_node_id
 
-        elif has_cell_occupation and final_score >= adjusted_merge_threshold:
-            best_prob = final_score
+        elif has_cell_occupation and final_discounted_score >= adjusted_merge_threshold:
+            best_prob = final_discounted_score
             best_node_idx = candidate_node_id
 
         else:
-            is_all_occupied_cell_below_threshold: bool = False
+            is_all_occupied_cell_below_threshold: bool = True
             for occupied_cell_id in occupied_cell_id_list:
-                occupied_cell_score: float = all_valid_cell_track_score_dict[occupied_cell_id][connect_to_frame_num]
-                if occupied_cell_score < adjusted_merge_threshold:
-                    is_all_occupied_cell_below_threshold = True
+                if connect_to_frame_num == occupied_cell_id.start_frame_num:
+                    continue
 
-                break
+                occupied_cell_score: float = all_valid_cell_track_score_dict[occupied_cell_id][connect_to_frame_num]
+                occupied_cell_discount_rate: float = derive_discount_rate_from_cell_start_frame_num(occupied_cell_id, merge_threshold, discount_rate_per_layer)
+
+                discount_occupied_cell_score: float = occupied_cell_score * occupied_cell_discount_rate
+                discount_occupied_cell_score = np.round(discount_occupied_cell_score, round_to)
+
+                if discount_occupied_cell_score < adjusted_merge_threshold:
+                    is_all_occupied_cell_below_threshold = False
+                    break
 
             if is_all_occupied_cell_below_threshold:
-                best_prob = final_score
+                best_prob = final_discounted_score
                 best_node_idx = candidate_node_id
 
             else:
                 continue
-
-
-    # if best_node_idx in tmp_redo_node_idx_cell_id_dict:
-    #     for redo_cell_id in tmp_redo_node_idx_cell_id_dict[best_node_idx]:
-    #         if redo_cell_id == CellId(84, 6) and node_id_coord_dict == 84:
-    #             tmp = all_valid_cell_track_prob_dict[redo_cell_id]
-    #             print("sadg", redo_cell_id.str_short(), node_id_coord_dict)
-    #
-    #         occu_cell_prob = all_valid_cell_track_prob_dict[redo_cell_id][node_id_coord_dict]
-    #         print(f"redo cell {redo_cell_id}; collision at frame {node_id_coord_dict}; node_idx: {best_node_idx}; curr_cell_prob: {best_prob}; occu_cell_prob: {occu_cell_prob}")
-    #         redo_cell_id_set.add(redo_cell_id)
 
     return best_node_idx, best_prob, score_log_mtx, redo_cell_id_set
 
@@ -1704,21 +1715,15 @@ def filter_track_dict_by_length(all_track_dict: dict, minimum_track_length: int)
 
 
 
-def derive_merge_threshold_in_layer(merge_above_threshold:float, routing_strategy_enum: ROUTING_STRATEGY_ENUM, frame_num:int):
-    if routing_strategy_enum == ROUTING_STRATEGY_ENUM.ALL_LAYER:
-        if frame_num > 1: threshold_exponential: float = float(frame_num - 1)
-        elif frame_num == 1: threshold_exponential = 1                          # avoid 0.5^0 becomes 1
-        else: raise Exception()
+def derive_merge_threshold_in_layer(merge_above_threshold:float, frame_num:int):
 
-        merge_threshold_in_layer: float = pow(merge_above_threshold, threshold_exponential)
+    if frame_num > 1: threshold_exponential: float = float(frame_num - 1)
+    elif frame_num == 1: threshold_exponential = 1                          # avoid 0.5^0 becomes 1
+    else: raise Exception()
 
-        return merge_threshold_in_layer
+    merge_threshold_in_layer: float = pow(merge_above_threshold, threshold_exponential)
 
-    elif routing_strategy_enum == ROUTING_STRATEGY_ENUM.ONE_LAYER:
-        return merge_above_threshold
-
-    else:
-        raise Exception(routing_strategy_enum)
+    return merge_threshold_in_layer
 
 
 
