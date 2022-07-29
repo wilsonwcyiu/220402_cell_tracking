@@ -64,11 +64,12 @@ def main():
                                  # WeightTuple(0.2, 0.1, 0.6)
                                ]
     merge_threshold_list: list = [0.5]
+    discount_rate_per_layer_list: list = [0.5] #{"merge_threshold", any_float},
+
     max_moving_distance_list: list = [40]
     coord_length_for_vector_list: list = [6]
     average_movement_step_length_list: list = [6]
     minimum_track_length_list: list = [5]
-    discount_rate_per_layer_list: list = [0.5] #{"merge_threshold", any_float},
 
 
 
