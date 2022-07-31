@@ -120,17 +120,25 @@ def main():
         feature_based_result_dict = {}
 
         try:
+            max_distance = 0
             for series_name in input_series_name_list:
                 print(f"working on series_name: {series_name}. ")
 
                 frame_num_node_id_coord_dict_dict = read_series_data(coord_dir, series_name)
 
+                max_moving_distance: int = 540
+                frame_num_score_matrix_dict = generate_score_matrix(frame_num_node_id_coord_dict_dict, max_moving_distance)
 
-                return_series, final_result_list, score_log_mtx = cell_tracking_core_flow(series_name,
-                                                                                          frame_num_node_id_coord_dict_dict,
-                                                                                          hyper_para
-                                                                                          )
-                feature_based_result_dict[series_name] = final_result_list
+                for frame_num, score_mtx in frame_num_score_matrix_dict.items():
+                    tmp = score_mtx
+
+
+                #
+                # return_series, final_result_list, score_log_mtx = cell_tracking_core_flow(series_name,
+                #                                                                           frame_num_node_id_coord_dict_dict,
+                #                                                                           hyper_para
+                #                                                                           )
+                # feature_based_result_dict[series_name] = final_result_list
 
         except Exception as e:
             time.sleep(1)
@@ -142,19 +150,19 @@ def main():
 
 
 
-        is_print_ground_truth_only: bool = False
-        if is_print_ground_truth_only:
-            series_ground_truth_cell_dict = obtain_ground_truth_cell_dict()
-
-            tmp_dict = defaultdict(list)
-            for series_name, track_tuple_list_list in feature_based_result_dict.items():
-                ground_truth_cell_id_list = series_ground_truth_cell_dict[series_name]
-                for track_tuple_list in track_tuple_list_list:
-                    cell_tuple_id = track_tuple_list[0]
-                    if cell_tuple_id in ground_truth_cell_id_list:
-                        tmp_dict[series_name].append(track_tuple_list)
-
-            feature_based_result_dict = tmp_dict
+        # is_print_ground_truth_only: bool = False
+        # if is_print_ground_truth_only:
+        #     series_ground_truth_cell_dict = obtain_ground_truth_cell_dict()
+        # 
+        #     tmp_dict = defaultdict(list)
+        #     for series_name, track_tuple_list_list in feature_based_result_dict.items():
+        #         ground_truth_cell_id_list = series_ground_truth_cell_dict[series_name]
+        #         for track_tuple_list in track_tuple_list_list:
+        #             cell_tuple_id = track_tuple_list[0]
+        #             if cell_tuple_id in ground_truth_cell_id_list:
+        #                 tmp_dict[series_name].append(track_tuple_list)
+        # 
+        #     feature_based_result_dict = tmp_dict
 
 
         is_convert_to_frame_num = True
@@ -1016,6 +1024,42 @@ def __________unit_function_start_label():
     raise Exception("for labeling only")
 
 
+def generate_score_matrix(frame_num_node_id_coord_dict_dict, max_moving_distance):
+    frame_num_score_matric_dict = {}
+
+    first_frame_num: int = min(frame_num_node_id_coord_dict_dict.keys())
+    end_frame_num: int = max(frame_num_node_id_coord_dict_dict.keys())
+
+    for frame_num in inclusive_range(first_frame_num, end_frame_num-1):
+        current_node_id_coord_dict = frame_num_node_id_coord_dict_dict[frame_num]
+
+        next_frame_num = frame_num + 1
+        next_node_id_coord_dict = frame_num_node_id_coord_dict_dict[next_frame_num]
+
+
+        is_current_or_next_frame_has_no_cell = (len(current_node_id_coord_dict)==0 or (len(next_node_id_coord_dict)==0))
+        if is_current_or_next_frame_has_no_cell:
+            continue
+
+
+        current_max_node_id = max(current_node_id_coord_dict.keys())
+        next_max_node_id = max(next_node_id_coord_dict.keys())
+
+        score_mtx = np.zeros((current_max_node_id+1, next_max_node_id+1))
+
+        for current_node_id, current_node_coord in current_node_id_coord_dict.items():
+            for next_node_id, next_node_coord in next_node_id_coord_dict.items():
+
+                score, _ = derive_distance_score(current_node_coord, next_node_coord, max_moving_distance)
+                score_mtx[current_node_id][next_node_id] = np.round(score, 4)
+
+
+        frame_num_score_matric_dict[frame_num] = score_mtx
+
+    return frame_num_score_matric_dict
+
+
+
 def read_series_data(coord_dir, series_name):
 
     coord_file_path = coord_dir + series_name + ".json"
@@ -1110,7 +1154,7 @@ def derive_distance_score(current_node_coord, last_frame_node_coord, max_moving_
     else:
         distance_score = (max_moving_distance - x_y_z_distance) / max_moving_distance
 
-    return distance_score
+    return distance_score, x_y_z_distance
 
 
 def derive_degree_score(to_handle_cell_id, current_frame_num, last_frame_node_coord, candidate_node_coord,
