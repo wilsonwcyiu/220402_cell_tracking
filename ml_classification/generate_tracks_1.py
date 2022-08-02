@@ -16,7 +16,7 @@ from multiprocessing.pool import ThreadPool
 from os import listdir
 from os.path import join, basename
 import numpy as np
-from PIL.Image import Image
+from PIL import Image, ImageDraw
 from skimage import measure, filters
 import matplotlib.pyplot as plt
 from matplotlib import cm
@@ -52,7 +52,7 @@ def main():
     #settings
     filter_out_track_length_lower_than: int = 16
     fixed_track_length_to_generate = 16
-    point_radius_pixel = 2
+    point_radius_pixel = 1
 
 
 
@@ -67,10 +67,13 @@ def main():
     all_segmented_filename_list.sort()
 
 
-
-
-
     series_viterbi_result_list_dict: dict = open_track_dictionary(save_dir + pkl_file_name)
+
+    abs_dir_path = f"{save_dir}{date_str}_cnn_track_data/"
+    if not os.path.exists(abs_dir_path):
+        print(f"create abs_dir_path: {abs_dir_path}")
+        os.makedirs(abs_dir_path)
+
 
     for series, result_list_list in series_viterbi_result_list_dict.items():
         print("working on series:", series)
@@ -87,7 +90,7 @@ def main():
         result_list_list = generate_all_combination_fixed_track_length(result_list_list, fixed_track_length_to_generate)
 
         for idx, result_list in enumerate(result_list_list):
-            print(f"{idx}/ {len(result_list_list)}; ")
+            print(f"\r{idx+1}/ {len(result_list_list)}; ", end='')
             coord_tuple_list = []
             for result_tuple in result_list:
                 cell_idx = result_tuple[0]
@@ -95,17 +98,14 @@ def main():
                 coord_tuple: CoordTuple = frame_num_node_id_coord_dict_dict[frame_num][cell_idx]
                 coord_tuple_list.append(coord_tuple)
 
-        abs_file_path = f"{save_dir}{date_str}_cnn_track_data/{series}_{idx}.png"
+            abs_file_path = f"{abs_dir_path}{series}_{idx}.png"
+            generate_track_image(coord_tuple_list, point_radius_pixel, abs_file_path)
 
-        generate_track_image(coord_tuple_list, point_radius_pixel, abs_file_path)
-
-
-
-
-
+        print()
 
     execution_time = time.perf_counter() - start_time
     print(f"Execution time: {execution_time: 0.4f} seconds")
+
 
 
 def derive_segmented_filename_list_by_series(series: str, segmented_filename_list: list):
