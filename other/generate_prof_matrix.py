@@ -71,7 +71,7 @@ def main():
         prob_data_list = obtain_ground_truth_connection_data()
         filtered_prob_data_list = []
         for prob_data in prob_data_list:
-            if prob_data.series == series: filtered_prob_data_list.append(prob_data)
+            if prob_data.series_name == series: filtered_prob_data_list.append(prob_data)
 
         for filtered_prob_data in filtered_prob_data_list:
             frame_num_prof_matrix_dict[filtered_prob_data.frame_num][filtered_prob_data.from_node_idx][filtered_prob_data.to_node_idx] += 1
@@ -89,6 +89,7 @@ def main():
 
 def __________object_start_label():
     raise Exception("for labeling only")
+
 
 
 
@@ -504,6 +505,10 @@ def _process_and_find_best_cell_track(existing_cell_idx_track_list_dict,
 
 
 
+# def frame_num_prof_matrix_dict
+
+
+
 def save_prof_matrix_to_excel(series: str, frame_num_prof_matrix_dict, excel_output_dir_path: str):
     import pandas as pd
     # num_of_segementation_img: int = len(frame_num_prof_matrix_dict)
@@ -515,7 +520,7 @@ def save_prof_matrix_to_excel(series: str, frame_num_prof_matrix_dict, excel_out
     for frame_num, prof_matrix in frame_num_prof_matrix_dict.items():
         tmp_array: np.arrays = frame_num_prof_matrix_dict[frame_num]
 
-        df = pd.DataFrame (tmp_array)
+        df = pd.DataFrame(tmp_array)
 
         def highlight_cells(val):
             color = 'yellow' if val >= 1  else 'white'
@@ -528,6 +533,8 @@ def save_prof_matrix_to_excel(series: str, frame_num_prof_matrix_dict, excel_out
         df.to_excel(writer, sheet_name=sheet_name, index=True)
 
     writer.save()
+
+
 
 
 

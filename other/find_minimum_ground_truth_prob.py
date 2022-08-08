@@ -118,7 +118,7 @@ def main():
             #     continue
             # print(f"{pd.series}: {str(pd.probability).ljust(20)}. frame_num: {str(pd.frame_num).ljust(3)}. from {pd.from_node_idx} to {pd.to_node_idx})")
 
-            print(f"prob_data_list.append(ProbabilityData(\"{pd.series}\", {pd.frame_num}, {pd.from_node_idx}, {pd.to_node_idx}, {pd.probability}))")
+            print(f"prob_data_list.append(ProbabilityData(\"{pd.series_name}\", {pd.frame_num}, {pd.from_node_idx}, {pd.to_node_idx}, {pd.probability}))")
         print()
 
 

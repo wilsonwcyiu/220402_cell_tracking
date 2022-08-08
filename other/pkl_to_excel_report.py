@@ -36,7 +36,7 @@ import time
 from multiprocessing.pool import ThreadPool
 
 # from main_a_viterbi.viterbi_adjust3e_refactoring import CellId
-from main_algorithm_bon.cell_tracking_algorithm_bon_1b import derive_frame_num_node_idx_coord_list_dict
+from feature_based_2d.cell_tracking_algorithm_bon_1b import derive_frame_num_node_idx_coord_list_dict
 from other.shared_cell_data import split_uncontinuous_track
 
 
@@ -46,10 +46,10 @@ def main():
     segmentation_folder = folder_path + 'segmentation_unet_seg//'
     images_folder = folder_path + 'dataset//images//'
     output_folder = folder_path + 'output_unet_seg_finetune//'
-    save_dir = folder_path + 'save_directory_enhancement/'
+    save_dir = folder_path + 'save_directory_enhancement/pkl_files_seed/'
     prof_matrix_dir = save_dir + 'profit_matrix_excel/'
     pkl_file_name: str = "ground_truth_results_dict.pkl"
-    to_compare_pkl_file_name_list = ['cell_tracking_algorithm_bon.pkl', 'hungarian_adj_results_dict.pkl']
+    to_compare_pkl_file_name_list = ['viterbi_results_dict_adj2.pkl', 'hungarian_adj_results_dict.pkl', 'viterbi_adjust4e_hp017.pkl']
     start_time = time.perf_counter()
 
 
@@ -64,66 +64,7 @@ def main():
 
 
     write_to_excel(ground_truth_data_dict, method_name_track_data_dict)
-    exit()
 
-
-    #
-    # input_series_list = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
-    #                      'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
-    #
-    # all_segmented_filename_list = listdir(segmentation_folder)
-    # all_segmented_filename_list.sort()
-    #
-    # existing_series_list = derive_existing_series_list(input_series_list, listdir(output_folder))
-    #
-    # max_distance = -1
-    # for series in existing_series_list:
-    #     print(f"working on series: {series}. ", end='')
-    #
-    #     segmented_filename_list: list = derive_segmented_filename_list_by_series(series, all_segmented_filename_list)
-    #
-    #     # frame_num_prof_matrix_dict: dict = derive_frame_num_prof_matrix_dict(segmentation_folder, output_folder, series, segmented_filename_list)
-    #
-    #     frame_num_node_idx_coord_list_dict = derive_frame_num_node_idx_coord_list_dict(segmentation_folder, segmented_filename_list)
-    #
-    #     series_viterbi_result_list_dict: dict = open_track_dictionary(save_dir + pkl_file_name)
-    #
-    #     series_max_distance = -1
-    #
-    #     splitted_track_list_list = split_uncontinuous_track(series_viterbi_result_list_dict[series])
-    #     for track_tuple_list in splitted_track_list_list:
-    #         track_length = len(track_tuple_list)
-    #         start_node_idx = track_tuple_list[0][0]
-    #         start_frame_num = track_tuple_list[0][1] + 1
-    #         previous_coord = frame_num_node_idx_coord_list_dict[start_frame_num][start_node_idx]
-    #         previous_frame_num = start_frame_num
-    #         previous_node_idx = start_node_idx
-    #         for track_idx in range(1, track_length):
-    #             next_node_idx = track_tuple_list[track_idx][0]
-    #             next_frame_num = track_tuple_list[track_idx][1] + 1
-    #
-    #             if next_frame_num != (previous_frame_num + 1):
-    #                 print(previous_frame_num, next_frame_num, track_tuple_list)
-    #                 raise Exception()
-    #
-    #             next_coord = frame_num_node_idx_coord_list_dict[next_frame_num][next_node_idx]
-    #
-    #             distance: float = ((next_coord.x - previous_coord.x)**2 + (next_coord.y - previous_coord.y)**2)**0.5
-    #
-    #             if distance > series_max_distance:
-    #                 series_max_distance_info = f"{previous_frame_num}, {previous_node_idx}, {next_node_idx}"
-    #                 series_max_distance = distance
-    #
-    #             previous_frame_num = next_frame_num
-    #             previous_node_idx = next_node_idx
-    #             previous_coord = next_coord
-    #
-    #     if series_max_distance > max_distance:
-    #         max_distance = series_max_distance
-    #
-    #     print("series_max_distance", series_max_distance, "series_max_distance_info", series_max_distance_info)
-    #
-    # print("max_distance", max_distance)
 
     execution_time = time.perf_counter() - start_time
     print(f"Execution time: {np.round(execution_time, 4)} seconds")
