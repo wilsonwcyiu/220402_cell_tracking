@@ -47,7 +47,7 @@ def main():
     save_dir = folder_path + 'save_directory_enhancement/'
     coord_dir = folder_path + "coord_data_3d/"
 
-    is_use_thread: bool = False
+    is_use_thread: bool = True
 
     is_use_cell_dependency_feature: bool = False
 
@@ -142,6 +142,23 @@ def main():
         process_start_time = time.perf_counter()
 
         input_series_list = [input_series.replace(".json", "") for input_series in listdir(coord_dir)]
+
+        filtered_series_list = []
+        # include_series_list = ['_8layers_', '_9layers_']
+        # include_series_list = ['_15layers_', '_17layers_']
+        # include_series_list = ['_29layers_', '_33layers_']
+        include_series_list = ['1_8layers_mask_data__20190621++2_8layers_M3a_Step98']
+        for input_series in input_series_list:
+            for include_series in include_series_list:
+                if include_series in input_series:
+                    filtered_series_list.append(input_series)
+
+        input_series_list = filtered_series_list
+
+
+        # print(input_series)
+        # exit()
+
         # input_series_name_list = ['2_9layers_mask_data__20200829++2_9layers_M3a_Step98']
 
 

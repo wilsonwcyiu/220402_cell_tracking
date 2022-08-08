@@ -35,6 +35,7 @@ from collections import defaultdict, namedtuple
 import time
 from multiprocessing.pool import ThreadPool
 
+from other.generate_prof_matrix import save_prof_matrix_to_excel
 from other.shared_cell_data import obtain_ground_truth_cell_dict, convert_track_frame_idx_to_frame_num
 from math import atan2, degrees, radians, cos
 
@@ -43,27 +44,13 @@ def main():
 
     save_dir = folder_path + 'save_directory_enhancement/'
     coord_dir = folder_path + "coord_data_3d/"
+    prof_matrix_dir = save_dir + 'profit_matrix_excel/'
 
     is_use_thread: bool = False
 
     ## hyper parameter settings
-    weight_tuple_list: list = [  WeightTuple(0.4, 0.3, 0.3),
-                                 # WeightTuple(0.07, 0.06, 0.07),
-                                 # WeightTuple(0.1, 0.1, 0.1),
-                                 # WeightTuple(0.1, 0.1, 0.2),
-                                 # WeightTuple(0.2, 0.1, 0.2),
-                                 # WeightTuple(0.25, 0.1, 0.25),
-                                 # WeightTuple(0.3, 0.1, 0.3),
-                                 # WeightTuple(0.35, 0.1, 0.35),
-                                 # WeightTuple(0.35, 0.1, 0.35),
-                                 # WeightTuple(0.6, 0.1, 0.1),
-                                 # WeightTuple(0.7, 0.1, 0),
-                                 # WeightTuple(0.1, 0.1, 0.6),
-                                 # WeightTuple(0.3, 0.1, 0.4),
-                                 # WeightTuple(0.2, 0.1, 0.5),
-                                 # WeightTuple(0.2, 0.1, 0.6)
-                               ]
-    merge_threshold_list: list = [0.5]
+    weight_tuple_list: list = [WeightTuple(0.4, 0.4, 0.3) ]
+    merge_threshold_list: list = [0]
     discount_rate_per_layer_list: list = [0.5] #{"merge_threshold", any_float},
 
     max_moving_distance_list: list = [40]
@@ -117,6 +104,21 @@ def main():
         input_series_name_list = [input_series.replace(".json", "") for input_series in listdir(coord_dir)]
         # input_series_name_list = ['2_9layers_mask_data__20200829++2_9layers_M3a_Step98']
 
+
+        filtered_series_list = []
+        # include_series_list = ['_8layers_', '_9layers_']
+        # include_series_list = ['_15layers_', '_17layers_']
+        # include_series_list = ['_29layers_', '_33layers_']
+        include_series_list = ['1_8layers_mask_data__20190621++2_8layers_M3a_Step98']
+        for input_series in input_series_name_list:
+            for include_series in include_series_list:
+                if include_series in input_series:
+                    filtered_series_list.append(input_series)
+
+        input_series_name_list = filtered_series_list
+
+
+
         feature_based_result_dict = {}
 
         try:
@@ -124,6 +126,8 @@ def main():
                 print(f"working on series_name: {series_name}. ")
 
                 frame_num_node_id_coord_dict_dict = read_series_data(coord_dir, series_name)
+
+                save_prof_matrix_to_excel(series_name, frame_num_node_id_coord_dict_dict, prof_matrix_dir)
 
 
                 return_series, final_result_list, score_log_mtx = cell_tracking_core_flow(series_name,
