@@ -6,6 +6,7 @@ Created on Tue Sep 28 09:31:51 2021
 """
 import itertools
 import json
+import math
 import traceback
 from datetime import datetime
 import decimal
@@ -38,6 +39,8 @@ from multiprocessing.pool import ThreadPool
 from other.shared_cell_data import obtain_ground_truth_cell_dict, convert_track_frame_idx_to_frame_num
 from math import atan2, degrees, radians, cos
 
+global_max_distance = 0
+
 def main():
     folder_path: str = 'D:/viterbi linkage/dataset/'
 
@@ -47,7 +50,10 @@ def main():
     is_use_thread: bool = False
 
     ## hyper parameter settings
-    weight_tuple_list: list = [  WeightTuple(0.4, 0.3, 0.3),
+    distance = 0.4
+    degree = 0.3
+    average_movement = 0.3
+    weight_tuple_list: list = [  WeightTuple(degree, distance, average_movement),
                                  # WeightTuple(0.07, 0.06, 0.07),
                                  # WeightTuple(0.1, 0.1, 0.1),
                                  # WeightTuple(0.1, 0.1, 0.2),
@@ -112,6 +118,22 @@ def main():
         input_series_name_list = [input_series.replace(".json", "") for input_series in listdir(coord_dir)]
         # input_series_name_list = ['6_33layers_inter_mask_data__20200802--2_inter_33layers_mask_3a']
 
+
+        filtered_series_list = []
+        # include_series_list = ['_8layers_', '_9layers_']
+        # include_series_list = ['_15layers_', '_17layers_']
+        # include_series_list = ['_29layers_', '_33layers_']
+        include_series_list = ['_8layers_']
+        for input_series in input_series_name_list:
+            for include_series in include_series_list:
+                if include_series in input_series:
+                    filtered_series_list.append(input_series)
+
+        input_series_name_list = filtered_series_list
+
+
+
+
         feature_based_result_dict = {}
 
         try:
@@ -126,6 +148,25 @@ def main():
                                                                                           hyper_para
                                                                                           )
                 feature_based_result_dict[series_name] = final_result_list
+
+
+
+                is_generate_score_log = True
+                if is_generate_score_log:
+                    score_log_dir = save_dir + "score_log/"
+                    result_file_name: str = Path(__file__).name.replace(".py", "_")
+
+                    # remove last \n
+                    for frame_num, mtx_row_list in score_log_mtx.items():
+                        for row_idx in range(len(mtx_row_list)):
+                            for col_idx in range(len(mtx_row_list[row_idx])):
+                                if len(score_log_mtx[frame_num][row_idx][col_idx]) > 2:
+                                    score_log_mtx[frame_num][row_idx][col_idx] = score_log_mtx[frame_num][row_idx][col_idx][0:-2]
+
+                    save_score_log_to_excel(series_name, score_log_mtx, score_log_dir, result_file_name)
+
+
+
 
         except Exception as e:
             time.sleep(1)
@@ -1095,27 +1136,33 @@ def derive_degree_score(to_handle_cell_id, current_frame_num, last_frame_node_co
     else:
         degree_score: float = 0.5
 
+    # if math.isnan(degree_score):
+    #     print("isnan")
 
     return degree_score
 
 
 
 def init_score_log(frame_num_node_id_coord_dict_dict):
-    return None
-    # frame_num_score_log_mtx = {}
-    # for frame_num, num_node_id_coord_dict in frame_num_node_id_coord_dict_dict.items():
-    #     row_list = []
-    #     for row_idx in range(prof_mtx.shape[0]):
-    #         col_list = []
-    #         for col_idx in range(prof_mtx.shape[1]):
-    #             col_list.append("")
-    #         row_list.append(col_list)
-    #     frame_num_score_log_mtx[frame_num] = row_list
-    #
-    #     # print("dfndf", type(frame_num_score_log_mtx[frame_num][0][0]))
-    #     # print("sdbsdbf", frame_num_score_log_mtx[frame_num].shape)
-    #
-    # return frame_num_score_log_mtx
+    frame_num_score_log_mtx = {}
+
+    start_frame_num = min(frame_num_node_id_coord_dict_dict.keys())
+    end_frame_num = max(frame_num_node_id_coord_dict_dict.keys())
+    for frame_num in range(start_frame_num, end_frame_num):
+        num_node_id_coord_dict = frame_num_node_id_coord_dict_dict[frame_num]
+        next_frame_num_node_id_coord_dict = frame_num_node_id_coord_dict_dict[frame_num+1]
+        total_row = max(num_node_id_coord_dict.keys()) + 1
+        total_col = max(next_frame_num_node_id_coord_dict) + 1
+        row_list = []
+
+        for row_idx in range(total_row):
+            col_list = []
+            for col_idx in range(total_col):
+                col_list.append("")
+            row_list.append(col_list)
+        frame_num_score_log_mtx[frame_num] = row_list
+
+    return frame_num_score_log_mtx
 
 
 
@@ -1257,15 +1304,28 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
                                                       coord_length_for_vector,
                                                       handling_cell_frame_num_track_idx_dict,
                                                       frame_num_node_id_coord_dict_dict)
+
             weighted_degree_score = np.round(weight_tuple.degree * degree_score, round_to)
+
+            if math.isnan(weighted_degree_score):
+                weighted_degree_score = 0
+
+            # if current_frame_num == 5 and current_frame_node_id == 8:
+            #     print("sgsfd", weighted_degree_score, math.isnan(weighted_degree_score))
+            #     time.sleep(2)
+
             final_score += weighted_degree_score
         else:
             weighted_degree_score = 0.5
+
+        # if weighted_degree_score == nan:
+        #     raise Exception("weighted_degree_score == None")
 
 
         is_use_distance_score: bool = (weight_tuple.distance > 0)
         if is_use_distance_score:
             distance_score = derive_distance_score(candidate_node_coord, current_frame_node_coord, max_moving_distance)
+
             weighted_distance_score = np.round(weight_tuple.distance * distance_score, round_to)
             final_score += weighted_distance_score
         else:
@@ -1295,6 +1355,8 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
         # if log_msg not in score_log_mtx[current_frame_num][current_node_idx][candidate_node_id]:
         #     score_log_mtx[current_frame_num][current_node_idx][candidate_node_id] += log_msg + "\n"
 
+
+        score_log_mtx[current_frame_num][current_frame_node_id][candidate_node_id] = f"final_score:{final_score}; dist:{weighted_distance_score}; deg:{weighted_degree_score}; avgM:{weighted_avg_mov_score}"
 
         # print("sadbfsdf", connect_to_frame_num, candidate_node_id)
         occupied_cell_id_list: list = frame_num_node_idx_occupation_list_list_dict[connect_to_frame_num][candidate_node_id]
