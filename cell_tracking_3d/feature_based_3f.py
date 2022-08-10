@@ -119,17 +119,17 @@ def main():
         # input_series_name_list = ['6_33layers_inter_mask_data__20200802--2_inter_33layers_mask_3a']
 
 
-        filtered_series_list = []
-        # include_series_list = ['_8layers_', '_9layers_']
-        # include_series_list = ['_15layers_', '_17layers_']
-        # include_series_list = ['_29layers_', '_33layers_']
-        include_series_list = ['20190621++2_8layers_M3a_Step98']
-        for input_series in input_series_name_list:
-            for include_series in include_series_list:
-                if include_series in input_series:
-                    filtered_series_list.append(input_series)
-
-        input_series_name_list = filtered_series_list
+        # filtered_series_list = []
+        # # include_series_list = ['_8layers_', '_9layers_']
+        # # include_series_list = ['_15layers_', '_17layers_']
+        # # include_series_list = ['_29layers_', '_33layers_']
+        # # include_series_list = ['20190621++2_8layers_M3a_Step98']
+        # for input_series in input_series_name_list:
+        #     for include_series in include_series_list:
+        #         if include_series in input_series:
+        #             filtered_series_list.append(input_series)
+        #
+        # input_series_name_list = filtered_series_list
 
 
         feature_based_result_dict = {}
@@ -1355,91 +1355,51 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
         # score_log_mtx[current_frame_num][current_frame_node_id][candidate_node_id] = f"final_score:{final_score}; dist:{weighted_distance_score}; deg:{weighted_degree_score}; avgM:{weighted_avg_mov_score}"
         score_log_mtx[current_frame_num][current_frame_node_id][candidate_node_id] = final_score
 
+        if final_score <= best_prob:
+            continue
+
         # print("sadbfsdf", connect_to_frame_num, candidate_node_id)
         occupied_cell_id_list: list = frame_num_node_idx_occupation_list_list_dict[connect_to_frame_num][candidate_node_id]
         has_cell_occupation: bool = (len(occupied_cell_id_list) > 0)
-        has_cell_occupation = False
+        # has_cell_occupation = False
 
         if not has_cell_occupation:
-            if final_score > best_prob:
+            best_prob = final_score
+            best_node_idx = candidate_node_id
+        else:
+            is_higher_than_all_occupied_cell = True
+
+            for occupied_cell_id in occupied_cell_id_list:
+                if connect_to_frame_num == occupied_cell_id.start_frame_num:
+                    continue
+
+                occupied_cell_current_frame_idx = all_valid_cell_track_idx_dict[occupied_cell_id][connect_to_frame_num]
+                # print("sdfbsdf", occupied_cell_id, connect_to_frame_num, all_valid_cell_track_prob_dict[occupied_cell_id])
+                occupied_cell_current_frame_score = all_valid_cell_track_prob_dict[occupied_cell_id][connect_to_frame_num]
+
+                # print("sdfsdfbdf", final_score, occupied_cell_current_frame_score)
+                if final_score > occupied_cell_current_frame_score:
+                    tmp_redo_node_idx_cell_id_dict[candidate_node_id].add(occupied_cell_id)
+                elif final_score <= occupied_cell_current_frame_score:
+                    is_higher_than_all_occupied_cell = False
+                    break
+                # elif final_score == occupied_cell_current_frame_score:
+                #     raise Exception(f"undetermined case. {final_score}, {occupied_cell_current_frame_score}; final_score == occupied_cell_current_frame_score")
+
+
+            if is_higher_than_all_occupied_cell:
                 best_prob = final_score
                 best_node_idx = candidate_node_id
-        else:
-            continue
 
-            # has_other_connection_option_current_cell: bool = (count_non_zero_data_in_list(node_id_coord_dict) > 1)
-            # for occupied_cell_id in occupied_cell_id_list:
-            #
-            #     if node_id_coord_dict == occupied_cell_id.start_frame_num:
-            #         if final_score > best_prob:
-            #             best_prob = final_score
-            #             best_node_idx = candidate_node_id
-            #             tmp_redo_node_idx_cell_id_dict[best_node_idx].add(occupied_cell_id)
-            #         continue
-            #
-            #
-            #     occupied_cell_current_frame_idx = all_valid_cell_track_idx_dict[occupied_cell_id][current_frame_num]
-            #     occupied_cell_node_connection_prob_list = frame_num_prof_matrix_dict[current_frame_num][occupied_cell_current_frame_idx]
-            #
-            #     has_other_connection_option_occupied_cell: bool = (count_non_zero_data_in_list(occupied_cell_node_connection_prob_list) > 1)
-            #
-            #     if not has_other_connection_option_current_cell and not has_other_connection_option_occupied_cell:
-            #         #merge as usual
-            #         if final_score > best_prob:
-            #             best_prob = final_score
-            #             best_node_idx = candidate_node_id
-            #
-            #     elif has_other_connection_option_current_cell and not has_other_connection_option_occupied_cell:
-            #         # current cell explore other options
-            #         continue
-            #
-            #     elif not has_other_connection_option_current_cell and has_other_connection_option_occupied_cell:
-            #         # occupied cell explore other options
-            #         if final_score > best_prob:
-            #             best_prob = final_score
-            #             best_node_idx = candidate_node_id
-            #             tmp_redo_node_idx_cell_id_dict[candidate_node_id].add(occupied_cell_id)
-            #
-            #     elif has_other_connection_option_current_cell and has_other_connection_option_occupied_cell:
-            #         # higher probability cell takes over
-            #         occupied_cell_prob: float = all_valid_cell_track_prob_dict[occupied_cell_id][node_id_coord_dict]
-            #
-            #         if occupied_cell_prob > final_score:
-            #             #current cell explore other opportunity
-            #             continue
-            #         elif occupied_cell_prob < final_score:
-            #             if final_score > best_prob:
-            #                 # occupied cell explore other opportunity
-            #                 best_prob = final_score
-            #                 best_node_idx = candidate_node_id
-            #                 tmp_redo_node_idx_cell_id_dict[best_node_idx].add(occupied_cell_id)
-            #
-            #         elif occupied_cell_prob == final_score:
-            #             if final_score > best_prob:
-            #                 # print("(let them share for now) to handle biz scenario", occupied_cell_prob, candidate_node_coord, to_handle_cell_id.str_short(), occupied_cell_id.str_short(), current_frame_num)
-            #                 best_prob = final_score
-            #                 best_node_idx = candidate_node_id
-            #                 # continue
-            #
-            #             # raise Exception("Unexpected biz scenario", occupied_cell_prob, candidate_node_coord, to_handle_cell_id.str_short(), occupied_cell_id.str_short(), current_frame_num)
-            #         else:
-            #             raise Exception("code validation check")
-            #
-            #
-            #     else:
-            #         raise Exception("code validation check")
-
-    # if best_node_idx in tmp_redo_node_idx_cell_id_dict:
-    #     for redo_cell_id in tmp_redo_node_idx_cell_id_dict[best_node_idx]:
-    #         if redo_cell_id == CellId(84, 6) and node_id_coord_dict == 84:
-    #             tmp = all_valid_cell_track_prob_dict[redo_cell_id]
-    #             print("sadg", redo_cell_id.str_short(), node_id_coord_dict)
-    #
-    #         occu_cell_prob = all_valid_cell_track_prob_dict[redo_cell_id][node_id_coord_dict]
-    #         print(f"redo cell {redo_cell_id}; collision at frame {node_id_coord_dict}; node_idx: {best_node_idx}; curr_cell_prob: {best_prob}; occu_cell_prob: {occu_cell_prob}")
-    #         redo_cell_id_set.add(redo_cell_id)
+    # print("asfasd", best_node_idx, tmp_redo_node_idx_cell_id_dict.keys())
+    if best_node_idx in tmp_redo_node_idx_cell_id_dict:
+        for redo_cell_id in tmp_redo_node_idx_cell_id_dict[best_node_idx]:
+            occu_cell_prob = all_valid_cell_track_prob_dict[redo_cell_id][connect_to_frame_num]
+            print(f"redo cell {redo_cell_id}; collision at frame {connect_to_frame_num}; node_idx: {best_node_idx}; curr_cell_prob: {best_prob}; occu_cell_prob: {occu_cell_prob}")
+            redo_cell_id_set.add(redo_cell_id)
 
     return best_node_idx, best_prob, score_log_mtx, redo_cell_id_set
+
 
 
 def derive_discount_rate_from_cell_start_frame_num(cell_id: CellId, merge_above_threshold: float, discount_rate_per_layer):

@@ -50,31 +50,33 @@ def main():
     is_use_thread: bool = False
 
     ## hyper parameter settings
-    distance = 0.4
-    degree = 0.3
-    average_movement = 0.3
-    weight_tuple_list: list = [  WeightTuple(degree, distance, average_movement),
-                                 # WeightTuple(0.07, 0.06, 0.07),
-                                 # WeightTuple(0.1, 0.1, 0.1),
-                                 # WeightTuple(0.1, 0.1, 0.2),
-                                 # WeightTuple(0.2, 0.1, 0.2),
-                                 # WeightTuple(0.25, 0.1, 0.25),
-                                 # WeightTuple(0.3, 0.1, 0.3),
-                                 # WeightTuple(0.35, 0.1, 0.35),
-                                 # WeightTuple(0.35, 0.1, 0.35),
-                                 # WeightTuple(0.6, 0.1, 0.1),
-                                 # WeightTuple(0.7, 0.1, 0),
-                                 # WeightTuple(0.1, 0.1, 0.6),
-                                 # WeightTuple(0.3, 0.1, 0.4),
-                                 # WeightTuple(0.2, 0.1, 0.5),
-                                 # WeightTuple(0.2, 0.1, 0.6)
-                               ]
+    # weight_tuple_list: list = [  WeightTuple(0.3, 0.4, 0.3),
+    #                              WeightTuple(0.4, 0.3, 0.3),
+    #                              WeightTuple(0.8, 0.1, 0.1),
+    #                              WeightTuple(0.1, 0.8, 0.1),
+    #                              WeightTuple(0.1, 0.1, 0.8),
+    #                              WeightTuple(0.1, 0.2, 0.7),
+    #                              WeightTuple(0.2, 0.7, 0.1),
+    #                              WeightTuple(0.7, 0.2, 0.1),
+    #                              WeightTuple(0.6, 0.2, 0.2),
+    #                              WeightTuple(0.2, 0.6, 0.2),
+    #                              WeightTuple(0.2, 0.2, 0.6),
+    #                              WeightTuple(0.5, 0.25, 0.25),
+    #                              WeightTuple(0.25, 0.5, 0.25),
+    #                              WeightTuple(0.25, 0.25, 0.5)
+    #                            ]
+    # max_moving_distance_list: list = [20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80]
+    # coord_length_for_vector_list: list = [6]
+    # average_movement_step_length_list: list = [6]
+    # minimum_track_length_list: list = [1]
+    # discount_rate_per_layer_list: list = [0.9] #{"merge_threshold", any_float},
+
+    weight_tuple_list: list = [WeightTuple(0.3, 0.4, 0.3)]
     max_moving_distance_list: list = [40]
     coord_length_for_vector_list: list = [6]
     average_movement_step_length_list: list = [6]
-    minimum_track_length_list: list = [5]
+    minimum_track_length_list: list = [1]
     discount_rate_per_layer_list: list = [0.9] #{"merge_threshold", any_float},
-
 
 
     date_str: str = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -120,18 +122,16 @@ def main():
 
 
         filtered_series_list = []
-        # include_series_list = ['_8layers_', '_9layers_']
+        # include_series_list = ['_8layers_']#, '_9layers_','_29layers_', '_33layers_']
         # include_series_list = ['_15layers_', '_17layers_']
         # include_series_list = ['_29layers_', '_33layers_']
-        include_series_list = ['_8layers_']
+        include_series_list = ['20190621++2_8layers_M3a_Step98']
         for input_series in input_series_name_list:
             for include_series in include_series_list:
                 if include_series in input_series:
                     filtered_series_list.append(input_series)
 
         input_series_name_list = filtered_series_list
-
-
 
 
         feature_based_result_dict = {}
@@ -149,19 +149,17 @@ def main():
                                                                                           )
                 feature_based_result_dict[series_name] = final_result_list
 
-
-
                 is_generate_score_log = True
                 if is_generate_score_log:
                     score_log_dir = save_dir + "score_log/"
                     result_file_name: str = Path(__file__).name.replace(".py", "_")
 
-                    # remove last \n
-                    for frame_num, mtx_row_list in score_log_mtx.items():
-                        for row_idx in range(len(mtx_row_list)):
-                            for col_idx in range(len(mtx_row_list[row_idx])):
-                                if len(score_log_mtx[frame_num][row_idx][col_idx]) > 2:
-                                    score_log_mtx[frame_num][row_idx][col_idx] = score_log_mtx[frame_num][row_idx][col_idx][0:-2]
+                    # # remove last \n
+                    # for frame_num, mtx_row_list in score_log_mtx.items():
+                    #     for row_idx in range(len(mtx_row_list)):
+                    #         for col_idx in range(len(mtx_row_list[row_idx])):
+                    #             if len(score_log_mtx[frame_num][row_idx][col_idx]) > 2:
+                    #                 score_log_mtx[frame_num][row_idx][col_idx] = score_log_mtx[frame_num][row_idx][col_idx][0:-2]
 
                     save_score_log_to_excel(series_name, score_log_mtx, score_log_dir, result_file_name)
 
@@ -207,8 +205,18 @@ def main():
         if not os.path.exists(result_dir):
             os.makedirs(result_dir)
 
+
         abs_save_dir: str = result_dir + result_file_name + "_hp" + str(idx+1).zfill(3) + "__" + hyper_para_indicator
-        save_track_dictionary(feature_based_result_dict, abs_save_dir + ".pkl")
+
+        renamed_feature_based_result_dict = {}
+        for series_name, result in feature_based_result_dict.items():
+            start_idx = series_name.index("__") + 2
+            end_idx = start_idx + 11
+            renamed_series_name = series_name[start_idx: end_idx]
+            renamed_feature_based_result_dict[renamed_series_name] = result
+
+        save_track_dictionary(renamed_feature_based_result_dict, abs_save_dir + ".pkl")
+
 
         execution_time = time.perf_counter() - start_time
         with open(abs_save_dir + ".txt", 'w') as f:
@@ -1158,7 +1166,7 @@ def init_score_log(frame_num_node_id_coord_dict_dict):
         for row_idx in range(total_row):
             col_list = []
             for col_idx in range(total_col):
-                col_list.append("")
+                col_list.append(0)
             row_list.append(col_list)
         frame_num_score_log_mtx[frame_num] = row_list
 
@@ -1347,8 +1355,9 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
         else:
             weighted_avg_mov_score = 0.5
 
+        if distance_score == 0:            final_score = 0
+        else:                              final_score = np.round(final_score, round_to)
 
-        final_score = np.round(final_score, round_to)
 
         # current_node_idx: int = handling_cell_frame_num_track_idx_dict[current_frame_num]
         # log_msg = f"{to_handle_cell_id.str_short()} {final_score}={weighted_probability_score}+{weighted_degree_score}+{weighted_distance_score}+{weighted_avg_mov_score}"
@@ -1356,7 +1365,8 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
         #     score_log_mtx[current_frame_num][current_node_idx][candidate_node_id] += log_msg + "\n"
 
 
-        score_log_mtx[current_frame_num][current_frame_node_id][candidate_node_id] = f"final_score:{final_score}; dist:{weighted_distance_score}; deg:{weighted_degree_score}; avgM:{weighted_avg_mov_score}"
+        # score_log_mtx[current_frame_num][current_frame_node_id][candidate_node_id] = f"final_score:{final_score}; dist:{weighted_distance_score}; deg:{weighted_degree_score}; avgM:{weighted_avg_mov_score}"
+        score_log_mtx[current_frame_num][current_frame_node_id][candidate_node_id] = final_score
 
         # print("sadbfsdf", connect_to_frame_num, candidate_node_id)
         occupied_cell_id_list: list = frame_num_node_idx_occupation_list_list_dict[connect_to_frame_num][candidate_node_id]
