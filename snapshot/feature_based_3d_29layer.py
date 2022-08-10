@@ -207,7 +207,9 @@ def main():
 
         renamed_feature_based_result_dict = {}
         for series_name, result in feature_based_result_dict.items():
-            start_idx = series_name.index("__") + 2
+            if "__model3a__" in series_name:    start_idx = series_name.index("__model3a__") + 11
+            else:                               start_idx = series_name.index("__") + 2
+
             end_idx = start_idx + 11
             renamed_series_name = series_name[start_idx: end_idx]
             renamed_feature_based_result_dict[renamed_series_name] = result
