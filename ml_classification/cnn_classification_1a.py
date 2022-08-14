@@ -22,31 +22,32 @@ import tensorflow as tf
 
 
 def main():
+    # config = tf.ConfigProto()   #https://stackoverflow.com/questions/46654424/how-to-calculate-optimal-batch-size
+    # config.gpu_options.allow_growth = True
 
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
-    img_parent_dir: str = "D:/viterbi linkage/dataset/track_classification_images/"
-    data_dir: str = ""
-    img_width: int = 512
-    image_height: int = 512
+    img_parent_dir: str = "D:/viterbi linkage/dataset/track_classification_images_rescaled/"
+    # img_parent_dir: str = "D:/viterbi linkage/dataset/track_classification_images_extended/"
+    # img_parent_dir: str = "D:/viterbi linkage/dataset/track_classification_images/"
 
 
     # tf.config.run_functions_eagerly(True)
     # tf.data.experimental.enable_debug_mode()
 
-    # X_data = generate_np_array_from_batch_image("")
 
-    Y_label_file = None
-    # Y_label = np.load(Y_label_file)
 
 
     # (train_images, train_labels), (test_images, test_labels) = obtain_demo_data_set()
-
+    train_set_ratio = 0.7
+    image_length = 128
 
 
     X_data, Y_label = obtain_cell_track_data_set(img_parent_dir)
-    X_data = X_data.reshape((105, 512, 512, 1))
-    X_data = X_data.astype('int')
+    total_img = X_data.shape[0]
+    print("sfgf", X_data.shape[0])
+    X_data = X_data.reshape((total_img, image_length, image_length, 1))
+    X_data = X_data.astype('bool')
     Y_label = Y_label.reshape((Y_label.shape[0]))
 
     # print(Y_label.shape)
@@ -63,11 +64,15 @@ def main():
     # print(X_data.shape)
     # exit()
 
-    train_images = X_data[0: 70]
-    train_labels = Y_label[0: 70]
-    test_images = X_data[70: 104]
-    test_labels = Y_label[70: 104]
+    train_end = int(total_img * train_set_ratio)
 
+    train_images = X_data[0: train_end]
+    train_labels = Y_label[0: train_end]
+    test_images = X_data[train_end: total_img]
+    test_labels = Y_label[train_end: total_img]
+
+    # print(type(X_data))
+    # exit()
 
     # print("dfbsdfn", Y_label)
     # exit()
@@ -83,16 +88,21 @@ def main():
     # exit()
 
     model = models.Sequential()
-    model.add(layers.Conv2D(64, (3, 3), activation='relu', input_shape=(512, 512, 1)))
+    model.add(layers.Conv2D(64, (5, 5), activation='relu', input_shape=(image_length, image_length, 1)))
     model.add(layers.MaxPooling2D((2, 2)))
-    model.add(layers.Conv2D(32, (3, 3), activation='relu'))
+
+    model.add(layers.Conv2D(32, (4, 4), activation='relu'))
     model.add(layers.MaxPooling2D((2, 2)))
+
     model.add(layers.Conv2D(16, (3, 3), activation='relu'))
+    model.add(layers.MaxPooling2D((2, 2)))
 
     model.add(layers.Flatten())
-    model.add(layers.Dense(32, activation='relu'))
-    model.add(layers.Dense(4))
+    model.add(layers.Dense(16, activation='relu'))
+    model.add(layers.Dense(4, activation='softmax'))
 
+    # model.summary()
+    # exit()
 
     # model = models.Sequential()
     # model.add(layers.Conv2D(32, (3, 3), activation='relu', input_shape=(32, 32, 3)))
@@ -107,8 +117,14 @@ def main():
 
     model.compile(optimizer='adam',
                   # loss='CategoricalCrossentropy',
-                  loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+                  loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False),
                   metrics=['accuracy'])
+    # model.compile(optimizer='adam',
+    #               # loss='CategoricalCrossentropy',
+    #               loss='categorical_crossentropy',
+    #               metrics=['accuracy'])
+
+    # image too large, use fit or rescale image
 
     history = model.fit(train_images, train_labels, epochs=10, validation_data=(test_images, test_labels))
 
@@ -127,18 +143,57 @@ def main():
 
     # test_loss, test_acc = model.evaluate(test_images,  test_labels, verbose=2)
 
-    y_predict = model.predict(test_images)
+    y_predict_arr_arr = model.predict(test_images)
 
-    print(test_labels.shape)
-    print(y_predict.shape)
+    y_predict_one_hot_list_list = []
+    y_predict_list = []
+    predict_size = len(y_predict_arr_arr[0])
+    for y_predict_arr in y_predict_arr_arr:
+        max_value = max(y_predict_arr)
+        best_idx = y_predict_arr.tolist().index(max_value)
+        y_predict_list.append(best_idx)
+        # print(best_idx)
+
+        y_predict_one_hot_list = [0] * predict_size
+        y_predict_one_hot_list[best_idx] = 1
+        y_predict_one_hot_list_list.append(y_predict_one_hot_list)
+
+    # y_predict_one_hot_list_list = np.array(y_predict_one_hot_list_list)
+
+
+
+
+
+
+    # print(test_labels.shape)
+    # print(y_predict_arr_arr.shape)
 
     for i in range(0, 34):
-        print(y_predict[i], test_labels[i])
+        print(y_predict_one_hot_list_list[i], y_predict_list[i], test_labels[i], y_predict_arr_arr[i])
+
+    from sklearn.metrics import confusion_matrix
+    cf_matrix = confusion_matrix(test_labels, y_predict_list)
+
+    print(cf_matrix)
+
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+
+    ax = sns.heatmap(cf_matrix, annot=True, cmap='Blues')
+
+    ax.set_title('Zebra fish cell image classification\n');
+    ax.set_xlabel('\nZebra fish cell image classification')
+    ax.set_ylabel('Zebra fish cell image classification');
+
+    ## Ticket labels - List must be in alphabetical order
+    ax.xaxis.set_ticklabels(['Long Plus','Long Minus', 'Local Plus', 'Local Minus'])
+    ax.yaxis.set_ticklabels(['Long Plus','Long Minus', 'Local Plus', 'Local Minus'])
+
+    ## Display the visualization of the Confusion Matrix.
+    plt.show()
 
 
-
-
-    # print("test_acc", test_acc)
+# print("test_acc", test_acc)
     # print("test_loss", test_loss)
 
 
@@ -224,11 +279,14 @@ def obtain_cell_track_data_set(image_parent_dir: str):
 
     sub_dir_list = os.listdir(image_parent_dir)
 
+    img_cnt = 0
     from matplotlib import image
     for sub_dir in sub_dir_list:
         abs_sub_dir = image_parent_dir + sub_dir + "/"
         image_list: str = os.listdir(abs_sub_dir)
         for image_name in image_list:
+            img_cnt += 1
+            print("\rimg count", img_cnt, end='')
             abs_image_file = abs_sub_dir + image_name
             image_data = image.imread(abs_image_file)
             # print(abs_sub_dir + image)

@@ -56,8 +56,8 @@ def main():
 
     rotation_list = [0, 90, 180, 270]
 
-    x_shift_list = [-250, -200, -150, -100, -50, 0, 50, 100, 150, 200, 250]
-    y_shift_list = [-250, -200, -150, -100, -50, 0, 50, 100, 150, 200, 250]
+    x_shift_list = [-50, 0, 50]
+    y_shift_list = [0, 50]
     # x_shift_list = [0]
     # y_shift_list = [0]
 
@@ -107,8 +107,9 @@ def main():
                         coord_tuple_list.append(coord)
 
                     result_folder = save_dir + movement_type + "_" + polar_type + "/"
-                    file_name = csv_file_name.replace(".csv", "").replace(" ", "_") + "_" + str(track_num)
+                    if not os.path.exists(result_folder):   os.makedirs(result_folder)
 
+                    file_name = csv_file_name.replace(".csv", "").replace(" ", "_") + "_" + str(track_num)
 
 
                     for rotation in rotation_list:
