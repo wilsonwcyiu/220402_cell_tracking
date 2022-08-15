@@ -61,7 +61,7 @@ def main():
     rotation_list = [0, 90, 180, 270]
 
     x_shift_list = [-50, 0, 50]
-    y_shift_list = [0, 50]
+    y_shift_list = [-50, 0, 50]
 
     x_shift_list = (np.asarray(x_shift_list) * rescale).astype('int')
     y_shift_list = (np.asarray(y_shift_list) * rescale).astype('int')

@@ -27,7 +27,7 @@ def main():
 
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
-    img_parent_dir: str = "D:/viterbi linkage/dataset/track_classification_images_rescaled/"
+    img_parent_dir: str = "D:/viterbi linkage/dataset/track_classification_images_extended_rescale0.5/"
     # img_parent_dir: str = "D:/viterbi linkage/dataset/track_classification_images_extended/"
     # img_parent_dir: str = "D:/viterbi linkage/dataset/track_classification_images/"
 
@@ -40,7 +40,7 @@ def main():
 
     # (train_images, train_labels), (test_images, test_labels) = obtain_demo_data_set()
     train_set_ratio = 0.7
-    image_length = 128
+    image_length = 256
 
 
     X_data, Y_label = obtain_cell_track_data_set(img_parent_dir)
@@ -54,7 +54,7 @@ def main():
     # print(Y_label[0])
     # exit()
 
-
+    np.random.seed(16)
     shuffle_order = np.random.permutation(len(X_data))
     X_data = X_data[shuffle_order]
     Y_label = Y_label[shuffle_order]
@@ -126,7 +126,7 @@ def main():
 
     # image too large, use fit or rescale image
 
-    history = model.fit(train_images, train_labels, epochs=10, validation_data=(test_images, test_labels))
+    history = model.fit(train_images, train_labels, epochs=5, batch_size=64, validation_data=(test_images, test_labels))
 
     # print(history.history['accuracy'])
     # exit()
@@ -168,13 +168,15 @@ def main():
     # print(test_labels.shape)
     # print(y_predict_arr_arr.shape)
 
-    for i in range(0, 34):
-        print(y_predict_one_hot_list_list[i], y_predict_list[i], test_labels[i], y_predict_arr_arr[i])
+    # for i in range(0, 34):
+    #     print(y_predict_one_hot_list_list[i], y_predict_list[i], test_labels[i], y_predict_arr_arr[i])
 
     from sklearn.metrics import confusion_matrix
     cf_matrix = confusion_matrix(test_labels, y_predict_list)
 
     print(cf_matrix)
+    #https://scikit-learn.org/stable/modules/generated/sklearn.metrics.confusion_matrix.html
+    #https://www.stackvidhya.com/plot-confusion-matrix-in-python-and-why/#:~:text=Plot%20Confusion%20Matrix%20for%20Binary%20Classes%20With%20Labels&text=You%20need%20to%20create%20a,matrix%20with%20the%20labels%20annotation.
 
     import seaborn as sns
     import matplotlib.pyplot as plt
@@ -182,96 +184,19 @@ def main():
     ax = sns.heatmap(cf_matrix, annot=True, cmap='Blues')
 
     ax.set_title('Zebra fish cell image classification\n');
-    ax.set_xlabel('\nZebra fish cell image classification')
-    ax.set_ylabel('Zebra fish cell image classification');
+    ax.set_xlabel('\nPredicted')
+    ax.set_ylabel('Actual');
 
     ## Ticket labels - List must be in alphabetical order
     ax.xaxis.set_ticklabels(['Long Plus','Long Minus', 'Local Plus', 'Local Minus'])
     ax.yaxis.set_ticklabels(['Long Plus','Long Minus', 'Local Plus', 'Local Minus'])
 
     ## Display the visualization of the Confusion Matrix.
+    disp = ConfusionMatrixDisplay(confusion_matrix=cf_matrix, display_labels=['Long\nPlus','Long\nMinus', 'Local\nPlus', 'Local\nMinus'])
+    disp.plot(cmap="Blues", values_format='d')
     plt.show()
 
 
-# print("test_acc", test_acc)
-    # print("test_loss", test_loss)
-
-
-    # (18000, 150, 150)
-    # (18000, 2)
-
-    #
-    # epoch = 20
-    # # train_size_list = [0.2, 0.4]
-    # train_size_list = [0.2, 0.4, 0.6, 0.8]
-    #
-    # X_data = X_data.reshape([-1, img_width, image_height, 1])/255
-    #
-    #
-    # # set up cnn model
-    # inputs = Input(shape=(150,150,1))
-    # shared_layer = Conv2D(32, (3, 3), strides=2, activation='relu')(inputs)
-    # shared_layer = MaxPooling2D((2, 2))(shared_layer)
-    # shared_layer = Conv2D(64, (3, 3), strides=1, activation='relu')(shared_layer)
-    # shared_layer = MaxPooling2D((2, 2))(shared_layer)
-    # shared_layer = Conv2D(64, (3, 3), strides=1, activation='relu')(shared_layer)
-    # shared_layer = Flatten()(shared_layer)
-    #
-    #
-    # hour_layer = Dense(64, activation='relu')(shared_layer)
-    # hour_layer = Dense(4, activation='softmax', name='specimen_type')(hour_layer)
-    #
-    # cls_model = Model(inputs=inputs, outputs=[hour_layer])
-    # cls_model.compile(loss=['CategoricalCrossentropy'], optimizer='rmsprop', metrics=['accuracy'], run_eagerly=True)
-    #
-    #
-    # # execute data set
-    # classification_log_list = []
-    #
-    # for train_size in train_size_list:
-    #     X_train, X_test, Y_train, Y_test = train_test_split(X_data, Y_label, train_size=train_size)
-    #
-    #
-    #     history = cls_model.fit(X_train, Y_train, epochs=epoch)
-    #
-    #     Y_train_softmax_pred = cls_model.predict(X_test)
-    #
-    #     Y_hour_train_softmax_pred = np.array(Y_train_softmax_pred[0])
-    #     Y_minutes_train_softmax_pred = np.array(Y_train_softmax_pred[1])
-    #     Y_train_hr_pred = np.argmax(Y_hour_train_softmax_pred, axis=1)
-    #     Y_train_minute_pred = np.argmax(Y_minutes_train_softmax_pred, axis=1)
-    #     Y_train_hr_minute_pred = [Y_train_hr_pred[i]*60 + Y_train_minute_pred[i] for i in range(len(Y_train_hr_pred)) ]
-    #
-    #     Y_train_hr_accuracy = round(accuracy_score(Y_train_hour_label, Y_train_hr_pred), 4)
-    #     Y_train_minute_accuracy = round(accuracy_score(Y_train_minute_label, Y_train_minute_pred), 4)
-    #     Y_train_hr_minute_accuracy = round(accuracy_score(Y_train_hr_minute_label, Y_train_hr_minute_pred), 4)
-    #     train_minute_loss = derive_minute_loss_from_classification(Y_train_hr_minute_label, Y_train_hr_minute_pred)
-    #
-    #
-    #     Y_test_softmax_pred = cls_model.predict(X_test)
-    #
-    #     Y_hour_test_softmax_pred = np.array(Y_test_softmax_pred[0])
-    #     Y_minutes_test_softmax_pred = np.array(Y_test_softmax_pred[1])
-    #     Y_test_hr_pred = np.argmax(Y_hour_test_softmax_pred, axis=1)
-    #     Y_test_minute_pred = np.argmax(Y_minutes_test_softmax_pred, axis=1)
-    #     Y_test_hr_minute_pred = [Y_test_hr_pred[i]*60 + Y_test_minute_pred[i] for i in range(len(Y_test_hr_pred)) ]
-    #
-    #     Y_test_hr_accuracy = round(accuracy_score(Y_test_hour_label, Y_test_hr_pred), 4)
-    #     Y_test_minute_accuracy = round(accuracy_score(Y_test_minute_label, Y_test_minute_pred), 4)
-    #     Y_test_hr_minute_accuracy = round(accuracy_score(Y_test_hr_minute_label, Y_test_hr_minute_pred), 4)
-    #     test_minute_loss = derive_minute_loss_from_classification(Y_test_hr_minute_label, Y_test_hr_minute_pred)
-    #
-    #
-    #     log_msg = f"train_size: {train_size*100}%; Y_train_hr_minute_accuracy: {Y_train_hr_minute_accuracy}; Y_train_hr_accuracy: {Y_train_hr_accuracy}; Y_train_minute_accuracy: {Y_train_minute_accuracy}; train_minute_loss: {train_minute_loss}; Y_test_hr_minute_accuracy: {Y_test_hr_minute_accuracy}; Y_test_hr_accuracy: {Y_test_hr_accuracy}; Y_test_minute_accuracy: {Y_test_minute_accuracy}; test_minute_loss: {test_minute_loss}; "
-    #     classification_log_list.append(log_msg)
-    #     print(log_msg)
-    #
-    #     test_hour_cf = confusion_matrix(Y_test_hour_label, Y_test_hr_pred)
-    #     disp = ConfusionMatrixDisplay(confusion_matrix=test_hour_cf)
-    #     disp.plot()
-
-
-from matplotlib import pyplot
 
 def obtain_cell_track_data_set(image_parent_dir: str):
     X_data_list = []
