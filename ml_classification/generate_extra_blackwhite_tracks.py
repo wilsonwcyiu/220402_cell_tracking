@@ -43,7 +43,9 @@ ROOT = '/content/drive/'     # default for the drive
 def main():
     folder_path: str = 'D:/viterbi linkage/dataset/'
 
-    save_dir = folder_path + 'track_classification_images_extended/'
+    rescale = 0.5
+
+    save_dir = folder_path + 'track_classification_images_extended_rescale' + str(rescale) + '/'
     classification_csv_folder_path = folder_path + "track_classification/"
     # local_category_csv_folder_path = folder_path + "track_classification/"
 
@@ -54,10 +56,20 @@ def main():
     # fixed_track_length_to_generate = 16
     point_radius_pixel = 1
 
+
+
     rotation_list = [0, 90, 180, 270]
 
     x_shift_list = [-50, 0, 50]
     y_shift_list = [0, 50]
+
+    x_shift_list = (np.asarray(x_shift_list) * rescale).astype('int')
+    y_shift_list = (np.asarray(y_shift_list) * rescale).astype('int')
+
+
+    img_length = int(512 * rescale)
+    img_dimension_tuple: tuple = (img_length, img_length)
+
     # x_shift_list = [0]
     # y_shift_list = [0]
 
@@ -89,7 +101,9 @@ def main():
                 track_num = int(row[0])
                 frame_num = int(row[1])
                 x, y = row[2], row[3]
-                track_frame_num_coord_dict_dict[track_num][frame_num] = CoordTuple(x, y)
+                new_x = int(np.round(x * rescale, 0))
+                new_y = int(np.round(y * rescale, 0))
+                track_frame_num_coord_dict_dict[track_num][frame_num] = CoordTuple(new_x, new_y)
 
 
 
@@ -116,7 +130,7 @@ def main():
                         abs_file_path = result_folder + file_name + f"_x{xy_shift_tuple[0]}_y{xy_shift_tuple[1]}_r{rotation}.png"
 
                         # print(abs_file_path)
-                        generate_track_image(coord_tuple_list, point_radius_pixel, abs_file_path, line_width = 1, rotate=rotation)
+                        generate_track_image(coord_tuple_list, point_radius_pixel, abs_file_path, img_dimension_tuple, line_width = 1, rotate=rotation)
 
 
 
@@ -142,12 +156,12 @@ def shift_coord(frame_num_coord_dict, xy_shift_tuple):
 
 CoordTuple = namedtuple("CoordTuple", "x y")
 
-def generate_track_image(coord_tuple_list: list, point_radius_pixel: float, abs_file_path: str, line_width = 1, rotate=None):
-    img_dimension: tuple = (512, 512)
+def generate_track_image(coord_tuple_list: list, point_radius_pixel: float, abs_file_path: str, img_dimension_tuple: tuple, line_width = 1, rotate=None):
+
     background = 1
     line_color = 0
 
-    im = Image.new('1', img_dimension, background)
+    im = Image.new('1', img_dimension_tuple, background)
     draw = ImageDraw.Draw(im)
 
     total_point: int = len(coord_tuple_list)
