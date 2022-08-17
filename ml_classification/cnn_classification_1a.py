@@ -89,7 +89,7 @@ def main():
 
 
     # history = model.fit(train_images, train_labels, epochs=10, batch_size=64, validation_data=(test_images, test_labels))
-    history = model.fit(train_images, train_labels, epochs=1, batch_size=64, validation_data=(test_images, test_labels))
+    history = model.fit(train_images, train_labels, epochs=10, batch_size=64, validation_data=(test_images, test_labels))
 
 
     y_train_predict_arr_arr = model.predict(test_images)
