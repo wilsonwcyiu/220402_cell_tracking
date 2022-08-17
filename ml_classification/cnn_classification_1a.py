@@ -45,14 +45,12 @@ def main():
 
     X_data, Y_label = obtain_cell_track_data_set(img_parent_dir)
     total_img = X_data.shape[0]
-    print("sfgf", X_data.shape[0])
+
     X_data = X_data.reshape((total_img, image_length, image_length, 1))
     X_data = X_data.astype('bool')
     Y_label = Y_label.reshape((Y_label.shape[0]))
 
-    # print(Y_label.shape)
-    # print(Y_label[0])
-    # exit()
+
 
     np.random.seed(16)
     shuffle_order = np.random.permutation(len(X_data))
@@ -60,9 +58,6 @@ def main():
     Y_label = Y_label[shuffle_order]
 
 
-    # print(X_data[0][444])
-    # print(X_data.shape)
-    # exit()
 
     train_end = int(total_img * train_set_ratio)
 
@@ -71,21 +66,6 @@ def main():
     test_images = X_data[train_end: total_img]
     test_labels = Y_label[train_end: total_img]
 
-    # print(type(X_data))
-    # exit()
-
-    # print("dfbsdfn", Y_label)
-    # exit()
-
-
-    # print(train_images.shape, train_labels.shape)
-    #
-    # print(type(train_images[0]))
-    # print(type(train_labels[0]))
-    #
-    # print(type(train_images[0][0]))
-    # print(type(train_labels[0][0]))
-    # exit()
 
     model = models.Sequential()
     model.add(layers.Conv2D(64, (5, 5), activation='relu', input_shape=(image_length, image_length, 1)))
@@ -101,78 +81,48 @@ def main():
     model.add(layers.Dense(16, activation='relu'))
     model.add(layers.Dense(4, activation='softmax'))
 
-    # model.summary()
-    # exit()
-
-    # model = models.Sequential()
-    # model.add(layers.Conv2D(32, (3, 3), activation='relu', input_shape=(32, 32, 3)))
-    # model.add(layers.MaxPooling2D((2, 2)))
-    # model.add(layers.Conv2D(64, (3, 3), activation='relu'))
-    # model.add(layers.MaxPooling2D((2, 2)))
-    # model.add(layers.Conv2D(64, (3, 3), activation='relu'))
-    #
-    # model.add(layers.Flatten())
-    # model.add(layers.Dense(64, activation='relu'))
-    # model.add(layers.Dense(10))
 
     model.compile(optimizer='adam',
                   # loss='CategoricalCrossentropy',
                   loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False),
                   metrics=['accuracy'])
-    # model.compile(optimizer='adam',
-    #               # loss='CategoricalCrossentropy',
-    #               loss='categorical_crossentropy',
-    #               metrics=['accuracy'])
-
-    # image too large, use fit or rescale image
-
-    history = model.fit(train_images, train_labels, epochs=5, batch_size=64, validation_data=(test_images, test_labels))
-
-    # print(history.history['accuracy'])
-    # exit()
 
 
+    # history = model.fit(train_images, train_labels, epochs=10, batch_size=64, validation_data=(test_images, test_labels))
+    history = model.fit(train_images, train_labels, epochs=1, batch_size=64, validation_data=(test_images, test_labels))
 
-    # plt.plot(history.history['accuracy'], label='accuracy')
-    # plt.plot(history.history['val_accuracy'], label = 'val_accuracy')
-    # plt.xlabel('Epoch')
-    # plt.ylabel('Accuracy')
-    # plt.ylim([0.5, 1])
-    # plt.legend(loc='lower right')
-    # plt.show()
 
-    # test_loss, test_acc = model.evaluate(test_images,  test_labels, verbose=2)
+    y_train_predict_arr_arr = model.predict(test_images)
 
-    y_predict_arr_arr = model.predict(test_images)
+    y_train_predict_list = []
+    for y_train_predict_arr in y_train_predict_arr_arr:
+        max_value = max(y_train_predict_arr)
+        best_idx = y_train_predict_arr.tolist().index(max_value)
+        y_train_predict_list.append(best_idx)
 
-    y_predict_one_hot_list_list = []
-    y_predict_list = []
-    predict_size = len(y_predict_arr_arr[0])
-    for y_predict_arr in y_predict_arr_arr:
-        max_value = max(y_predict_arr)
-        best_idx = y_predict_arr.tolist().index(max_value)
-        y_predict_list.append(best_idx)
-        # print(best_idx)
-
-        y_predict_one_hot_list = [0] * predict_size
-        y_predict_one_hot_list[best_idx] = 1
-        y_predict_one_hot_list_list.append(y_predict_one_hot_list)
-
-    # y_predict_one_hot_list_list = np.array(y_predict_one_hot_list_list)
+    train_accuracy = accuracy_score(test_labels, y_train_predict_list)
+    train_accuracy = np.round(train_accuracy, 4)
+    print("train_accuracy: ", train_accuracy)
 
 
 
+    y_test_predict_arr_arr = model.predict(test_images)
+
+    y_test_predict_list = []
+    for y_test_predict_arr in y_test_predict_arr_arr:
+        max_value = max(y_test_predict_arr)
+        best_idx = y_test_predict_arr.tolist().index(max_value)
+        y_test_predict_list.append(best_idx)
+
+    # calculate accuracy
+    test_accuracy = accuracy_score(test_labels, y_test_predict_list)
+    test_accuracy = np.round(test_accuracy, 4)
+    print("test_accuracy: ", test_accuracy)
 
 
-
-    # print(test_labels.shape)
-    # print(y_predict_arr_arr.shape)
-
-    # for i in range(0, 34):
-    #     print(y_predict_one_hot_list_list[i], y_predict_list[i], test_labels[i], y_predict_arr_arr[i])
 
     from sklearn.metrics import confusion_matrix
-    cf_matrix = confusion_matrix(test_labels, y_predict_list)
+    cf_matrix = confusion_matrix(test_labels, y_test_predict_list)
 
     print(cf_matrix)
     #https://scikit-learn.org/stable/modules/generated/sklearn.metrics.confusion_matrix.html
@@ -188,8 +138,8 @@ def main():
     ax.set_ylabel('Actual');
 
     ## Ticket labels - List must be in alphabetical order
-    ax.xaxis.set_ticklabels(['Long Plus','Long Minus', 'Local Plus', 'Local Minus'])
-    ax.yaxis.set_ticklabels(['Long Plus','Long Minus', 'Local Plus', 'Local Minus'])
+    ax.xaxis.set_ticklabels(['Distant Plus','Distant Minus', 'Local Plus', 'Local Minus'])
+    ax.yaxis.set_ticklabels(['Distant Plus','Distant Minus', 'Local Plus', 'Local Minus'])
 
     ## Display the visualization of the Confusion Matrix.
     disp = ConfusionMatrixDisplay(confusion_matrix=cf_matrix, display_labels=['Long\nPlus','Long\nMinus', 'Local\nPlus', 'Local\nMinus'])
