@@ -20,12 +20,12 @@ import math
 import os
 import tensorflow as tf
 
-# train_accuracy:  0.5658
-# test_accuracy:  0.402
-# [[662   9 148  24]
-#  [478   6 121  14]
-# [300   4 331  36]
-# [233   3 147  21]]
+# train_accuracy:  0.7009
+# test_accuracy:  0.3764
+# [[304 170  90  19]
+#  [214 133  97  14]
+# [138  77 207  58]
+# [105  53  95  38]]
 
 def main():
     # config = tf.ConfigProto()   #https://stackoverflow.com/questions/46654424/how-to-calculate-optimal-batch-size
@@ -45,7 +45,7 @@ def main():
 
 
     # (train_images, train_labels), (test_images, test_labels) = obtain_demo_data_set()
-    train_set_ratio = 0.3
+    train_set_ratio = 0.5
     image_length = 256
 
 
