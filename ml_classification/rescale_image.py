@@ -12,7 +12,7 @@ def main():
     dataset_dir = "D://viterbi linkage//dataset//"
 
     img_parent_dir: str = dataset_dir + "track_classification_images_extended//"
-    output_dir = dataset_dir + "track_classification_images_rescaled//"
+    output_dir = dataset_dir + "track_classification_images_rescaled_256//"
 
     downscale_image(img_parent_dir, output_dir)
     # img = cv2.imread('data.png', 1)
@@ -29,7 +29,7 @@ def main():
 def downscale_image(image_parent_dir: str, output_parent_dir: str):
     X_data_list = []
     Y_label_list = []
-    size = 128,128
+    size = 256, 256
 
     sub_dir_list = os.listdir(image_parent_dir)
 
