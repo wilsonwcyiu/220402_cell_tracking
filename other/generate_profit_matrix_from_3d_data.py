@@ -55,19 +55,6 @@ def main():
     average_movement = 0.3
     weight_tuple_list: list = [  WeightTuple(degree, distance, average_movement),
                                  # WeightTuple(0.07, 0.06, 0.07),
-                                 # WeightTuple(0.1, 0.1, 0.1),
-                                 # WeightTuple(0.1, 0.1, 0.2),
-                                 # WeightTuple(0.2, 0.1, 0.2),
-                                 # WeightTuple(0.25, 0.1, 0.25),
-                                 # WeightTuple(0.3, 0.1, 0.3),
-                                 # WeightTuple(0.35, 0.1, 0.35),
-                                 # WeightTuple(0.35, 0.1, 0.35),
-                                 # WeightTuple(0.6, 0.1, 0.1),
-                                 # WeightTuple(0.7, 0.1, 0),
-                                 # WeightTuple(0.1, 0.1, 0.6),
-                                 # WeightTuple(0.3, 0.1, 0.4),
-                                 # WeightTuple(0.2, 0.1, 0.5),
-                                 # WeightTuple(0.2, 0.1, 0.6)
                                ]
     max_moving_distance_list: list = [40]
     coord_length_for_vector_list: list = [6]
@@ -116,20 +103,18 @@ def main():
         start_time = time.perf_counter()
 
         input_series_name_list = [input_series.replace(".json", "") for input_series in listdir(coord_dir)]
-        # input_series_name_list = ['6_33layers_inter_mask_data__20200802--2_inter_33layers_mask_3a']
 
-
-        filtered_series_list = []
-        # include_series_list = ['_8layers_', '_9layers_']
-        # include_series_list = ['_15layers_', '_17layers_']
-        # include_series_list = ['_29layers_', '_33layers_']
-        include_series_list = ['_8layers_']
-        for input_series in input_series_name_list:
-            for include_series in include_series_list:
-                if include_series in input_series:
-                    filtered_series_list.append(input_series)
-
-        input_series_name_list = filtered_series_list
+        # filtered_series_list = []
+        # # include_series_list = ['_8layers_', '_9layers_']
+        # # include_series_list = ['_15layers_', '_17layers_']
+        # # include_series_list = ['_29layers_', '_33layers_']
+        # include_series_list = ['_8layers_']
+        # for input_series in input_series_name_list:
+        #     for include_series in include_series_list:
+        #         if include_series in input_series:
+        #             filtered_series_list.append(input_series)
+        #
+        # input_series_name_list = filtered_series_list
 
 
 
@@ -142,6 +127,7 @@ def main():
 
                 frame_num_node_id_coord_dict_dict = read_series_data(coord_dir, series_name)
 
+                # initial frame_num_profit_matrix
 
                 return_series, final_result_list, score_log_mtx = cell_tracking_core_flow(series_name,
                                                                                           frame_num_node_id_coord_dict_dict,
