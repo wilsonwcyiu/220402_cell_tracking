@@ -2460,6 +2460,8 @@ def __________common_function_start_label():
 from math import atan2, degrees, radians, cos
 
 
+CoordTuple = namedtuple("CoordTuple", "x y")
+
 def derive_degree_diff_from_two_vectors(vector_coord_tuple_1: CoordTuple, vector_coord_tuple_2: CoordTuple): #These can also be four parameters instead of two arrays
     dot = vector_coord_tuple_1.x * vector_coord_tuple_2.x + vector_coord_tuple_1.y * vector_coord_tuple_2.y      # dot product
     det = vector_coord_tuple_1.y * vector_coord_tuple_2.x - vector_coord_tuple_1.x * vector_coord_tuple_2.y      # determinant
