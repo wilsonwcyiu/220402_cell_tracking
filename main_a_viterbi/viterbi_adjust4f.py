@@ -53,24 +53,26 @@ def main():
 
     ## hyper parameter settings
     routing_strategy_enum_list: list = [ROUTING_STRATEGY_ENUM.ALL_LAYER]
-    merge_threshold_list: list = [0.855, 0.865, 0.87, 0.875, 0.88, 0.885, 0.89]
+    # merge_threshold_list: list = [0.855, 0.865, 0.87, 0.875, 0.88, 0.885, 0.89]
+    merge_threshold_list: list = [0]
     # merge_threshold_list: list = [0.8, 0.81, 0.82, 0.83, 0.84, 0.85, 0.86, 0.87, 0.88, 0.89, 0.9]
     minimum_track_length_list: list = [5]
-    cut_threshold_list: list = [0.44, 0.445, 0.45, 0.455, 0.46, 0.47, 0.48]
+    cut_threshold_list: list = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55]
     is_do_post_adjustment_list: list = [False]
     # cut_strategy_enum_list: list = [CUT_STRATEGY_ENUM.AFTER_ROUTING, CUT_STRATEGY_ENUM.DURING_ROUTING]
     cut_strategy_enum_list: list = [CUT_STRATEGY_ENUM.DURING_ROUTING]
     both_cell_below_threshold_strategy_enum_list: list = [BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM.SHARE]
-    discount_rate_per_layer: list = [0.86, 0.87, 0.88, 0.89, 0.895, 0.9, 0.905, 0.91] # {"merge_threshold" or number}
+    # discount_rate_per_layer: list = [0.86, 0.87, 0.88, 0.89, 0.895, 0.9, 0.905, 0.91] # {"merge_threshold" or number}
+    discount_rate_per_layer: list = [0] # {"merge_threshold" or number}
 
-    routing_strategy_enum_list: list = [ROUTING_STRATEGY_ENUM.ALL_LAYER]
-    merge_threshold_list: list = [0]
-    minimum_track_length_list: list = [5]
-    cut_threshold_list: list = [0.01, 0.445]
-    is_do_post_adjustment_list: list = [True, False]
-    cut_strategy_enum_list: list = [CUT_STRATEGY_ENUM.DURING_ROUTING]
-    both_cell_below_threshold_strategy_enum_list: list = [BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM.SHARE]
-    discount_rate_per_layer: list = [0.5] #"merge_threshold",
+    # routing_strategy_enum_list: list = [ROUTING_STRATEGY_ENUM.ALL_LAYER]
+    # merge_threshold_list: list = [0]
+    # minimum_track_length_list: list = [5]
+    # cut_threshold_list: list = [0.01, 0.445]
+    # is_do_post_adjustment_list: list = [True, False]
+    # cut_strategy_enum_list: list = [CUT_STRATEGY_ENUM.DURING_ROUTING]
+    # both_cell_below_threshold_strategy_enum_list: list = [BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM.SHARE]
+    # discount_rate_per_layer: list = [0.5] #"merge_threshold",
 
     # routing_strategy_enum_list: list = [ROUTING_STRATEGY_ENUM.ALL_LAYER]
     # merge_threshold_list: list = [0.875]
