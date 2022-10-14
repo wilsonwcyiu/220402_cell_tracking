@@ -10,13 +10,56 @@ from PIL import Image, ImageDraw
 import numpy as np
 import sys
 
+from sklearn.metrics import ConfusionMatrixDisplay
+
 from cell_tracking_3d.feature_based_3d import CoordTuple
 from main_a_viterbi.viterbi_adjust4d import CellId
 from ml_classification.generate_tracks import generate_all_combination_fixed_track_length
 
 
 def main():
-    method_51()
+    print(int(np.round(4.2, 0)))
+    print(int(np.round(4.9, 0)))
+
+    # method_52()
+
+
+def method_52():
+    actual_list =  [1, 2, 3, 4] * 100
+    predict_list = [2, 2, 3, 4] * 100
+
+    from sklearn.metrics import confusion_matrix
+    cf_matrix = confusion_matrix(actual_list, predict_list)
+
+    print(cf_matrix)
+
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+
+    ax = sns.heatmap(cf_matrix, annot=True, cmap='Blues')
+
+    ax.set_title('Zebra fish cell image classification\n');
+    ax.set_xlabel('\nPredicted')
+    ax.set_ylabel('Actual');
+
+    ## Ticket labels - List must be in alphabetical order
+    disp = ConfusionMatrixDisplay(confusion_matrix=cf_matrix, display_labels=['Long\nPlus','Long\nMinus', 'Local\nPlus', 'Local\nMinus'])
+    disp.plot(cmap="Blues", values_format='d')
+
+    ax.xaxis.set_ticklabels(['Long Plus','Long Minus', 'Local Plus', 'Local Minus'])
+    ax.yaxis.set_ticklabels(['Long Plus','Long Minus', 'Local Plus', 'Local Minus'])
+
+
+
+    ## Display the visualization of the Confusion Matrix.
+    plt.show()
+
+    #
+    # disp = ConfusionMatrixDisplay(confusion_matrix=cm,
+    #                               ...                               display_labels=clf.classes_)
+    # >>> disp.plot()
+
+
 
 def method_51():
     abs_file_path = "d:/tmp.png"
@@ -103,7 +146,6 @@ def method_48():
      angle_between((1, 0, 0), (-1, 0, 0))
      3.141592653589793
     """
-
 
     vector_coord_tuple_1 = CoordTuple(1, 0, 0)
     vector_coord_tuple_2 = CoordTuple(0, 1, 0)
