@@ -37,9 +37,10 @@ def main():
                               'DeLTA.pkl',
                               'Hungarian.pkl',
                               'KDE.pkl',
-                              'Viterbi(M)__viterbi_adjust4f_a_hp182__R(ALL)_M(0.89)_MIN(5)_CT(0.48)_ADJ(NO)_CS(D)_BB(S).pkl',
-                              'Viterbi(O)__viterbi_adjust4e_hp056__R(ONE)_M(0.95)_MIN(5)_CT(0.45)_ADJ(NO)_CS(D)_BB(S).pkl',
-                              'Feature_based__cell_tracking_algorithm_bon_1c_hp016__R(ALL)_M(0.4)_MIN(5)_CT(0.5)_ADJ(NO)_CS(A)_BB(S).pkl',
+                              'Viterbi__viterbi_adjust4f_hp010__R(ALL)_M(0)_MIN(5)_CT(0.5)_ADJ(NO)_CS(D)_BB(S).pkl',
+                              'Viterbi-MLT__viterbi_adjust4f_a_hp182__R(ALL)_M(0.89)_MIN(5)_CT(0.48)_ADJ(NO)_CS(D)_BB(S).pkl',
+                              'Viterbi-SLT__viterbi_adjust4e_hp056__R(ONE)_M(0.95)_MIN(5)_CT(0.45)_ADJ(NO)_CS(D)_BB(S).pkl',
+                              'Feature_weighted__cell_tracking_algorithm_bon_1c_hp016__R(ALL)_M(0.4)_MIN(5)_CT(0.5)_ADJ(NO)_CS(A)_BB(S).pkl',
                               # 'viterbi_results_dict_adj2.pkl'
                               ]
     method_name_pkl_dict = {}
@@ -220,7 +221,7 @@ def main():
 
     fig = plt.figure(figsize=(width, height))
     for idx in range(total_chart_num):
-        ax = plt.subplot2grid(shape=(total_chart_num, 1), loc=(idx,0))
+        ax = plt.subplot2grid(shape=(total_chart_num, 1), loc=(idx, 0))
         axlist.append(ax)
 
     # ax1 = plt.subplot2grid(shape=(total_chart_num, 1), loc=(0,0))
@@ -230,7 +231,7 @@ def main():
     # ax5 = plt.subplot2grid((total_chart_num, 1), (4,0))
     # axlist = [ax1, ax2, ax3, ax4, ax5]
 
-    value = ['Falsely Identified Tracker', 'Falsely Identified Object', 'Track Purity', 'Object Purity', 'average track length']
+    value = ['Falsely Identified Tracker (FIT)', 'Falsely Identified Object (FIO)', 'Track Purity (TP)', 'Object Purity (OP)', 'average track length']
 
     methods = []
     for method_name in method_name_pkl_dict.keys():

@@ -41,6 +41,8 @@ def main():
     save_dir = folder_path + '/save_directory_enhancement/'
     video_folder_name = folder_path + '/save_directory_enhancement/trajectory_result_video/'
     pkl_file_name: str = "viterbi_adjust4f_hp001.pkl"
+    pkl_file_name: str = "ground_truth_results_dict.pkl"
+
 
 
 
@@ -50,7 +52,7 @@ def main():
 
     to_generate_series_list: list = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
                                      'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
-    to_generate_series_list = ["S02"]
+    to_generate_series_list = ["S11"]
     # to_generate_series_list1: list = ['S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19']
     # fail_to_generate_series_list = ['S04', 'S07', 'S08', 'S09', 'S12', 'S20' ]
     # to_generate_series_list: list = ['S01', 'S02', 'S03', 'S05', 'S06', 'S07', 'S08', 'S10',
@@ -63,14 +65,14 @@ def main():
     series_viterbi_result_list_dict: dict = open_track_dictionary(save_dir + pkl_file_name)
 
 
-    for series, track_list_list in series_viterbi_result_list_dict.items():
-        length_info_list = []
-        for track_list in track_list_list:
-            length_info_list.append(len(track_list))
-
-        length_info_list.sort()
-        print(series, length_info_list)
-    exit()
+    # for series, track_list_list in series_viterbi_result_list_dict.items():
+    #     length_info_list = []
+    #     for track_list in track_list_list:
+    #         length_info_list.append(len(track_list))
+    #
+    #     length_info_list.sort()
+    #     print(series, length_info_list)
+    # exit()
 
 
     output_dir_name: str = pkl_file_name.replace(".pkl", "")
@@ -105,7 +107,7 @@ def get_point_color(color):
 
 #print (& save) the cell tracks in each frame for a max number of TRACK_LENGTH frames
 def draw_and_save_tracks(to_generate_series_list, series_viterbi_result_list_dict, segmentation_folder, video_folder, is_save_result: bool, track_length: int, dir_name: str):
-    generation_mode: str = "all"  #{single, all}
+    generation_mode: str = "single"  #{single, all}
     is_use_thread: bool = False
     if is_use_thread:
 
@@ -157,7 +159,10 @@ def draw_and_save_tracks(to_generate_series_list, series_viterbi_result_list_dic
                 result_list_list = sorted(result_list_list)
                 for result_list in result_list_list:
                     cell_idx = result_list[0][0]
-                    print("cell_idx", cell_idx, end='')
+
+
+
+                    print("cell_idx", cell_idx, ". ", end='')
                     dir_suffix = "_cell_idx_" + str(cell_idx)
                     draw_and_save_tracks_single(series, [result_list], segmentation_folder, video_folder, is_save_result, track_length, dir_name, dir_suffix=dir_suffix)
         else:
@@ -189,6 +194,7 @@ def draw_and_save_tracks_single(series, result_list, segmentation_folder, video_
 
     #create a list to select random colours for tracks from
     colorlist = []
+    colorlist.append((0, 0, 255))
     colorlist.append((255, 255, 255))
     colorlist.append((255, 0, 0))
     colorlist.append((255, 165, 0))
@@ -207,9 +213,9 @@ def draw_and_save_tracks_single(series, result_list, segmentation_folder, video_
     #loop through all tracked frames to create the tracked images
     for framenb in range(len(file_list)):
         frame_idx = framenb
-        if frame_idx < 110:
-            print(f"skip frame {frame_idx};", end='')
-            continue
+        # if frame_idx < 110:
+        #     print(f"skip frame {frame_idx};", end='')
+        #     continue
 
 
         print(f"{framenb},", end='')
