@@ -42,7 +42,7 @@ from math import atan2, degrees, radians, cos
 global_max_distance = 0
 
 def main():
-    folder_path: str = 'D:/viterbi linkage/dataset/'
+    folder_path: str = 'D:/google_drive/viterbi linkage/dataset/'
 
     save_dir = folder_path + 'save_directory_enhancement/'
     coord_dir = folder_path + "coord_data_3d/"
