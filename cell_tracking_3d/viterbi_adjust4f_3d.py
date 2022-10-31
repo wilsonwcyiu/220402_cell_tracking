@@ -40,7 +40,8 @@ from multiprocessing.pool import ThreadPool
 
 def main():
 
-    folder_path: str = 'D:/viterbi linkage/dataset/'
+
+    folder_path: str = 'D:/google_drive/viterbi linkage/dataset/'
 
     segmentation_folder = folder_path + 'segmentation_unet_seg//'
     output_folder = folder_path + 'output_unet_seg_finetune//'
