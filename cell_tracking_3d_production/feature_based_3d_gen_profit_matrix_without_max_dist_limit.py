@@ -114,7 +114,6 @@ def main():
 
                 frame_num_node_id_coord_dict_dict = read_series_data(coord_dir, series_name)
 
-
                 return_series, final_result_list, score_log_mtx = cell_tracking_core_flow(series_name,
                                                                                           frame_num_node_id_coord_dict_dict,
                                                                                           hyper_para
@@ -143,13 +142,10 @@ def main():
                                     "DR(" +  str(hyper_para.discount_rate_per_layer) + ")_"
 
         result_dir: str = save_dir + date_str + "_" + py_file_name + "/"
-
-        os.makedirs(result_dir)
-
         result_file_name: str = py_file_name + "_hp" + str(idx+1).zfill(3) + "__" + hyper_para_str
-
         abs_save_dir: str = result_dir + result_file_name
 
+        os.makedirs(result_dir)
         renamed_feature_based_result_dict = {}
         for series_name, result in feature_based_result_dict.items():
             start_idx = series_name.index("__") + 2
