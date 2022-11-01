@@ -143,21 +143,16 @@ def main():
 
         result_dir: str = save_dir + date_str + "_" + py_file_name + "/"
         result_file_name: str = py_file_name + "_hp" + str(idx+1).zfill(3) + "__" + hyper_para_str
-        abs_save_dir: str = result_dir + result_file_name
+        abs_file_path: str = result_dir + result_file_name
 
         os.makedirs(result_dir)
-        renamed_feature_based_result_dict = {}
-        for series_name, result in feature_based_result_dict.items():
-            start_idx = series_name.index("__") + 2
-            end_idx = start_idx + 11
-            renamed_series_name = series_name[start_idx: end_idx]
-            renamed_feature_based_result_dict[renamed_series_name] = result
 
-        save_track_dictionary(renamed_feature_based_result_dict, abs_save_dir + ".pkl")
+        generate_pkl_file(feature_based_result_dict, abs_file_path + ".pkl")
+
 
 
         execution_time = time.perf_counter() - start_time
-        with open(abs_save_dir + ".txt", 'w') as f:
+        with open(abs_file_path + ".txt", 'w') as f:
             f.write(f"Execution time: {np.round(execution_time, 4)} seconds\n")
             f.write("hyper_para--- ID: " + str(idx+1) + "; \n" + hyper_para.__str_newlines__())
             f.write("\n")
@@ -173,7 +168,7 @@ def main():
 
                 f.write("\n\n")
 
-        print("save_track_dictionary: ", abs_save_dir)
+        print("save_track_dictionary: ", abs_file_path)
 
         print(f"Execution time: {np.round(execution_time, 4)} seconds")
 
@@ -408,8 +403,8 @@ def execute_cell_tracking_task_bon(frame_num_node_id_coord_dict_dict: dict, hype
 
 
 
-            # is_best_prob_lower_than_threshold: bool = best_prob < hyper_para.cut_threshold
-            if best_prob == 0:
+            has_valid_connection: bool = (best_prob != 0)
+            if not has_valid_connection:
                 break
 
             if connect_to_frame_num in handling_cell_frame_num_track_idx_dict:   raise Exception("code validation check")
@@ -937,6 +932,16 @@ def _process_and_find_best_cell_track(cell_id_track_list_dict,
 
 def __________unit_function_start_label():
     raise Exception("for labeling only")
+
+def generate_pkl_file(feature_based_result_dict: dict, save_dir_abs_path: str):
+    renamed_feature_based_result_dict = {}
+    for series_name, result in feature_based_result_dict.items():
+        start_idx = series_name.index("__") + 2
+        end_idx = start_idx + 11
+        renamed_series_name = series_name[start_idx: end_idx]
+        renamed_feature_based_result_dict[renamed_series_name] = result
+
+    save_data_dict_to_file(renamed_feature_based_result_dict, save_dir_abs_path + ".pkl")
 
 
 def read_series_data(coord_dir, series_name):
@@ -2457,15 +2462,8 @@ def derive_last_layer_each_node_best_track(handling_cell_id,  # CellId
     return index_ab_vec, np.array(one_layer_value_ab_vec), np.array(multi_layer_value_ab_vec)
 
 
-def __________common_function_start_label():
+def __________general_function_start_label():
     raise Exception("for labeling only")
-
-def condition(x):
-    return x!=0
-
-def count_non_zero_data_in_list(data_list: list):
-    total_non_zero_data: int = sum(condition(x) for x in data_list)
-    return total_non_zero_data
 
 
 
@@ -2500,7 +2498,6 @@ def unit_vector(vector):
 
 
 
-
 def derive_degree_from_vector(vector_coord_tuple_1: CoordTuple): #These can also be four parameters instead of two arrays
     default_zero_degree_vector = CoordTuple(0, 1)
 
@@ -2527,12 +2524,12 @@ def dev_print(*arg):
 
 
 
-def save_track_dictionary(dictionary, save_file):
-    if not os.path.exists(save_file):
-        with open(save_file, 'w'):
+def save_data_dict_to_file(data_dict: dict, save_file_abs_path: str):
+    if not os.path.exists(save_file_abs_path):
+        with open(save_file_abs_path, 'w'):
             pass
-    pickle_out = open(save_file, "wb")
-    pickle.dump(dictionary, pickle_out)
+    pickle_out = open(save_file_abs_path, "wb")
+    pickle.dump(data_dict, pickle_out)
     pickle_out.close()
 
 
