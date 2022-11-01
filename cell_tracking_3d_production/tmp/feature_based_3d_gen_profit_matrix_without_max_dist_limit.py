@@ -27,7 +27,6 @@ from scipy.optimize import linear_sum_assignment
 import copy
 import time
 import cv2
-#from google.colab.patches import cv2_imshow
 import random
 from itertools import combinations
 import pickle
@@ -1334,9 +1333,9 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
         else:
             weighted_avg_mov_score = 0.5
 
-        if distance_score == 0:            final_score = 0
-        else:                              final_score = np.round(final_score, round_to)
-        # final_score = np.round(final_score, round_to)
+        # if distance_score == 0:            final_score = 0
+        # else:                              final_score = np.round(final_score, round_to)
+        final_score = np.round(final_score, round_to)
 
         # current_node_idx: int = handling_cell_frame_num_track_idx_dict[current_frame_num]
         # log_msg = f"{to_handle_cell_id.str_short()} {final_score}={weighted_probability_score}+{weighted_degree_score}+{weighted_distance_score}+{weighted_avg_mov_score}"
