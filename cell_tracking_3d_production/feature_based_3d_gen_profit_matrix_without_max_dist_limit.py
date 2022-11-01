@@ -64,7 +64,7 @@ def main():
     coord_length_for_vector_list: list = [6]
     average_movement_step_length_list: list = [6]
     minimum_track_length_list: list = [1]
-    discount_rate_per_layer_list: list = [0.9]      #options: {"merge_threshold", any_float},
+    discount_rate_per_layer_list: list = [0.9]      #options: {"merge_threshold", any float number},
 
 
     date_str: str = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -110,7 +110,7 @@ def main():
 
         try:
             for series_name in input_series_name_list:
-                print(f"working on series_name: {series_name}. ")
+                print(f"working on series_name: {series_name}")
 
                 frame_num_node_id_coord_dict_dict = read_series_data(coord_dir, series_name)
 
@@ -120,22 +120,6 @@ def main():
                                                                                           hyper_para
                                                                                           )
                 feature_based_result_dict[series_name] = final_result_list
-
-                is_generate_score_log = True
-                if is_generate_score_log:
-                    score_log_dir = save_dir + "score_log/"
-                    result_file_name: str = Path(__file__).name.replace(".py", "_")
-
-                    # # remove last \n
-                    # for frame_num, mtx_row_list in score_log_mtx.items():
-                    #     for row_idx in range(len(mtx_row_list)):
-                    #         for col_idx in range(len(mtx_row_list[row_idx])):
-                    #             if len(score_log_mtx[frame_num][row_idx][col_idx]) > 2:
-                    #                 score_log_mtx[frame_num][row_idx][col_idx] = score_log_mtx[frame_num][row_idx][col_idx][0:-2]
-
-                    save_score_log_to_excel(series_name, score_log_mtx, score_log_dir, result_file_name)
-
-
 
 
         except Exception as e:
@@ -148,37 +132,23 @@ def main():
 
 
 
-        is_print_ground_truth_only: bool = False
-        if is_print_ground_truth_only:
-            series_ground_truth_cell_dict = obtain_ground_truth_cell_dict()
 
-            tmp_dict = defaultdict(list)
-            for series_name, track_tuple_list_list in feature_based_result_dict.items():
-                ground_truth_cell_id_list = series_ground_truth_cell_dict[series_name]
-                for track_tuple_list in track_tuple_list_list:
-                    cell_tuple_id = track_tuple_list[0]
-                    if cell_tuple_id in ground_truth_cell_id_list:
-                        tmp_dict[series_name].append(track_tuple_list)
+        py_file_name: str = Path(__file__).name.replace(".py", "")
 
-            feature_based_result_dict = tmp_dict
-
-
-        is_convert_to_frame_num = True
-        result_file_name: str = Path(__file__).name.replace(".py", "")
-
-        hyper_para_indicator: str = str(hyper_para.weight_tuple) + \
+        hyper_para_str: str = str(hyper_para.weight_tuple) + \
                                     "MD(" + str(hyper_para.max_moving_distance) + ")_" + \
                                     "CL(" + str(hyper_para.coord_length_for_vector) + ")_" + \
                                     "AML(" + str(hyper_para.average_movement_step_length) + ")_" + \
                                     "MTL(" + str(hyper_para.minimum_track_length) + ")_" + \
                                     "DR(" +  str(hyper_para.discount_rate_per_layer) + ")_"
 
-        result_dir = save_dir + date_str + "_" + result_file_name + "/"
-        if not os.path.exists(result_dir):
-            os.makedirs(result_dir)
+        result_dir: str = save_dir + date_str + "_" + py_file_name + "/"
 
+        os.makedirs(result_dir)
 
-        abs_save_dir: str = result_dir + result_file_name + "_hp" + str(idx+1).zfill(3) + "__" + hyper_para_indicator
+        result_file_name: str = py_file_name + "_hp" + str(idx+1).zfill(3) + "__" + hyper_para_str
+
+        abs_save_dir: str = result_dir + result_file_name
 
         renamed_feature_based_result_dict = {}
         for series_name, result in feature_based_result_dict.items():
@@ -206,28 +176,6 @@ def main():
                     f.write("\n")
 
                 f.write("\n\n")
-
-
-
-        tmp_abs_save_dir: str = save_dir + result_file_name
-        with open(tmp_abs_save_dir + ".txt", 'w') as f:
-            f.write(f"Execution time: {np.round(execution_time, 4)} seconds\n")
-            f.write("hyper_para--- ID: " + str(idx+1) + "; \n" + hyper_para.__str_newlines__())
-            f.write("\n")
-            for series_name in input_series_name_list:
-                f.write("======================" + str(series_name) + "================================")
-                f.write("\n")
-
-                cell_track_list_list = sorted(feature_based_result_dict[series_name])
-                for cell_track_list in cell_track_list_list:
-                    if is_convert_to_frame_num:
-                        cell_track_list = convert_track_frame_idx_to_frame_num(cell_track_list)
-                    # for cell_track_list in feature_based_result_dict[series_name]:
-                    f.write(str(cell_track_list))
-                    f.write("\n")
-                f.write("\n\n")
-
-
 
         print("save_track_dictionary: ", abs_save_dir)
 
