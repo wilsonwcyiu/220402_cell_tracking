@@ -33,7 +33,7 @@ def main():
     folder_path: str = 'D:/google_drive/viterbi linkage/dataset/'
     default_save_dir = folder_path + 'save_directory_enhancement/'
     coord_dir = folder_path + "coord_data_3d/"
-
+    is_generate_score_log: bool = True
 
     ## user input
     # input_series_name_list = ['_8layers_', '_9layers_', '_29layers_', '_33layers_']
@@ -72,6 +72,9 @@ def main():
     individual_result_dir: str = default_save_dir + date_str + "_" + py_file_name + "/"
     os.makedirs(individual_result_dir)
 
+    if is_generate_score_log:
+        score_log_dir: str = individual_result_dir + "score_log/"
+        os.makedirs(score_log_dir)
 
     hyper_para_combination_list = list(itertools.product(
                                                          weight_tuple_list,
@@ -124,12 +127,9 @@ def main():
                                                                                           )
                 feature_based_result_dict[series_name] = final_result_list
 
-                is_generate_score_log = True
-                if is_generate_score_log:
-                    score_log_dir: str = individual_result_dir + "score_log/"
-                    result_file_name: str = Path(__file__).name.replace(".py", "_")
+                result_file_name: str = Path(__file__).name.replace(".py", "_")
 
-                    save_score_log_to_excel(series_name, score_log_mtx, score_log_dir, result_file_name)
+                save_score_log_to_excel(series_name, score_log_mtx, score_log_dir, result_file_name)
 
 
         except Exception as e:
