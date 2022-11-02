@@ -31,7 +31,7 @@ def main():
 
     ## settings
     folder_path: str = 'D:/google_drive/viterbi linkage/dataset/'
-    save_dir = folder_path + 'save_directory_enhancement/'
+    default_save_dir = folder_path + 'save_directory_enhancement/'
     coord_dir = folder_path + "coord_data_3d/"
 
 
@@ -68,6 +68,10 @@ def main():
 
 
     date_str: str = datetime.now().strftime("%Y%m%d-%H%M%S")
+    py_file_name: str = Path(__file__).name.replace(".py", "")
+    individual_result_dir: str = default_save_dir + date_str + "_" + py_file_name + "/"
+    os.makedirs(individual_result_dir)
+
 
     hyper_para_combination_list = list(itertools.product(
                                                          weight_tuple_list,
@@ -120,6 +124,13 @@ def main():
                                                                                           )
                 feature_based_result_dict[series_name] = final_result_list
 
+                is_generate_score_log = True
+                if is_generate_score_log:
+                    score_log_dir: str = individual_result_dir + "score_log/"
+                    result_file_name: str = Path(__file__).name.replace(".py", "_")
+
+                    save_score_log_to_excel(series_name, score_log_mtx, score_log_dir, result_file_name)
+
 
         except Exception as e:
             time.sleep(1)
@@ -131,9 +142,6 @@ def main():
 
 
 
-
-        py_file_name: str = Path(__file__).name.replace(".py", "")
-
         hyper_para_str: str = str(hyper_para.weight_tuple) + \
                                     "MD(" + str(hyper_para.max_moving_distance) + ")_" + \
                                     "CL(" + str(hyper_para.coord_length_for_vector) + ")_" + \
@@ -141,11 +149,11 @@ def main():
                                     "MTL(" + str(hyper_para.minimum_track_length) + ")_" + \
                                     "DR(" +  str(hyper_para.discount_rate_per_layer) + ")_"
 
-        result_dir: str = save_dir + date_str + "_" + py_file_name + "/"
-        result_file_name: str = py_file_name + "_hp" + str(idx+1).zfill(3) + "__" + hyper_para_str
-        abs_file_path: str = result_dir + result_file_name
 
-        os.makedirs(result_dir)
+        result_file_name: str = py_file_name + "_hp" + str(idx+1).zfill(3) + "__" + hyper_para_str
+        abs_file_path: str = individual_result_dir + result_file_name
+
+
 
         generate_pkl_file(feature_based_result_dict, abs_file_path + ".pkl")
 
@@ -1097,16 +1105,15 @@ def init_score_log(frame_num_node_id_coord_dict_dict):
 
 def save_score_log_to_excel(series: str, frame_num_score_matrix_dict, excel_output_dir_path: str, file_name_prefix: str = ""):
     import pandas as pd
-    # num_of_segementation_img: int = len(frame_num_prof_matrix_dict)
 
     file_name: str = file_name_prefix + f"series_{series}.xlsx"
     filepath = excel_output_dir_path + file_name;
     writer = pd.ExcelWriter(filepath, engine='xlsxwriter') #pip install xlsxwriter
 
     for frame_num, prof_matrix in frame_num_score_matrix_dict.items():
-        tmp_array: np.arrays = frame_num_score_matrix_dict[frame_num]
+        frame_data_array: np.arrays = frame_num_score_matrix_dict[frame_num]
 
-        df = pd.DataFrame (tmp_array)
+        df = pd.DataFrame (frame_data_array)
 
         # def highlight_cells(val):
         #     color = 'yellow' if val >= 1  else 'white'
