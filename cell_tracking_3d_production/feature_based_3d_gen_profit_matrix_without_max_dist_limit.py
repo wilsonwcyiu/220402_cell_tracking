@@ -106,30 +106,29 @@ def main():
 
 
     total_para_size: int = len(hyper_para_list)
-    for idx, hyper_para in enumerate(hyper_para_list):
-        para_set_num: int = idx+1
+    for hyperpara_idx, hyper_para in enumerate(hyper_para_list):
+        para_set_num: int = hyperpara_idx + 1
 
         print(f"start. Parameter set: {para_set_num}/ {total_para_size}; {hyper_para.__str__()}")
 
         start_time = time.perf_counter()
 
-        feature_based_result_dict = {}
-
+        feature_based_result_dict: dict = {}
+        series_frame_num_score_log_mtx_dict_dict: dict = {}
         try:
             for series_name in input_series_name_list:
                 print(f"working on series_name: {series_name}")
 
                 frame_num_node_id_coord_dict_dict = read_series_data(coord_dir, series_name)
 
-                return_series, final_result_list, score_log_mtx = cell_tracking_core_flow(series_name,
+                return_series, final_result_list, frame_num_score_log_mtx_dict = cell_tracking_core_flow(series_name,
                                                                                           frame_num_node_id_coord_dict_dict,
                                                                                           hyper_para
                                                                                           )
                 feature_based_result_dict[series_name] = final_result_list
+                series_frame_num_score_log_mtx_dict_dict[series_name] = frame_num_score_log_mtx_dict
 
-                result_file_name: str = Path(__file__).name.replace(".py", "_")
 
-                save_score_log_to_excel(series_name, score_log_mtx, score_log_dir, result_file_name)
 
 
         except Exception as e:
@@ -150,31 +149,18 @@ def main():
                                     "DR(" +  str(hyper_para.discount_rate_per_layer) + ")_"
 
 
-        result_file_name: str = py_file_name + "_hp" + str(idx+1).zfill(3) + "__" + hyper_para_str
+        result_file_name: str = py_file_name + "_hp" + str(hyperpara_idx+1).zfill(3) + "__" + hyper_para_str
         abs_file_path: str = individual_result_dir + result_file_name
 
+        py_file_name: str = Path(__file__).name.replace(".py", "_")
+        save_score_log_to_excel(series_frame_num_score_log_mtx_dict_dict, score_log_dir, py_file_name)
 
-
-        generate_pkl_file(feature_based_result_dict, abs_file_path + ".pkl")
-
-
+        generate_pkl_file(feature_based_result_dict, abs_file_path)
 
         execution_time = time.perf_counter() - start_time
-        with open(abs_file_path + ".txt", 'w') as f:
-            f.write(f"Execution time: {np.round(execution_time, 4)} seconds\n")
-            f.write("hyper_para--- ID: " + str(idx+1) + "; \n" + hyper_para.__str_newlines__())
-            f.write("\n")
-            for series_name in input_series_name_list:
-                f.write("======================" + str(series_name) + "================================")
-                f.write("\n")
+        generate_txt_file(feature_based_result_dict, input_series_name_list, hyperpara_idx, hyper_para, execution_time, abs_file_path)
 
-                cell_track_list_list = sorted(feature_based_result_dict[series_name])
-                for cell_track_list in cell_track_list_list:
-                    # for cell_track_list in feature_based_result_dict[series_name]:
-                    f.write(str(cell_track_list))
-                    f.write("\n")
 
-                f.write("\n\n")
 
         print("save_track_dictionary: ", abs_file_path)
 
@@ -941,6 +927,25 @@ def _process_and_find_best_cell_track(cell_id_track_list_dict,
 def __________unit_function_start_label():
     raise Exception("for labeling only")
 
+def generate_txt_file(feature_based_result_dict: dict, input_series_name_list: list, hyperpara_idx: int, hyper_para: HyperPara, execution_time, abs_file_path: str):
+
+    with open(abs_file_path + ".txt", 'w') as f:
+        f.write(f"Execution time: {np.round(execution_time, 4)} seconds\n")
+        f.write("hyper_para--- ID: " + str(hyperpara_idx + 1) + "; \n" + hyper_para.__str_newlines__())
+        f.write("\n")
+        for series_name in input_series_name_list:
+            f.write("======================" + str(series_name) + "================================")
+            f.write("\n")
+
+            cell_track_list_list = sorted(feature_based_result_dict[series_name])
+            for cell_track_list in cell_track_list_list:
+                # for cell_track_list in feature_based_result_dict[series_name]:
+                f.write(str(cell_track_list))
+                f.write("\n")
+
+            f.write("\n\n")
+
+
 def generate_pkl_file(feature_based_result_dict: dict, save_dir_abs_path: str):
     renamed_feature_based_result_dict = {}
     for series_name, result in feature_based_result_dict.items():
@@ -1103,40 +1108,41 @@ def init_score_log(frame_num_node_id_coord_dict_dict):
 
 
 
-def save_score_log_to_excel(series: str, frame_num_score_matrix_dict, excel_output_dir_path: str, file_name_prefix: str = ""):
+def save_score_log_to_excel(series_frame_num_score_log_mtx_dict_dict: dict, excel_output_dir_path: str, file_name_prefix: str = ""):
     import pandas as pd
 
-    file_name: str = file_name_prefix + f"series_{series}.xlsx"
-    filepath = excel_output_dir_path + file_name;
-    writer = pd.ExcelWriter(filepath, engine='xlsxwriter') #pip install xlsxwriter
+    for series, frame_num_score_log_mtx_dict in series_frame_num_score_log_mtx_dict_dict.items():
+        file_name: str = file_name_prefix + f"series_{series}.xlsx"
+        filepath = excel_output_dir_path + file_name;
+        writer = pd.ExcelWriter(filepath, engine='xlsxwriter') #pip install xlsxwriter
 
-    for frame_num, prof_matrix in frame_num_score_matrix_dict.items():
-        frame_data_array: np.arrays = frame_num_score_matrix_dict[frame_num]
+        for frame_num, prof_matrix in frame_num_score_log_mtx_dict.items():
+            frame_data_array: np.arrays = frame_num_score_log_mtx_dict[frame_num]
 
-        df = pd.DataFrame (frame_data_array)
+            df = pd.DataFrame (frame_data_array)
 
-        # def highlight_cells(val):
-        #     color = 'yellow' if val >= 1  else 'white'
-        #     return 'background-color: {}'.format(color)
-        #
-        # df = df.style.applymap(highlight_cells)
+            # def highlight_cells(val):
+            #     color = 'yellow' if val >= 1  else 'white'
+            #     return 'background-color: {}'.format(color)
+            #
+            # df = df.style.applymap(highlight_cells)
 
-        sheet_name: str = "frame_1" if frame_num == 1 else str(frame_num)
+            sheet_name: str = "frame_1" if frame_num == 1 else str(frame_num)
 
-        df.to_excel(writer, sheet_name=sheet_name, index=True)
+            df.to_excel(writer, sheet_name=sheet_name, index=True)
 
-        workbook = writer.book
-        cell_format = workbook.add_format({'text_wrap': True})        # to make \n work
+            workbook = writer.book
+            cell_format = workbook.add_format({'text_wrap': True})        # to make \n work
 
-        worksheet = writer.sheets[sheet_name]
-        worksheet.set_column('A:BO', cell_format=cell_format)
+            worksheet = writer.sheets[sheet_name]
+            worksheet.set_column('A:BO', cell_format=cell_format)
 
-        for col_idx in range(40):
-            if col_idx == 0:    col_width = 3
-            else:               col_width = 25
-            worksheet.set_column(col_idx, col_idx, col_width)
+            for col_idx in range(40):
+                if col_idx == 0:    col_width = 3
+                else:               col_width = 25
+                worksheet.set_column(col_idx, col_idx, col_width)
 
-    writer.save()
+        writer.save()
 
 
 
