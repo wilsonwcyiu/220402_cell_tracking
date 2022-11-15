@@ -44,18 +44,6 @@ def main():
 
 
     ## user input
-    # input_series_name_list = ['_8layers_', '_9layers_', '_29layers_', '_33layers_']
-    # input_series_name_list: list = []
-    # input_series_name_list.append("1_8layers_mask_data__20190621++2_8layers_M3a_Step98")
-    # input_series_name_list.append("1_8layers_mask_data__20190701--1_8layers_M3a_Step98")
-    # input_series_name_list.append("1_8layers_mask_data__20190701--2_8layers_M3a_Step98")
-    # input_series_name_list.append("1_8layers_mask_data__20200716++1_8layers_M3s_Step98")
-    # input_series_name_list.append("1_8layers_mask_data__20200716++2_8layers_M3a_Step98")
-    # input_series_name_list.append("2_9layers_mask_data__20200802--2_9layers_M3a_Step98")
-    # input_series_name_list.append("2_9layers_mask_data__20200829++1_9layers_M3a_Step98")
-    # input_series_name_list.append("2_9layers_mask_data__20200829++2_9layers_M3a_Step98")
-    # input_series_name_list.append("2_9layers_mask_data__20200829--1_9layers_M3a_Step98")
-
     input_series_name_sub_dir_dict: dict = {}
     input_series_name_sub_dir_dict["20190621++2_8layers_M3a_Step98"] = "1 8layers mask data/20190621++2_8layers_M3a_Step98"
     input_series_name_sub_dir_dict["20190701--1_8layers_M3a_Step98"] = "1 8layers mask data/20190701--1_8layers_M3a_Step98"
