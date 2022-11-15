@@ -45,7 +45,7 @@ def main():
 
     ## user input
     # input_series_name_list = ['_8layers_', '_9layers_', '_29layers_', '_33layers_']
-    input_series_name_list: list = []
+    # input_series_name_list: list = []
     # input_series_name_list.append("1_8layers_mask_data__20190621++2_8layers_M3a_Step98")
     # input_series_name_list.append("1_8layers_mask_data__20190701--1_8layers_M3a_Step98")
     # input_series_name_list.append("1_8layers_mask_data__20190701--2_8layers_M3a_Step98")
@@ -58,14 +58,14 @@ def main():
 
     input_series_name_sub_dir_dict: dict = {}
     input_series_name_sub_dir_dict["20190621++2_8layers_M3a_Step98"] = "1 8layers mask data/20190621++2_8layers_M3a_Step98"
-    # input_series_name_sub_dir_dict["20190701--1_8layers_M3a_Step98"] = "1 8layers mask data/20190701--1_8layers_M3a_Step98"
-    # input_series_name_sub_dir_dict["20190701--2_8layers_M3a_Step98"] = "1 8layers mask data/20190701--2_8layers_M3a_Step98"
-    # input_series_name_sub_dir_dict["20200716++1_8layers_M3s_Step98"] = "1 8layers mask data/20200716++1_8layers_M3s_Step98"
-    # input_series_name_sub_dir_dict["20200716++2_8layers_M3a_Step98"] = "1 8layers mask data/20200716++2_8layers_M3a_Step98"
-    # input_series_name_sub_dir_dict["20200802--2_9layers_M3a_Step98"] = "2 9layers mask data/20200802--2_9layers_M3a_Step98"
-    # input_series_name_sub_dir_dict["20200829++1_9layers_M3a_Step98"] = "2 9layers mask data/20200829++1_9layers_M3a_Step98"
-    # input_series_name_sub_dir_dict["20200829++2_9layers_M3a_Step98"] = "2 9layers mask data/20200829++2_9layers_M3a_Step98"
-    # input_series_name_sub_dir_dict["20200829--1_9layers_M3a_Step98"] = "2 9layers mask data/20200829--1_9layers_M3a_Step98"
+    input_series_name_sub_dir_dict["20190701--1_8layers_M3a_Step98"] = "1 8layers mask data/20190701--1_8layers_M3a_Step98"
+    input_series_name_sub_dir_dict["20190701--2_8layers_M3a_Step98"] = "1 8layers mask data/20190701--2_8layers_M3a_Step98"
+    input_series_name_sub_dir_dict["20200716++1_8layers_M3s_Step98"] = "1 8layers mask data/20200716++1_8layers_M3s_Step98"
+    input_series_name_sub_dir_dict["20200716++2_8layers_M3a_Step98"] = "1 8layers mask data/20200716++2_8layers_M3a_Step98"
+    input_series_name_sub_dir_dict["20200802--2_9layers_M3a_Step98"] = "2 9layers mask data/20200802--2_9layers_M3a_Step98"
+    input_series_name_sub_dir_dict["20200829++1_9layers_M3a_Step98"] = "2 9layers mask data/20200829++1_9layers_M3a_Step98"
+    input_series_name_sub_dir_dict["20200829++2_9layers_M3a_Step98"] = "2 9layers mask data/20200829++2_9layers_M3a_Step98"
+    input_series_name_sub_dir_dict["20200829--1_9layers_M3a_Step98"] = "2 9layers mask data/20200829--1_9layers_M3a_Step98"
 
     ## hyper parameter settings
     weight_tuple_list: list = [WeightTuple(0.3, 0.4, 0.3)]
@@ -172,7 +172,7 @@ def main():
         generate_pkl_file(feature_based_result_dict, abs_file_path)
 
         execution_time = time.perf_counter() - start_time
-        generate_txt_file(feature_based_result_dict, input_series_name_list, hyperpara_idx, hyper_para, execution_time, abs_file_path)
+        generate_txt_file(feature_based_result_dict, hyperpara_idx, hyper_para, execution_time, abs_file_path)
 
 
 
@@ -1014,18 +1014,17 @@ def _process_and_find_best_cell_track(cell_id_track_list_dict,
 def __________unit_function_start_label():
     raise Exception("for labeling only")
 
-def generate_txt_file(feature_based_result_dict: dict, input_series_name_list: list, hyperpara_idx: int, hyper_para: HyperPara, execution_time, abs_file_path: str):
+def generate_txt_file(feature_based_result_dict: dict, hyperpara_idx: int, hyper_para: HyperPara, execution_time, abs_file_path: str):
 
     with open(abs_file_path + ".txt", 'w') as f:
         f.write(f"Execution time: {np.round(execution_time, 4)} seconds\n")
         f.write("hyper_para--- ID: " + str(hyperpara_idx + 1) + "; \n" + hyper_para.__str_newlines__())
         f.write("\n")
-        for series_name in input_series_name_list:
+        for series_name, result_cell_track_list_list in feature_based_result_dict.items():
             f.write("======================" + str(series_name) + "================================")
             f.write("\n")
 
-            cell_track_list_list = sorted(feature_based_result_dict[series_name])
-            for cell_track_list in cell_track_list_list:
+            for cell_track_list in sorted(result_cell_track_list_list):
                 # for cell_track_list in feature_based_result_dict[series_name]:
                 f.write(str(cell_track_list))
                 f.write("\n")
