@@ -1272,9 +1272,6 @@ def derive_initial_cell_id_list(frame_num_node_id_coord_dict_dict: dict):
     return to_handle_cell_id_list
 
 
-def derive_directional_score(track_coord_list: list, new_coord: CoordTuple):
-    if len(track_coord_list) <= 1:
-        return 1
 
 
 
