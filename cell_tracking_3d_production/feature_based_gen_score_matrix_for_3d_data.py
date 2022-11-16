@@ -40,14 +40,14 @@ def main():
     ## user input
     input_series_name_sub_dir_dict: dict = {}
     input_series_name_sub_dir_dict["20190621++2_8layers_M3a_Step98"] = "1 8layers mask data/20190621++2_8layers_M3a_Step98"
-    # input_series_name_sub_dir_dict["20190701--1_8layers_M3a_Step98"] = "1 8layers mask data/20190701--1_8layers_M3a_Step98"
-    # input_series_name_sub_dir_dict["20190701--2_8layers_M3a_Step98"] = "1 8layers mask data/20190701--2_8layers_M3a_Step98"
-    # input_series_name_sub_dir_dict["20200716++1_8layers_M3s_Step98"] = "1 8layers mask data/20200716++1_8layers_M3s_Step98"
-    # input_series_name_sub_dir_dict["20200716++2_8layers_M3a_Step98"] = "1 8layers mask data/20200716++2_8layers_M3a_Step98"
-    # input_series_name_sub_dir_dict["20200802--2_9layers_M3a_Step98"] = "2 9layers mask data/20200802--2_9layers_M3a_Step98"
-    # input_series_name_sub_dir_dict["20200829++1_9layers_M3a_Step98"] = "2 9layers mask data/20200829++1_9layers_M3a_Step98"
-    # input_series_name_sub_dir_dict["20200829++2_9layers_M3a_Step98"] = "2 9layers mask data/20200829++2_9layers_M3a_Step98"
-    # input_series_name_sub_dir_dict["20200829--1_9layers_M3a_Step98"] = "2 9layers mask data/20200829--1_9layers_M3a_Step98"
+    input_series_name_sub_dir_dict["20190701--1_8layers_M3a_Step98"] = "1 8layers mask data/20190701--1_8layers_M3a_Step98"
+    input_series_name_sub_dir_dict["20190701--2_8layers_M3a_Step98"] = "1 8layers mask data/20190701--2_8layers_M3a_Step98"
+    input_series_name_sub_dir_dict["20200716++1_8layers_M3s_Step98"] = "1 8layers mask data/20200716++1_8layers_M3s_Step98"
+    input_series_name_sub_dir_dict["20200716++2_8layers_M3a_Step98"] = "1 8layers mask data/20200716++2_8layers_M3a_Step98"
+    input_series_name_sub_dir_dict["20200802--2_9layers_M3a_Step98"] = "2 9layers mask data/20200802--2_9layers_M3a_Step98"
+    input_series_name_sub_dir_dict["20200829++1_9layers_M3a_Step98"] = "2 9layers mask data/20200829++1_9layers_M3a_Step98"
+    input_series_name_sub_dir_dict["20200829++2_9layers_M3a_Step98"] = "2 9layers mask data/20200829++2_9layers_M3a_Step98"
+    input_series_name_sub_dir_dict["20200829--1_9layers_M3a_Step98"] = "2 9layers mask data/20200829--1_9layers_M3a_Step98"
 
     ## hyper parameter settings
     weight_tuple_list: list = [WeightTuple(0.3, 0.4, 0.3)]
