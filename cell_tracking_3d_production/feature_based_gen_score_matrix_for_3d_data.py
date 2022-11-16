@@ -177,7 +177,7 @@ def __________object_start_label():
     raise Exception("for labeling only")
 
 CoordTuple = namedtuple("CoordTuple", "x y z")
-WeightTuple = namedtuple("WeightTuple", "degree distance average_movement")
+WeightTuple = namedtuple("WeightTuple", "directional distance average_movement")
 
 
 class DataStore(object):
@@ -1128,8 +1128,8 @@ def derive_distance_score(current_node_coord, last_frame_node_coord, max_moving_
     return distance_score
 
 
-def derive_degree_score(to_handle_cell_id, current_frame_num, last_frame_node_coord, candidate_node_coord,
-                        coord_length_of_vector, handling_cell_frame_num_track_idx_dict, frame_num_node_id_coord_dict_dict):
+def derive_directional_score(to_handle_cell_id, current_frame_num, last_frame_node_coord, candidate_node_coord,
+                             coord_length_of_vector, handling_cell_frame_num_track_idx_dict, frame_num_node_id_coord_dict_dict):
     previous_coord_list = []
     start_frame = current_frame_num - coord_length_of_vector
     start_frame = max(start_frame, 1, to_handle_cell_id.start_frame_num)
@@ -1147,15 +1147,15 @@ def derive_degree_score(to_handle_cell_id, current_frame_num, last_frame_node_co
 
         degree_diff: float = derive_degree_diff_from_two_vectors(previous_vec, new_candidate_vec)
 
-        degree_score: float = (cos(radians(degree_diff)) + 1) * 0.5  # +1 and *0.5 to shift up and make it stay between 1 and 0
+        directional_score: float = (cos(radians(degree_diff)) + 1) * 0.5  # +1 and *0.5 to shift up and make it stay between 1 and 0
 
     else:
-        degree_score: float = 0.5
+        directional_score: float = 0.5
 
-    # if math.isnan(degree_score):
+    # if math.isnan(directional_score):
     #     print("isnan")
 
-    return degree_score
+    return directional_score
 
 
 
@@ -1308,31 +1308,31 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
     for candidate_node_id, candidate_node_coord in node_id_coord_dict.items():
         final_score: float = 0
 
-        is_use_degree_score: bool = (weight_tuple.degree > 0)
-        if is_use_degree_score:
-            degree_score: float = derive_degree_score(to_handle_cell_id,
-                                                      current_frame_num,
-                                                      current_frame_node_coord,
-                                                      candidate_node_coord,
-                                                      coord_length_for_vector,
-                                                      handling_cell_frame_num_track_idx_dict,
-                                                      frame_num_node_id_coord_dict_dict)
+        is_use_directional_score: bool = (weight_tuple.directional > 0)
+        if is_use_directional_score:
+            directional_score: float = derive_directional_score(to_handle_cell_id,
+                                                                current_frame_num,
+                                                                current_frame_node_coord,
+                                                                candidate_node_coord,
+                                                                coord_length_for_vector,
+                                                                handling_cell_frame_num_track_idx_dict,
+                                                                frame_num_node_id_coord_dict_dict)
 
-            weighted_degree_score = np.round(weight_tuple.degree * degree_score, round_to)
+            weighted_directional_score = np.round(weight_tuple.directional * directional_score, round_to)
 
-            if math.isnan(weighted_degree_score):
-                weighted_degree_score = 0
+            if math.isnan(weighted_directional_score):
+                weighted_directional_score = 0
 
             # if current_frame_num == 5 and current_frame_node_id == 8:
-            #     print("sgsfd", weighted_degree_score, math.isnan(weighted_degree_score))
+            #     print("sgsfd", weighted_directional_score, math.isnan(weighted_directional_score))
             #     time.sleep(2)
 
-            final_score += weighted_degree_score
+            final_score += weighted_directional_score
         else:
-            weighted_degree_score = 0.5
+            weighted_directional_score = 0.5
 
-        # if weighted_degree_score == nan:
-        #     raise Exception("weighted_degree_score == None")
+        # if weighted_directional_score == nan:
+        #     raise Exception("weighted_directional_score == None")
 
 
         is_use_distance_score: bool = (weight_tuple.distance > 0)
@@ -1365,12 +1365,12 @@ def derive_best_node_idx_to_connect(to_handle_cell_id,
         final_score = np.round(final_score, round_to)
 
         # current_node_idx: int = handling_cell_frame_num_track_idx_dict[current_frame_num]
-        # log_msg = f"{to_handle_cell_id.str_short()} {final_score}={weighted_probability_score}+{weighted_degree_score}+{weighted_distance_score}+{weighted_avg_mov_score}"
+        # log_msg = f"{to_handle_cell_id.str_short()} {final_score}={weighted_probability_score}+{weighted_directional_score}+{weighted_distance_score}+{weighted_avg_mov_score}"
         # if log_msg not in score_log_mtx[current_frame_num][current_node_idx][candidate_node_id]:
         #     score_log_mtx[current_frame_num][current_node_idx][candidate_node_id] += log_msg + "\n"
 
 
-        # score_log_mtx[current_frame_num][current_frame_node_id][candidate_node_id] = f"final_score:{final_score}; dist:{weighted_distance_score}; deg:{weighted_degree_score}; avgM:{weighted_avg_mov_score}"
+        # score_log_mtx[current_frame_num][current_frame_node_id][candidate_node_id] = f"final_score:{final_score}; dist:{weighted_distance_score}; deg:{weighted_directional_score}; avgM:{weighted_avg_mov_score}"
         score_log_mtx[current_frame_num][current_frame_node_id][candidate_node_id] = final_score
 
         # print("sadbfsdf", connect_to_frame_num, candidate_node_id)
