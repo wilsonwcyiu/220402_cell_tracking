@@ -3,10 +3,8 @@ First version: 16 May 2022
 @author: Wilson W.C. Yiu
 """
 
-import copy
 import enum
 import itertools
-import json
 import math
 import os
 import pickle
@@ -16,15 +14,12 @@ from collections import defaultdict, namedtuple
 from datetime import datetime
 from functools import cmp_to_key
 from math import atan2, degrees, radians, cos
-from os import listdir
 from pathlib import Path
-
-import matplotlib.pyplot as plt
 import numpy as np
 from imutils import paths
-from skimage import measure
-
 import SimpleITK as sitk
+
+
 
 global_max_distance = 0
 
@@ -488,30 +483,6 @@ def generate_txt_file(hyperpara_idx: int, hyper_para: HyperPara, execution_time,
 
 
 
-
-def read_preload_series_data(coord_dir, series_name):
-    coord_file_path = coord_dir + series_name + ".json"
-
-    with open(coord_file_path) as json_file:
-        key_str_cell_coord_list_dict = json.load(json_file)
-
-
-    frame_num_node_id_coord_dict_dict = defaultdict(dict)
-    for key_str, cell_coord_list in key_str_cell_coord_list_dict.items():
-        frame_num = int(key_str.split(":")[0])
-        node_num = int(key_str.split(":")[1])
-
-        z = cell_coord_list[0]
-        x = cell_coord_list[1]
-        y = cell_coord_list[2]
-        coord_tuple: CoordTuple = CoordTuple(x, y, z)
-
-        frame_num_node_id_coord_dict_dict[frame_num][node_num] = coord_tuple
-
-    return frame_num_node_id_coord_dict_dict
-
-
-
 def derive_average_movement_score(to_handle_cell_id,
                                   current_frame_num,
                                   last_frame_node_coord,
@@ -573,6 +544,7 @@ def derive_distance_score(current_node_coord, last_frame_node_coord, max_moving_
     return distance_score
 
 
+
 def derive_directional_score(to_handle_cell_id, current_frame_num, last_frame_node_coord, candidate_node_coord,
                              coord_length_of_vector, handling_cell_frame_num_track_idx_dict, frame_num_node_id_coord_dict_dict):
     previous_coord_list = []
@@ -597,8 +569,6 @@ def derive_directional_score(to_handle_cell_id, current_frame_num, last_frame_no
     else:
         directional_score: float = 0.5
 
-    # if math.isnan(directional_score):
-    #     print("isnan")
 
     return directional_score
 
@@ -640,12 +610,6 @@ def save_score_log_to_excel(series_frame_num_score_log_mtx_dict_dict: dict, exce
 
             df = pd.DataFrame (frame_data_array)
 
-            # def highlight_cells(val):
-            #     color = 'yellow' if val >= 1  else 'white'
-            #     return 'background-color: {}'.format(color)
-            #
-            # df = df.style.applymap(highlight_cells)
-
             sheet_name: str = "frame_1" if frame_num == 1 else str(frame_num)
 
             df.to_excel(writer, sheet_name=sheet_name, index=True)
@@ -662,32 +626,6 @@ def save_score_log_to_excel(series_frame_num_score_log_mtx_dict_dict: dict, exce
                 worksheet.set_column(col_idx, col_idx, col_width)
 
         writer.save()
-
-
-
-
-def derive_frame_num_distance_matrix_dict(frame_num_node_idx_coord_list_dict: dict):
-    start_frame = min(list(frame_num_node_idx_coord_list_dict.keys()))
-    end_frame = max(list(frame_num_node_idx_coord_list_dict.keys()))
-
-    frame_num_distance_matrix_dict: dict = {}
-    for frame_num in inclusive_range(start_frame, end_frame-1):
-
-        current_frame_node_list = frame_num_node_idx_coord_list_dict[frame_num]
-        next_frame_node_list = frame_num_node_idx_coord_list_dict[frame_num]
-
-        total_row = len(current_frame_node_list)
-        total_col = len(next_frame_node_list)
-        default_value: float = float(-1)
-        distance_matrix: np.array = np.full((total_row, total_col), default_value)
-        for row_idx, current_frame_coord in enumerate(current_frame_node_list):
-            for col_idx, next_frame_coord in enumerate(next_frame_node_list):
-                distance: float = ((next_frame_coord.x - current_frame_coord.x)**2 + (next_frame_coord.y - current_frame_coord.x)**2)**0.5
-                distance_matrix[row_idx][col_idx] = np.round(distance, 4)
-
-        frame_num_distance_matrix_dict[frame_num] = distance_matrix
-
-    return frame_num_distance_matrix_dict
 
 
 
@@ -992,17 +930,6 @@ def __________code_validation_function_start_label():
     raise Exception("for labeling only")
 
 
-def code_validate_if_cellid_not_exist_in_occupation_data(frame_num_node_idx_cell_occupation_list_list_dict, check_cell_id):
-    exist_record_tuple_list = []
-    for frame_num in frame_num_node_idx_cell_occupation_list_list_dict.keys():
-        node_idx_cell_occupation_list_list = frame_num_node_idx_cell_occupation_list_list_dict[frame_num]
-        for node_idx, cell_occupation_list in enumerate(node_idx_cell_occupation_list_list):
-            if check_cell_id in cell_occupation_list:
-                exist_record_tuple_list.append((frame_num, node_idx))
-
-    if len(exist_record_tuple_list) != 0:
-        raise Exception("len(exist_record_tuple_list) != 0", check_cell_id.__str__(), exist_record_tuple_list)
-
 
 def code_validate_track_list(track_tuple_list_list: list):
 
@@ -1018,46 +945,6 @@ def code_validate_track_list(track_tuple_list_list: list):
             frame_idx = next_frame_idx
 
 
-
-def code_validate_cell_probability(cell_1_prob: float, cell_2_prob: float):
-    if cell_1_prob == 0: raise Exception("cell_1_prob == 0")
-    if cell_2_prob == 0: raise Exception("cell_2_prob == 0")
-
-
-
-def code_validate_track(cell_idx_track_list_dict):
-    for cell_id, track_list in cell_idx_track_list_dict.items():
-        cell_start_frame_num = cell_id.start_frame_num
-        tmp_start_frame_num = track_list[0][1] + 1
-
-        if cell_start_frame_num != tmp_start_frame_num:
-            raise Exception(cell_id.cell_idx, cell_start_frame_num, tmp_start_frame_num)
-
-
-
-def code_validate_track_length(cell_idx_track_list_dict):
-    for cell_id, track_list in cell_idx_track_list_dict.items():
-        cell_start_frame_num = cell_id.start_frame_num
-        tmp_start_frame_num = track_list[0][1] + 1
-
-        if cell_start_frame_num != tmp_start_frame_num:
-            raise Exception(cell_id.cell_idx, cell_start_frame_num, tmp_start_frame_num)
-
-        if len(track_list) < 5:
-            raise Exception(cell_id.__str__(), tmp_start_frame_num)
-
-
-def code_validate_track_key_order(cell_idx_track_list_dict):
-    max_frame_num = 0
-    max_cell_idx = 0
-    for cell_id in cell_idx_track_list_dict.keys():
-        if cell_id.start_frame_num < max_frame_num:
-            raise Exception("cell_id.start_frame_num < max_frame_num")
-        if cell_id.start_frame_num == max_frame_num and cell_id.cell_idx < max_cell_idx:
-            raise Exception("cell_id.start_frame_num = max_frame_num and cell_id.cell_idx < max_cell_idx")
-
-        max_frame_num = cell_id.start_frame_num
-        max_cell_idx = cell_id.cell_idx
 
 
 if __name__ == '__main__':
