@@ -46,14 +46,14 @@ def main():
     ## user input
     input_series_name_sub_dir_dict: dict = {}
     input_series_name_sub_dir_dict["20190621++2_8layers_M3a_Step98"] = "1 8layers mask data/20190621++2_8layers_M3a_Step98"
-    # input_series_name_sub_dir_dict["20190701--1_8layers_M3a_Step98"] = "1 8layers mask data/20190701--1_8layers_M3a_Step98"
-    # input_series_name_sub_dir_dict["20190701--2_8layers_M3a_Step98"] = "1 8layers mask data/20190701--2_8layers_M3a_Step98"
-    # input_series_name_sub_dir_dict["20200716++1_8layers_M3s_Step98"] = "1 8layers mask data/20200716++1_8layers_M3s_Step98"
-    # input_series_name_sub_dir_dict["20200716++2_8layers_M3a_Step98"] = "1 8layers mask data/20200716++2_8layers_M3a_Step98"
-    # input_series_name_sub_dir_dict["20200802--2_9layers_M3a_Step98"] = "2 9layers mask data/20200802--2_9layers_M3a_Step98"
-    # input_series_name_sub_dir_dict["20200829++1_9layers_M3a_Step98"] = "2 9layers mask data/20200829++1_9layers_M3a_Step98"
-    # input_series_name_sub_dir_dict["20200829++2_9layers_M3a_Step98"] = "2 9layers mask data/20200829++2_9layers_M3a_Step98"
-    # input_series_name_sub_dir_dict["20200829--1_9layers_M3a_Step98"] = "2 9layers mask data/20200829--1_9layers_M3a_Step98"
+    input_series_name_sub_dir_dict["20190701--1_8layers_M3a_Step98"] = "1 8layers mask data/20190701--1_8layers_M3a_Step98"
+    input_series_name_sub_dir_dict["20190701--2_8layers_M3a_Step98"] = "1 8layers mask data/20190701--2_8layers_M3a_Step98"
+    input_series_name_sub_dir_dict["20200716++1_8layers_M3s_Step98"] = "1 8layers mask data/20200716++1_8layers_M3s_Step98"
+    input_series_name_sub_dir_dict["20200716++2_8layers_M3a_Step98"] = "1 8layers mask data/20200716++2_8layers_M3a_Step98"
+    input_series_name_sub_dir_dict["20200802--2_9layers_M3a_Step98"] = "2 9layers mask data/20200802--2_9layers_M3a_Step98"
+    input_series_name_sub_dir_dict["20200829++1_9layers_M3a_Step98"] = "2 9layers mask data/20200829++1_9layers_M3a_Step98"
+    input_series_name_sub_dir_dict["20200829++2_9layers_M3a_Step98"] = "2 9layers mask data/20200829++2_9layers_M3a_Step98"
+    input_series_name_sub_dir_dict["20200829--1_9layers_M3a_Step98"] = "2 9layers mask data/20200829--1_9layers_M3a_Step98"
 
     ## hyper parameter settings
     weight_tuple_list: list = [WeightTuple(0.3, 0.4, 0.3)]
@@ -61,8 +61,9 @@ def main():
     coord_length_for_vector_list: list = [6]
     average_movement_step_length_list: list = [6]
     minimum_track_length_list: list = [1]
+    discount_rate_per_layer_list: list = [0.9]      #options: {"merge_threshold", any float number},
 
-    start_datetime: datetime = datetime.now()
+    start_datetime: Date = datetime.now()
     date_str: str = start_datetime.strftime("%Y%m%d-%H%M%S")
     py_file_name: str = Path(__file__).name.replace(".py", "")
     individual_result_dir: str = default_save_dir + date_str + "_" + py_file_name + "/"
@@ -77,7 +78,8 @@ def main():
                                                          max_moving_distance_list,
                                                          coord_length_for_vector_list,
                                                          average_movement_step_length_list,
-                                                         minimum_track_length_list
+                                                         minimum_track_length_list,
+                                                         discount_rate_per_layer_list
                                                          ))
 
     hyper_para_list: list = []
@@ -87,13 +89,15 @@ def main():
         coord_length_for_vector = hyper_para_combination[2]
         average_movement_step_length = hyper_para_combination[3]
         minimum_track_length: int = hyper_para_combination[4]
+        discount_rate_per_layer: [str, float] = hyper_para_combination[5]
 
         hyper_para: HyperPara = HyperPara(
                                             weight_tuple,
                                             max_moving_distance,
                                             coord_length_for_vector,
                                             average_movement_step_length,
-                                            minimum_track_length)
+                                            minimum_track_length,
+                                            discount_rate_per_layer)
 
         hyper_para_list.append(hyper_para)
 
@@ -119,9 +123,12 @@ def main():
                 frame_num_node_id_coord_dict_dict = read_series_data(raw_3d_data_dir + series_sub_dir, series_name)
 
 
-                result_score_matrix = calculate_score_matrix(frame_num_node_id_coord_dict_dict, hyper_para)
-
-                series_frame_num_score_log_mtx_dict_dict[series_name] = result_score_matrix
+                return_series, final_result_list, frame_num_score_log_mtx_dict = cell_tracking_core_flow(series_name,
+                                                                                      frame_num_node_id_coord_dict_dict,
+                                                                                      hyper_para
+                                                                                      )
+                feature_based_result_dict[series_name] = final_result_list
+                series_frame_num_score_log_mtx_dict_dict[series_name] = frame_num_score_log_mtx_dict
 
 
 
@@ -140,7 +147,8 @@ def main():
                                     "MD(" + str(hyper_para.max_moving_distance) + ")_" + \
                                     "CL(" + str(hyper_para.coord_length_for_vector) + ")_" + \
                                     "AML(" + str(hyper_para.average_movement_step_length) + ")_" + \
-                                    "MTL(" + str(hyper_para.minimum_track_length) + ")_"
+                                    "MTL(" + str(hyper_para.minimum_track_length) + ")_" + \
+                                    "DR(" +  str(hyper_para.discount_rate_per_layer) + ")_"
 
 
         result_file_name: str = py_file_name + "_hp" + str(hyperpara_idx+1).zfill(3) + "__" + hyper_para_str
@@ -149,10 +157,10 @@ def main():
         py_file_name: str = Path(__file__).name.replace(".py", "_")
         save_score_log_to_excel(series_frame_num_score_log_mtx_dict_dict, score_log_dir, py_file_name)
 
-        # generate_pkl_file(feature_based_result_dict, abs_file_path)
-        #
+        generate_pkl_file(feature_based_result_dict, abs_file_path)
+
         execution_time = time.perf_counter() - start_time
-        # generate_txt_file(feature_based_result_dict, hyperpara_idx, hyper_para, execution_time, abs_file_path)
+        generate_txt_file(feature_based_result_dict, hyperpara_idx, hyper_para, execution_time, abs_file_path)
 
 
 
@@ -203,27 +211,38 @@ class BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM(enum.Enum):
 
 class HyperPara():
     def __init__(self,
-                 weight_tuple: WeightTuple,
+                 weight_tuple: tuple,
                  max_moving_distance: int,
                  coord_length_for_vector: int,
                  average_movement_step_length: int,
-                 minimum_track_length: int):
+                 minimum_track_length: int,
+                 discount_rate_per_layer: float):
 
         self.weight_tuple                     = weight_tuple
         self.max_moving_distance              = max_moving_distance
         self.coord_length_for_vector          = coord_length_for_vector
         self.average_movement_step_length     = average_movement_step_length
         self.minimum_track_length             = minimum_track_length
-        # self.discount_rate_per_layer          = discount_rate_per_layer
+        self.discount_rate_per_layer          = discount_rate_per_layer
 
 
 
-    def __str__(self, separator: str = ""):
-        return  f"weight_tuple: {self.weight_tuple}; {separator}" \
-                f"max_moving_distance: {self.max_moving_distance};  {separator}" \
-                f"coord_length_for_vector: {self.coord_length_for_vector};  {separator}" \
-                f"average_movement_step_length: {self.average_movement_step_length};  {separator}" \
-                f"minimum_track_length: {self.minimum_track_length}; ";
+    def __str__(self):
+        return  f"weight_tuple: {self.weight_tuple}; " \
+                f"max_moving_distance: {self.max_moving_distance}; " \
+                f"coord_length_for_vector: {self.coord_length_for_vector}; " \
+                f"average_movement_step_length: {self.average_movement_step_length}; " \
+                f"minimum_track_length: {self.minimum_track_length}; " \
+                f"discount_rate_per_layer: {self.discount_rate_per_layer}; "
+
+
+    def __str_newlines__(self):
+        return f"weight_tuple: {self.weight_tuple}; \n" \
+               f"max_moving_distance: {self.max_moving_distance}; \n" \
+               f"coord_length_for_vector: {self.coord_length_for_vector}; \n" \
+               f"average_movement_step_length: {self.average_movement_step_length}; \n" \
+               f"minimum_track_length: {self.minimum_track_length}; \n" \
+               f"discount_rate_per_layer: {self.discount_rate_per_layer}; "
 
 
 
@@ -376,35 +395,6 @@ def __________component_function_start_label():
     raise Exception("for labeling only")
 
 
-
-def calculate_score_matrix(frame_num_node_id_coord_dict_dict: dict, hyper_para: HyperPara):
-    weight_tuple: WeightTuple = hyper_para.weight_tuple
-
-    score_log_mtx = init_score_log(frame_num_node_id_coord_dict_dict)
-    start_frame_num: int = min(frame_num_node_id_coord_dict_dict.keys())
-    end_frame_num: int = max(frame_num_node_id_coord_dict_dict.keys())
-
-    for curr_frame_num in inclusive_range(start_frame_num, end_frame_num-1):
-        for curr_frame_node_id, current_node_id_coord in frame_num_node_id_coord_dict_dict[curr_frame_num].items():
-            next_frame: int = curr_frame_num + 1
-            for next_frame_node_id, next_frame_num_node_id_coord in frame_num_node_id_coord_dict_dict[next_frame].items():
-
-                distance_score: float = derive_distance_score(current_node_id_coord, frame_num_node_id_coord_dict_dict[next_frame].values(), hyper_para.max_moving_distance)
-                weighted_distance_score: float = distance_score * weight_tuple.distance
-
-
-                direction_feature_steps: int = hyper_para.coord_length_for_vector
-                directional_score: float = derive_degree_score(curr_frame_num, curr_frame_node_id, frame_num_node_id_coord_dict_dict, direction_feature_steps, hyper_para.max_moving_distance)
-                weighted_directional_score: float = directional_score * weight_tuple.degree
-
-                avg_moment_score: float = 3
-                weighted_avg_moment_score: float = avg_moment_score * weight_tuple.average_movement
-
-                weighted_final_score: float = weighted_distance_score + weighted_directional_score + weighted_avg_moment_score
-
-                score_log_mtx[curr_frame_num][curr_frame_node_id][next_frame_node_id] = weighted_final_score
-
-    return score_log_mtx
 
 
 def execute_cell_tracking_task_bon(frame_num_node_id_coord_dict_dict: dict, hyper_para: HyperPara):
@@ -1012,14 +1002,11 @@ def _process_and_find_best_cell_track(cell_id_track_list_dict,
 def __________unit_function_start_label():
     raise Exception("for labeling only")
 
-
-
-
 def generate_txt_file(feature_based_result_dict: dict, hyperpara_idx: int, hyper_para: HyperPara, execution_time, abs_file_path: str):
 
     with open(abs_file_path + ".txt", 'w') as f:
         f.write(f"Execution time: {np.round(execution_time, 4)} seconds\n")
-        f.write("hyper_para--- ID: " + str(hyperpara_idx + 1) + "; \n" + hyper_para.__str__(separator='\n'))
+        f.write("hyper_para--- ID: " + str(hyperpara_idx + 1) + "; \n" + hyper_para.__str_newlines__())
         f.write("\n")
         for series_name, result_cell_track_list_list in feature_based_result_dict.items():
             f.write("======================" + str(series_name) + "================================")
@@ -1127,114 +1114,48 @@ def update_below_cut_threshold_value_to_zero(frame_num_prof_matrix_dict: dict, c
     return frame_num_prof_matrix_dict
 
 
-# def derive_distance_score(current_node_coord, last_frame_node_coord, max_moving_distance):
-#     x_y_distance: float = ((current_node_coord.x - last_frame_node_coord.x)**2 + (current_node_coord.y - last_frame_node_coord.y)**2)**0.5
-#
-#     x_y_z_distance: float = (x_y_distance**2 + (current_node_coord.z - last_frame_node_coord.z)**2)**0.5
-#     x_y_z_distance = np.round(x_y_z_distance, 4)
-#
-#     if x_y_z_distance > max_moving_distance:
-#         distance_score = 0
-#     else:
-#         distance_score = (max_moving_distance - x_y_z_distance) / max_moving_distance
-#
-#     return distance_score
+def derive_distance_score(current_node_coord, last_frame_node_coord, max_moving_distance):
+    x_y_distance: float = ((current_node_coord.x - last_frame_node_coord.x)**2 + (current_node_coord.y - last_frame_node_coord.y)**2)**0.5
+
+    x_y_z_distance: float = (x_y_distance**2 + (current_node_coord.z - last_frame_node_coord.z)**2)**0.5
+    x_y_z_distance = np.round(x_y_z_distance, 4)
+
+    if x_y_z_distance > max_moving_distance:
+        distance_score = 0
+    else:
+        distance_score = (max_moving_distance - x_y_z_distance) / max_moving_distance
+
+    return distance_score
 
 
-def derive_distance_score(current_node_id_coord: CoordTuple, next_frame_node_id_coord_list: list, max_moving_distance: float):
+def derive_degree_score(to_handle_cell_id, current_frame_num, last_frame_node_coord, candidate_node_coord,
+                        coord_length_of_vector, handling_cell_frame_num_track_idx_dict, frame_num_node_id_coord_dict_dict):
+    previous_coord_list = []
+    start_frame = current_frame_num - coord_length_of_vector
+    start_frame = max(start_frame, 1, to_handle_cell_id.start_frame_num)
+    end_frame = current_frame_num
 
-    best_distance_score: float = 0
+    coord_length: int = (end_frame - start_frame) + 1
+    if coord_length > 1:
+        for frame_num in inclusive_range(start_frame, end_frame):
+            node_id: int = handling_cell_frame_num_track_idx_dict[frame_num]
+            coord_tuple: CoordTuple = frame_num_node_id_coord_dict_dict[frame_num][node_id]
+            previous_coord_list.append(coord_tuple)
+        previous_vec: CoordTuple = derive_vector_from_coord_list(previous_coord_list)
 
-    for next_frame_node_id in next_frame_node_id_coord_list:
-        x_y_distance: float = ((current_node_id_coord.x - next_frame_node_id.x)**2 + (current_node_id_coord.y - next_frame_node_id.y)**2)**0.5
-        x_y_z_distance: float = (x_y_distance**2 + (current_node_id_coord.z - next_frame_node_id.z)**2)**0.5
-        x_y_z_distance = np.round(x_y_z_distance, 4)
-
-        if x_y_z_distance > max_moving_distance:
-            distance_score = 0
-        else:
-            distance_score = (max_moving_distance - x_y_z_distance) / max_moving_distance
-
-        if distance_score > best_distance_score:
-            best_distance_score = distance_score
-
-    return best_distance_score
-
-
-
-def derive_degree_score(curr_frame_num: int, current_node_id: int, frame_num_node_id_coord_dict_dict: dict, steps: int, max_distance: float):
-
-    # generate all node combination from previous frame
-    coord_list_list: list = []
-    step_start_frame: int = max(1, curr_frame_num - steps)
-
-    if not step_start_frame < (curr_frame_num-1):
-        return 0.5  # default score
-
-    for previous_frame_num in range(step_start_frame, curr_frame_num):
-        single_frame_complete_coord_list: dict = list(frame_num_node_id_coord_dict_dict[previous_frame_num].values())
-        coord_list_list.append(single_frame_complete_coord_list)
-
-    current_frame_node_coord: CoordTuple = frame_num_node_id_coord_dict_dict[curr_frame_num][current_node_id]
-    # coord_list_list.append([current_frame_node_coord])
-    result_combination_coord_list_list = list(itertools.product(*coord_list_list))
-    print(result_combination_coord_list_list)
-
-    best_degree_score: float = 0
-    for result_combination_coord_list in result_combination_coord_list_list:
-        # previous_coord_list = []
-        # start_frame = current_frame_num - coord_length_of_vector
-        # start_frame = max(start_frame, 1, to_handle_cell_id.start_frame_num)
-        # end_frame = current_frame_num
-        #
-        # coord_length: int = (end_frame - start_frame) + 1
-        # if coord_length > 1:
-        #     for frame_num in inclusive_range(start_frame, end_frame):
-        #         node_id: int = handling_cell_frame_num_track_idx_dict[frame_num]
-        #         coord_tuple: CoordTuple = frame_num_node_id_coord_dict_dict[frame_num][node_id]
-        #         previous_coord_list.append(coord_tuple)
-        previous_vec: CoordTuple = derive_vector_from_coord_list(result_combination_coord_list)
-
-        new_candidate_vec: CoordTuple = derive_vector_from_coord_list([current_frame_node_coord, candidate_node_coord])
+        new_candidate_vec: CoordTuple = derive_vector_from_coord_list([last_frame_node_coord, candidate_node_coord])
 
         degree_diff: float = derive_degree_diff_from_two_vectors(previous_vec, new_candidate_vec)
 
         degree_score: float = (cos(radians(degree_diff)) + 1) * 0.5  # +1 and *0.5 to shift up and make it stay between 1 and 0
 
+    else:
+        degree_score: float = 0.5
 
+    # if math.isnan(degree_score):
+    #     print("isnan")
 
-    return best_degree_score
-
-
-
-# def derive_degree_score(to_handle_cell_id, current_frame_num, last_frame_node_coord, candidate_node_coord,
-#                         coord_length_of_vector, handling_cell_frame_num_track_idx_dict, frame_num_node_id_coord_dict_dict):
-#     previous_coord_list = []
-#     start_frame = current_frame_num - coord_length_of_vector
-#     start_frame = max(start_frame, 1, to_handle_cell_id.start_frame_num)
-#     end_frame = current_frame_num
-#
-#     coord_length: int = (end_frame - start_frame) + 1
-#     if coord_length > 1:
-#         for frame_num in inclusive_range(start_frame, end_frame):
-#             node_id: int = handling_cell_frame_num_track_idx_dict[frame_num]
-#             coord_tuple: CoordTuple = frame_num_node_id_coord_dict_dict[frame_num][node_id]
-#             previous_coord_list.append(coord_tuple)
-#         previous_vec: CoordTuple = derive_vector_from_coord_list(previous_coord_list)
-#
-#         new_candidate_vec: CoordTuple = derive_vector_from_coord_list([last_frame_node_coord, candidate_node_coord])
-#
-#         degree_diff: float = derive_degree_diff_from_two_vectors(previous_vec, new_candidate_vec)
-#
-#         degree_score: float = (cos(radians(degree_diff)) + 1) * 0.5  # +1 and *0.5 to shift up and make it stay between 1 and 0
-#
-#     else:
-#         degree_score: float = 0.5
-#
-#     # if math.isnan(degree_score):
-#     #     print("isnan")
-#
-#     return degree_score
+    return degree_score
 
 
 
@@ -1351,9 +1272,206 @@ def derive_initial_cell_id_list(frame_num_node_id_coord_dict_dict: dict):
     return to_handle_cell_id_list
 
 
+def derive_directional_score(track_coord_list: list, new_coord: CoordTuple):
+    if len(track_coord_list) <= 1:
+        return 1
 
 
 
+
+
+
+def derive_best_node_idx_to_connect(to_handle_cell_id,
+                                    handling_cell_frame_num_track_idx_dict,
+                                    node_id_coord_dict,
+                                    connect_to_frame_num,
+                                    frame_num_node_idx_occupation_list_list_dict,
+                                    all_valid_cell_track_idx_dict,
+                                    all_valid_cell_track_prob_dict,
+                                    frame_num_node_id_coord_dict_dict,
+                                    score_log_mtx,
+                                    cut_threshold,
+                                    redo_cell_id_set,
+                                    weight_tuple: WeightTuple,
+                                    max_moving_distance: int,
+                                    coord_length_for_vector: int,
+                                    average_movement_step_length: int):
+
+
+    current_frame_num = connect_to_frame_num - 1
+    round_to = 2
+
+    current_frame_node_id: int = handling_cell_frame_num_track_idx_dict[current_frame_num]
+    current_frame_node_coord: CoordTuple = frame_num_node_id_coord_dict_dict[current_frame_num][current_frame_node_id]
+
+    best_prob: float = 0
+    best_node_idx: int = None
+
+    tmp_redo_node_idx_cell_id_dict: dict = defaultdict(set)
+    for candidate_node_id, candidate_node_coord in node_id_coord_dict.items():
+        final_score: float = 0
+
+        is_use_degree_score: bool = (weight_tuple.degree > 0)
+        if is_use_degree_score:
+            degree_score: float = derive_degree_score(to_handle_cell_id,
+                                                      current_frame_num,
+                                                      current_frame_node_coord,
+                                                      candidate_node_coord,
+                                                      coord_length_for_vector,
+                                                      handling_cell_frame_num_track_idx_dict,
+                                                      frame_num_node_id_coord_dict_dict)
+
+            weighted_degree_score = np.round(weight_tuple.degree * degree_score, round_to)
+
+            if math.isnan(weighted_degree_score):
+                weighted_degree_score = 0
+
+            # if current_frame_num == 5 and current_frame_node_id == 8:
+            #     print("sgsfd", weighted_degree_score, math.isnan(weighted_degree_score))
+            #     time.sleep(2)
+
+            final_score += weighted_degree_score
+        else:
+            weighted_degree_score = 0.5
+
+        # if weighted_degree_score == nan:
+        #     raise Exception("weighted_degree_score == None")
+
+
+        is_use_distance_score: bool = (weight_tuple.distance > 0)
+        if is_use_distance_score:
+            distance_score = derive_distance_score(candidate_node_coord, current_frame_node_coord, max_moving_distance)
+
+            weighted_distance_score = np.round(weight_tuple.distance * distance_score, round_to)
+            final_score += weighted_distance_score
+        else:
+            weighted_distance_score = 0.5
+
+
+        is_use_avg_movement_score: bool = (weight_tuple.average_movement > 0)
+        if is_use_avg_movement_score:
+            avg_movement_score = derive_average_movement_score(to_handle_cell_id,
+                                                               current_frame_num,
+                                                               current_frame_node_coord,
+                                                               candidate_node_coord,
+                                                               average_movement_step_length,
+                                                               handling_cell_frame_num_track_idx_dict,
+                                                               frame_num_node_id_coord_dict_dict,
+                                                               max_moving_distance)
+            weighted_avg_mov_score = np.round(weight_tuple.average_movement * avg_movement_score, round_to)
+            final_score += weighted_avg_mov_score
+        else:
+            weighted_avg_mov_score = 0.5
+
+        # if distance_score == 0:            final_score = 0
+        # else:                              final_score = np.round(final_score, round_to)
+        final_score = np.round(final_score, round_to)
+
+        # current_node_idx: int = handling_cell_frame_num_track_idx_dict[current_frame_num]
+        # log_msg = f"{to_handle_cell_id.str_short()} {final_score}={weighted_probability_score}+{weighted_degree_score}+{weighted_distance_score}+{weighted_avg_mov_score}"
+        # if log_msg not in score_log_mtx[current_frame_num][current_node_idx][candidate_node_id]:
+        #     score_log_mtx[current_frame_num][current_node_idx][candidate_node_id] += log_msg + "\n"
+
+
+        # score_log_mtx[current_frame_num][current_frame_node_id][candidate_node_id] = f"final_score:{final_score}; dist:{weighted_distance_score}; deg:{weighted_degree_score}; avgM:{weighted_avg_mov_score}"
+        score_log_mtx[current_frame_num][current_frame_node_id][candidate_node_id] = final_score
+
+        # print("sadbfsdf", connect_to_frame_num, candidate_node_id)
+        occupied_cell_id_list: list = frame_num_node_idx_occupation_list_list_dict[connect_to_frame_num][candidate_node_id]
+        has_cell_occupation: bool = (len(occupied_cell_id_list) > 0)
+        has_cell_occupation = False
+
+        if not has_cell_occupation:
+            if final_score > best_prob:
+                best_prob = final_score
+                best_node_idx = candidate_node_id
+        else:
+            continue
+
+            # has_other_connection_option_current_cell: bool = (count_non_zero_data_in_list(node_id_coord_dict) > 1)
+            # for occupied_cell_id in occupied_cell_id_list:
+            #
+            #     if node_id_coord_dict == occupied_cell_id.start_frame_num:
+            #         if final_score > best_prob:
+            #             best_prob = final_score
+            #             best_node_idx = candidate_node_id
+            #             tmp_redo_node_idx_cell_id_dict[best_node_idx].add(occupied_cell_id)
+            #         continue
+            #
+            #
+            #     occupied_cell_current_frame_idx = all_valid_cell_track_idx_dict[occupied_cell_id][current_frame_num]
+            #     occupied_cell_node_connection_prob_list = frame_num_prof_matrix_dict[current_frame_num][occupied_cell_current_frame_idx]
+            #
+            #     has_other_connection_option_occupied_cell: bool = (count_non_zero_data_in_list(occupied_cell_node_connection_prob_list) > 1)
+            #
+            #     if not has_other_connection_option_current_cell and not has_other_connection_option_occupied_cell:
+            #         #merge as usual
+            #         if final_score > best_prob:
+            #             best_prob = final_score
+            #             best_node_idx = candidate_node_id
+            #
+            #     elif has_other_connection_option_current_cell and not has_other_connection_option_occupied_cell:
+            #         # current cell explore other options
+            #         continue
+            #
+            #     elif not has_other_connection_option_current_cell and has_other_connection_option_occupied_cell:
+            #         # occupied cell explore other options
+            #         if final_score > best_prob:
+            #             best_prob = final_score
+            #             best_node_idx = candidate_node_id
+            #             tmp_redo_node_idx_cell_id_dict[candidate_node_id].add(occupied_cell_id)
+            #
+            #     elif has_other_connection_option_current_cell and has_other_connection_option_occupied_cell:
+            #         # higher probability cell takes over
+            #         occupied_cell_prob: float = all_valid_cell_track_prob_dict[occupied_cell_id][node_id_coord_dict]
+            #
+            #         if occupied_cell_prob > final_score:
+            #             #current cell explore other opportunity
+            #             continue
+            #         elif occupied_cell_prob < final_score:
+            #             if final_score > best_prob:
+            #                 # occupied cell explore other opportunity
+            #                 best_prob = final_score
+            #                 best_node_idx = candidate_node_id
+            #                 tmp_redo_node_idx_cell_id_dict[best_node_idx].add(occupied_cell_id)
+            #
+            #         elif occupied_cell_prob == final_score:
+            #             if final_score > best_prob:
+            #                 # print("(let them share for now) to handle biz scenario", occupied_cell_prob, candidate_node_coord, to_handle_cell_id.str_short(), occupied_cell_id.str_short(), current_frame_num)
+            #                 best_prob = final_score
+            #                 best_node_idx = candidate_node_id
+            #                 # continue
+            #
+            #             # raise Exception("Unexpected biz scenario", occupied_cell_prob, candidate_node_coord, to_handle_cell_id.str_short(), occupied_cell_id.str_short(), current_frame_num)
+            #         else:
+            #             raise Exception("code validation check")
+            #
+            #
+            #     else:
+            #         raise Exception("code validation check")
+
+    # if best_node_idx in tmp_redo_node_idx_cell_id_dict:
+    #     for redo_cell_id in tmp_redo_node_idx_cell_id_dict[best_node_idx]:
+    #         if redo_cell_id == CellId(84, 6) and node_id_coord_dict == 84:
+    #             tmp = all_valid_cell_track_prob_dict[redo_cell_id]
+    #             print("sadg", redo_cell_id.str_short(), node_id_coord_dict)
+    #
+    #         occu_cell_prob = all_valid_cell_track_prob_dict[redo_cell_id][node_id_coord_dict]
+    #         print(f"redo cell {redo_cell_id}; collision at frame {node_id_coord_dict}; node_idx: {best_node_idx}; curr_cell_prob: {best_prob}; occu_cell_prob: {occu_cell_prob}")
+    #         redo_cell_id_set.add(redo_cell_id)
+
+    return best_node_idx, best_prob, score_log_mtx, redo_cell_id_set
+
+
+def derive_discount_rate_from_cell_start_frame_num(cell_id: CellId, merge_above_threshold: float, discount_rate_per_layer):
+    if merge_above_threshold == 0:
+        discount_rate: float = 1.0
+    elif discount_rate_per_layer == "merge_above_threshold":
+        discount_rate: float = pow(merge_above_threshold, cell_id.start_frame_num - 1)
+    else:
+        discount_rate: float = pow(discount_rate_per_layer, cell_id.start_frame_num - 1)
+
+    return discount_rate
 
 
 
