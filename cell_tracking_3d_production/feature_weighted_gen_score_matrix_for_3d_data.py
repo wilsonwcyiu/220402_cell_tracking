@@ -20,22 +20,14 @@ from imutils import paths
 import SimpleITK as sitk
 
 
-
-global_max_distance = 0
-
 def main():
 
 
 
     ## settings
     folder_path: str = 'D:/viterbi linkage/dataset/'
-    default_save_dir = folder_path + 'save_directory_enhancement/'
-
-    is_generate_score_log: bool = True
-    is_use_preload_coord_data: bool = True
-    # preload_coord_dir: str = folder_path + "coord_data_3d/"
     raw_3d_data_dir: str = folder_path + '3D raw data_seg data_find center coordinate/4 Segmentation dataset/'
-
+    default_save_dir = folder_path + 'save_directory_enhancement/'
 
     ## user input
     input_series_name_sub_dir_dict: dict = {}
@@ -54,13 +46,10 @@ def main():
     input_series_name_sub_dir_dict["20190701--2_inter_29layers_mask_3a"] = "5 29layers inter mask data/model3a/20190701--2_inter_29layers_mask_3a"
     input_series_name_sub_dir_dict["20200716++1_inter_29layers_mask_3a"] = "5 29layers inter mask data/model3a/20200716++1_inter_29layers_mask_3a"
     input_series_name_sub_dir_dict["20200716++2_inter_29layers_mask_3a"] = "5 29layers inter mask data/model3a/20200716++2_inter_29layers_mask_3a"
-    input_series_name_sub_dir_dict["20200716--1_inter_29layers_mask_3a"] = "5 29layers inter mask data/model3a/20200716--1_inter_29layers_mask_3a"
-    input_series_name_sub_dir_dict["20190621++2_inter_29layers_mask_3b"] = "5 29layers inter mask data/model3b/20190621++2_inter_29layers_mask_3b"
     input_series_name_sub_dir_dict["20200802--2_inter_33layers_mask_3a"] = "6 33layers inter mask data/20200802--2_inter_33layers_mask_3a"
     input_series_name_sub_dir_dict["20200829++1_inter_33layers_mask_3a"] = "6 33layers inter mask data/20200829++1_inter_33layers_mask_3a"
     input_series_name_sub_dir_dict["20200829++2_inter_33layers_mask_3a"] = "6 33layers inter mask data/20200829++2_inter_33layers_mask_3a"
     input_series_name_sub_dir_dict["20200829--1_inter_33layers_mask_3a"] = "6 33layers inter mask data/20200829--1_inter_33layers_mask_3a"
-
 
     ## hyper parameter settings
     weight_tuple_list: list = [WeightTuple(0.3, 0.4, 0.3)]
@@ -68,7 +57,15 @@ def main():
     coord_length_for_vector_list: list = [6]
     average_movement_step_length_list: list = [6]
     minimum_track_length_list: list = [1]
-    discount_rate_per_layer_list: list = [0.9]      #options: {"merge_threshold", any float number},
+
+    ## end of user input
+
+
+
+
+
+
+    discount_rate_per_layer_list: list = [None]      # depricated
 
     start_datetime: Date = datetime.now()
     date_str: str = start_datetime.strftime("%Y%m%d-%H%M%S")
@@ -76,9 +73,8 @@ def main():
     individual_result_dir: str = default_save_dir + date_str + "_" + py_file_name + "/"
     os.makedirs(individual_result_dir)
 
-    if is_generate_score_log:
-        score_log_dir: str = individual_result_dir + "score_log/"
-        os.makedirs(score_log_dir)
+    score_log_dir: str = individual_result_dir + "score_log/"
+    os.makedirs(score_log_dir)
 
     hyper_para_combination_list = list(itertools.product(
                                                          weight_tuple_list,
