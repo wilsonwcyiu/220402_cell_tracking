@@ -47,12 +47,12 @@ def main():
     #output_folder = folder_path + 'output_unet_seg_finetune//'
 
     #group1 data
-    # segmentation_folder = folder_path + "2D Cell tracking another two groups of data/group 1_public data/5 Unet_trainingsets_simpledata/data/segmentation/"
-    # output_folder = folder_path + '2D Cell tracking another two groups of data/group 1_public data/4 output_finetune_model/'
+    segmentation_folder = folder_path + "2D Cell tracking another two groups of data/group 1_public data/5 Unet_trainingsets_simpledata/data/segmentation/"
+    output_folder = folder_path + '2D Cell tracking another two groups of data/group 1_public data/4 output_finetune_model/'
 
     #group2 data
-    segmentation_folder = folder_path + "2D Cell tracking another two groups of data/group 2_kuan data/5 Unet_trainingsets_simpledata2/data/segmentation/"
-    output_folder = folder_path + '2D Cell tracking another two groups of data/group 2_kuan data/4 output_finetune_model_data2/'
+    # segmentation_folder = folder_path + "2D Cell tracking another two groups of data/group 2_kuan data/5 Unet_trainingsets_simpledata2/data/segmentation/"
+    # output_folder = folder_path + '2D Cell tracking another two groups of data/group 2_kuan data/4 output_finetune_model_data2/'
 
 
     save_dir = folder_path + 'save_directory_enhancement/'
