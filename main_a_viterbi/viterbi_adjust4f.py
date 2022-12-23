@@ -77,7 +77,7 @@ def main():
     # routing_strategy_enum_list: list = [ROUTING_STRATEGY_ENUM.ALL_LAYER]
     # merge_threshold_list: list = [0.875]
     # minimum_track_length_list: list = [5]
-    # cut_threshold_list: list = [0.45]
+    # cut_threshold_list: list = [0.445]
     # is_do_post_adjustment_list: list = [False]
     # cut_strategy_enum_list: list = [CUT_STRATEGY_ENUM.DURING_ROUTING]
     # both_cell_below_threshold_strategy_enum_list: list = [BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM.SHARE]
