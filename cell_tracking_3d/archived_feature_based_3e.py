@@ -49,7 +49,10 @@ def main():
     is_use_thread: bool = False
 
     ## hyper parameter settings
-    weight_tuple_list: list = [WeightTuple(0.4, 0.4, 0.3) ]
+    degree = 0
+    distance = 1
+    avg_distance = 0
+    weight_tuple_list: list = [WeightTuple(degree, distance, avg_distance) ]
     merge_threshold_list: list = [0]
     discount_rate_per_layer_list: list = [0.5] #{"merge_threshold", any_float},
 
@@ -109,7 +112,7 @@ def main():
         # include_series_list = ['_8layers_', '_9layers_']
         # include_series_list = ['_15layers_', '_17layers_']
         # include_series_list = ['_29layers_', '_33layers_']
-        include_series_list = ['1_8layers_mask_data__20190621++2_8layers_M3a_Step98']
+        include_series_list = ['_8layers_']
         for input_series in input_series_name_list:
             for include_series in include_series_list:
                 if include_series in input_series:
