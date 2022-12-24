@@ -1,6 +1,6 @@
 from os import listdir
 
-from main.viterbi_adjust2_enhancement import find_existing_series_list
+from main.viterbi_adjust3 import find_existing_series_list
 
 if __name__ == '__main__':
     folder_path: str = 'D:/viterbi linkage/dataset/'
