@@ -1,8 +1,37 @@
 todo:
-breakdown _process to single cell level instead of processing all cells at once
+
+when redo track from former frame touchs start_frame of new cell in later frame, the new cell should be discarded
+
+start frame of new cells
+
+true recurssive behavior may help with the infinite loop pattern
+
+check new cells before redo (redo cell may not be new cells anymore)
+
+after doing the partial route feature, it is found that an collision scenario could still happen in the previous layer of the original collision location
+(e.g. collision at frame 100 Cell_1 kicks away Cell_2, when Cell_1 re-route from frame 100, the final route in later part will be different that can affect the former route)
+In short, re-route from frame 100 does not mean the route before frame 100 is final confirmed.
+
+new cells in later layers has higher values because they have less multiplications. Example: cell start at frame 2 to 3 and frame 1 to 3. 0.9 x 0.9 > 0.9 x 0.9 x 0.9
+when threshold is very high (e.g. 0.95), it causes a lot of redo and make it almost impossible to finish
+cell dependency feature to fasten redo process
+
+fix a bug where i loop occupied cell list and assigned highest value whenever the latest cell is not higher than threshold (node should be invalid at once whenever one occupied cell has higher value)
+
+lasts layer is not check with threshold, thus it can trigger infinite loop??
+fix an issue in one_layer strategy that route with zero probability is being selected (in one of the layers is being selected)
+fix an issue where last layer has no valid cells due to all node being occupied. (viterbi does not check last layer)
+fix an issue where the new cell occurs in frame_num > 1 has no connection probability for route strategy process
+
+enhance cut feature to allow cutting during or after routing process
+enhance profit_matrix_list to profit_matrix_dict with frame_num as key
+enhance start_index_list to start_index_list_dict with frame_num as key
+enhance start_value_list to start_value_list_dict with frame_num as key
+enhance cell_track dict key from incremental cell_idx to CellId(start_frame_num, node_idx)
+merge initial program flow (from frame 1) and new program flow (from frame 2 to last_frame - 1)
+
+
 ??add first frame connection to start_list_index, start_list_value
-cell_occupation_vec_dict function
-algorithm to delete and reconnect track
 
 
 
@@ -10,6 +39,10 @@ algorithm to delete and reconnect track
 
 
 completed:
+algorithm to delete and reconnect track
+breakdown _process to single cell level instead of processing all cells at once
+add threshold ^ frame_num feature
+cell_occupation_vec_dict function
 multi-thread
 individual _find cell track function
 combine _find and _find_iter

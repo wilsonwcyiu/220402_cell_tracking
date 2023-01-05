@@ -1,0 +1,7 @@
+Falsely Identified Tracker (FIT): number of incorrect prediction base on ground truth data
+
+Falsely Identified Object (FIO): number of incorrect prediction base on prediction data
+
+Track purity (TP): number of correctly predicted node / total node in predicted track
+
+Object purity (OP): number of correctly predicted node / total node in GT

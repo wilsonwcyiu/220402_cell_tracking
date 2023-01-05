@@ -40,10 +40,21 @@ from multiprocessing.pool import ThreadPool
 
 def main():
 
-    folder_path: str = 'D:/google_drive/viterbi linkage/dataset/'
+    folder_path: str = 'D:/viterbi linkage/dataset/'
 
-    segmentation_folder = folder_path + 'segmentation_unet_seg//'
-    output_folder = folder_path + 'output_unet_seg_finetune//'
+    #original data
+    # segmentation_folder = folder_path + 'segmentation_unet_seg//
+    #output_folder = folder_path + 'output_unet_seg_finetune//'
+
+    #group1 data
+    segmentation_folder = folder_path + "2D Cell tracking another two groups of data/group 1_public data/5 Unet_trainingsets_simpledata/data/segmentation/"
+    output_folder = folder_path + '2D Cell tracking another two groups of data/group 1_public data/4 output_finetune_model/'
+
+    #group2 data
+    # segmentation_folder = folder_path + "2D Cell tracking another two groups of data/group 2_kuan data/5 Unet_trainingsets_simpledata2/data/segmentation/"
+    # output_folder = folder_path + '2D Cell tracking another two groups of data/group 2_kuan data/4 output_finetune_model_data2/'
+
+
     save_dir = folder_path + 'save_directory_enhancement/'
 
 
@@ -53,26 +64,14 @@ def main():
 
     ## hyper parameter settings
     routing_strategy_enum_list: list = [ROUTING_STRATEGY_ENUM.ALL_LAYER]
-    # merge_threshold_list: list = [0.855, 0.865, 0.87, 0.875, 0.88, 0.885, 0.89]
-    merge_threshold_list: list = [0]
-    # merge_threshold_list: list = [0.8, 0.81, 0.82, 0.83, 0.84, 0.85, 0.86, 0.87, 0.88, 0.89, 0.9]
+    merge_threshold_list: list = [0.75, 0.775, 0.8, 0.825, 0.85, 0.875, 0.9, 0.925, 0.95]
     minimum_track_length_list: list = [5]
-    cut_threshold_list: list = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55]
+    cut_threshold_list: list = [0.2, 0.3, 0.4, 0.5]
     is_do_post_adjustment_list: list = [False]
-    # cut_strategy_enum_list: list = [CUT_STRATEGY_ENUM.AFTER_ROUTING, CUT_STRATEGY_ENUM.DURING_ROUTING]
     cut_strategy_enum_list: list = [CUT_STRATEGY_ENUM.DURING_ROUTING]
     both_cell_below_threshold_strategy_enum_list: list = [BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM.SHARE]
-    # discount_rate_per_layer: list = [0.86, 0.87, 0.88, 0.89, 0.895, 0.9, 0.905, 0.91] # {"merge_threshold" or number}
-    discount_rate_per_layer: list = [0] # {"merge_threshold" or number}
+    discount_rate_per_layer: list = [0.7, 0.8, 0.9] # {"merge_threshold" or number}
 
-    # routing_strategy_enum_list: list = [ROUTING_STRATEGY_ENUM.ALL_LAYER]
-    # merge_threshold_list: list = [0]
-    # minimum_track_length_list: list = [5]
-    # cut_threshold_list: list = [0.01, 0.445]
-    # is_do_post_adjustment_list: list = [True, False]
-    # cut_strategy_enum_list: list = [CUT_STRATEGY_ENUM.DURING_ROUTING]
-    # both_cell_below_threshold_strategy_enum_list: list = [BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM.SHARE]
-    # discount_rate_per_layer: list = [0.5] #"merge_threshold",
 
     # routing_strategy_enum_list: list = [ROUTING_STRATEGY_ENUM.ALL_LAYER]
     # merge_threshold_list: list = [0.875]
@@ -82,6 +81,8 @@ def main():
     # cut_strategy_enum_list: list = [CUT_STRATEGY_ENUM.DURING_ROUTING]
     # both_cell_below_threshold_strategy_enum_list: list = [BOTH_CELL_BELOW_THRESHOLD_STRATEGY_ENUM.SHARE]
     # discount_rate_per_layer: list = [0.9] #"{merge_threshold, (float)}",
+
+
     start_time = datetime.now()
     start_time_float = time.perf_counter()
 
@@ -118,6 +119,7 @@ def main():
         hyper_para_list.append(hyper_para)
 
 
+
     date_str: str = datetime.now().strftime("%Y%m%d-%H%M%S")
 
 
@@ -141,10 +143,7 @@ def main():
 
         process_start_time = time.perf_counter()
 
-        input_series_list = ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10',
-                             'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S20']
-        # input_series_list = ['S01']
-
+        input_series_list = ['S01', 'S02', 'S03', 'S04', 'S05']
 
         all_segmented_filename_list = listdir(segmentation_folder)
         all_segmented_filename_list.sort()

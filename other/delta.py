@@ -74,7 +74,7 @@ def getOverlap(output,target):
         Portion of target cell that is covered by the tracking output.
 
     '''
-    return  cv2.sumElems(cv2.bitwise_and(output,target))[0]/\
+    return  cv2.sumElems(cv2.bitwise_and(output,target))[0]/   \
             cv2.sumElems(target)[0]
 
 delta_results_dict = {
