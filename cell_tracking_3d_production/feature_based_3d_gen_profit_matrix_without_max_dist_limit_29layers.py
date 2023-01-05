@@ -29,6 +29,8 @@ global_max_distance = 0
 
 def main():
 
+
+
     ## settings
     folder_path: str = 'D:/google_drive/viterbi linkage/dataset/'
     default_save_dir = folder_path + 'save_directory_enhancement/'
@@ -36,17 +38,7 @@ def main():
     is_generate_score_log: bool = True
 
     ## user input
-    # input_series_name_list = ['_8layers_', '_9layers_', '_29layers_', '_33layers_']
     input_series_name_list: list = []
-    input_series_name_list.append("1_8layers_mask_data__20190621++2_8layers_M3a_Step98")
-    input_series_name_list.append("1_8layers_mask_data__20190701--1_8layers_M3a_Step98")
-    input_series_name_list.append("1_8layers_mask_data__20190701--2_8layers_M3a_Step98")
-    input_series_name_list.append("1_8layers_mask_data__20200716++1_8layers_M3s_Step98")
-    input_series_name_list.append("1_8layers_mask_data__20200716++2_8layers_M3a_Step98")
-    input_series_name_list.append("2_9layers_mask_data__20200802--2_9layers_M3a_Step98")
-    input_series_name_list.append("2_9layers_mask_data__20200829++1_9layers_M3a_Step98")
-    input_series_name_list.append("2_9layers_mask_data__20200829++2_9layers_M3a_Step98")
-    input_series_name_list.append("2_9layers_mask_data__20200829--1_9layers_M3a_Step98")
     input_series_name_list.append("5_29layers_inter_mask_data__model3a__20190621++2_inter_29layers_mask_3a")
     input_series_name_list.append("5_29layers_inter_mask_data__model3a__20190701--1_inter_29layers_mask_3a")
     input_series_name_list.append("5_29layers_inter_mask_data__model3a__20190701--2_inter_29layers_mask_3a")
@@ -57,7 +49,6 @@ def main():
     input_series_name_list.append("6_33layers_inter_mask_data__20200829++2_inter_33layers_mask_3a")
     input_series_name_list.append("6_33layers_inter_mask_data__20200829--1_inter_33layers_mask_3a")
 
-
     ## hyper parameter settings
     weight_tuple_list: list = [WeightTuple(0.3, 0.4, 0.3)]
     max_moving_distance_list: list = [40]
@@ -66,8 +57,8 @@ def main():
     minimum_track_length_list: list = [1]
     discount_rate_per_layer_list: list = [0.9]      #options: {"merge_threshold", any float number},
 
-
-    date_str: str = datetime.now().strftime("%Y%m%d-%H%M%S")
+    start_datetime: Date = datetime.now()
+    date_str: str = start_datetime.strftime("%Y%m%d-%H%M%S")
     py_file_name: str = Path(__file__).name.replace(".py", "")
     individual_result_dir: str = default_save_dir + date_str + "_" + py_file_name + "/"
     os.makedirs(individual_result_dir)

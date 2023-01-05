@@ -1,4 +1,5 @@
 import enum
+import itertools
 from collections import defaultdict, namedtuple
 from decimal import Decimal
 from enum import Enum
@@ -17,11 +18,29 @@ from main_a_viterbi.viterbi_adjust4d import CellId
 from ml_classification.generate_tracks import generate_all_combination_fixed_track_length
 
 
-def main():
-    print(int(np.round(4.2, 0)))
-    print(int(np.round(4.9, 0)))
 
-    # method_52()
+def main():
+    generate_all_possibilities()
+
+def product_list_list():
+    number_list: list = [1, 2, 4]
+    result_combination_tuple_list: list = []
+
+    frame_node_id_list_list : list = []
+    for idx, total_node_in_frame in enumerate(number_list):
+        node_id_list: list = [x for x in range(1, total_node_in_frame + 1)]
+        frame_node_id_list_list.append(node_id_list)
+
+    result_combination_tuple_list = list(itertools.product(*frame_node_id_list_list))
+
+
+    print(frame_node_id_list_list)
+    print()
+    print(result_combination_tuple_list)
+
+
+
+
 
 
 def method_52():

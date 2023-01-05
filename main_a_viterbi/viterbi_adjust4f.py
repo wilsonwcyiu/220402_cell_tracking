@@ -40,14 +40,14 @@ from multiprocessing.pool import ThreadPool
 
 def main():
 
-    folder_path: str = 'D:/viterbi linkage/dataset/'
+    folder_path: str = 'D:/google_drive/viterbi linkage/dataset/'
 
     segmentation_folder = folder_path + 'segmentation_unet_seg//'
     output_folder = folder_path + 'output_unet_seg_finetune//'
     save_dir = folder_path + 'save_directory_enhancement/'
 
 
-    is_use_thread: bool = True
+    is_use_thread: bool = False
 
     is_use_cell_dependency_feature: bool = False
 
