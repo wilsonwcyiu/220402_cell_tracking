@@ -55,6 +55,10 @@ def main():
     print(">> generate cell coordinate data from cell id")
     track_data_list: list[TrackData] = []
     for series, result_list_list in series_viterbi_result_list_dict.items():
+        if series != 'S10':
+            continue
+
+
         print("\t working on series:", series)
 
         result_list_list = sorted(result_list_list)
@@ -76,14 +80,15 @@ def main():
                 coord_tuple: CoordTuple = frame_num_node_id_coord_dict_dict[frame_num][cell_idx]
                 coord_tuple_list.append(coord_tuple)
 
-        first_cell_coord_in_track_tuple: tuple = coord_tuple_list[0]
-        x_coord: int = first_cell_coord_in_track_tuple[0]
-        y_coord: int = first_cell_coord_in_track_tuple[1]
 
-        track_id: str = series + ":" + str(x_coord) + ":" + str(y_coord)
+            first_cell_coord_in_track_tuple: tuple = coord_tuple_list[0]
+            x_coord: int = first_cell_coord_in_track_tuple[0]
+            y_coord: int = first_cell_coord_in_track_tuple[1]
 
-        track_data: TrackData = TrackData(series, track_id, coord_tuple_list)
-        track_data_list.append(track_data)
+            track_id: str = series + ":x" + str(x_coord) + ":y" + str(y_coord)
+
+            track_data: TrackData = TrackData(pkl_file_name, series, track_id, coord_tuple_list)
+            track_data_list.append(track_data)
 
 
 
@@ -94,27 +99,31 @@ def main():
         track_data.net_displacement = net_displacement      
         
         # Meandering index: Net displacement divided by all journey of cells(P1+P2+P3+…+PN)
-        total_travel_pixel_distance_of_track: float = calculate_total_travel_pixel_distance(track_data.track_coord_list)
+        total_travel_pixel_distance_of_track: float = calculate_total_travel_pixel_distance(track_data.track_coord_tuple_list)
         track_data.total_travel_pixel_distance_of_track = total_travel_pixel_distance_of_track
 
         meandering_index: float = net_displacement / total_travel_pixel_distance_of_track
         track_data.meandering_index = meandering_index
 
         # all journey of cells(P1+P2+P3+…+PN) divided by frames(N)
-        mean_speed: float = net_displacement / track_data.total_frame
+        mean_speed: float = total_travel_pixel_distance_of_track / track_data.total_frame
         track_data.mean_speed = mean_speed
 
 
-    print(">> print result")
+
+    print(">> print results")
     for track_data in track_data_list:
         result: str = ""
+        result += "pkl_file_name: " + pkl_file_name + "\n"
         result += "track_id: " + track_data.track_id + "\n"
-        result += "total_frame: " + track_data.total_frame + "\n"
-        result += "start_coord_tuple, end_coord_tuple: " + track_data.start_coord_tuple + ", " + track_data.end_coord_tuple + "\n"
-        result += "total_travel_pixel_distance_of_track: " + track_data.total_travel_pixel_distance_of_track + "\n"
-        result += "total_frame: " + track_data.net_displacement + "\n"
-        result += "total_frame: " + track_data.meandering_index + "\n"
-        result += "total_frame: " + track_data.mean_speed + "\n"
+        result += "total_frame: " + str(track_data.total_frame) + "\n"
+        result += "start_coord_tuple, end_coord_tuple: " + str(track_data.start_coord_tuple) + ", " + str(track_data.end_coord_tuple) + "\n"
+        result += "total_travel_pixel_distance_of_track: " + str(track_data.total_travel_pixel_distance_of_track) + "\n"
+        result += "net_displacement: " + str(track_data.net_displacement) + "\n"
+        result += "meandering_index: " + str(track_data.meandering_index) + "\n"
+        result += "mean_speed: " + str(track_data.mean_speed) + "\n"
+        result += "track coords: " + str(track_data.track_coord_tuple_list)
+        result += "\n\n"
         
         print(result)
 
@@ -143,9 +152,10 @@ def main_test_case():
 class TrackData:
      
     # Constructor
-    def __init__(self, series_num, track_id, track_coord_tuple_list):
+    def __init__(self, pkl_file_name, series_num, track_id, track_coord_tuple_list):
         # raw input data
-        self.series_num = series_num
+        self.pkl_file_name: str = pkl_file_name
+        self.series_num: str = series_num
         self.track_id: str = track_id       # series no:x_coord:y_coord
         self.track_coord_tuple_list: list[tuple] = track_coord_tuple_list
 
