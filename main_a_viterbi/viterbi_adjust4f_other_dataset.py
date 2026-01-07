@@ -24,7 +24,7 @@ from matplotlib import cm
 from scipy.optimize import linear_sum_assignment
 import copy
 import time
-import cv2
+# import cv2
 #from google.colab.patches import cv2_imshow
 import random
 from itertools import combinations
@@ -47,15 +47,15 @@ def main():
     #output_folder = folder_path + 'output_unet_seg_finetune//'
 
     #group1 data
-    # segmentation_folder = folder_path + "2D Cell tracking another two groups of data/group 1_public data/5 Unet_trainingsets_simpledata/data/segmentation/"
-    # output_folder = folder_path + '2D Cell tracking another two groups of data/group 1_public data/4 output_finetune_model/'
-
-    #group2 data
-    segmentation_folder = folder_path + "2D Cell tracking another two groups of data/group 2_kuan data/5 Unet_trainingsets_simpledata2/data/segmentation/"
-    output_folder = folder_path + '2D Cell tracking another two groups of data/group 2_kuan data/4 output_finetune_model_data2/'
+    segmentation_folder = folder_path + "2D Cell tracking another two groups of data/group 1_public data/5 Unet_trainingsets_simpledata/data/segmentation/"
+    output_folder = folder_path + '2D Cell tracking another two groups of data/group 1_public data/4 output_finetune_model/'
+    save_dir = folder_path + 'save_directory_enhancement_group 1_public data/'
 
 
-    save_dir = folder_path + 'save_directory_enhancement/'
+    # #group2 data
+    # segmentation_folder = folder_path + "2D Cell tracking another two groups of data/group 2_kuan data/5 Unet_trainingsets_simpledata2/data/segmentation/"
+    # output_folder = folder_path + '2D Cell tracking another two groups of data/group 2_kuan data/4 output_finetune_model_data2/'
+    # save_dir = folder_path + 'save_directory_enhancement_group 2_kuan data/'
 
 
     is_use_thread: bool = False

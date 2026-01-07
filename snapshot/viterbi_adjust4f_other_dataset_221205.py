@@ -24,7 +24,7 @@ from matplotlib import cm
 from scipy.optimize import linear_sum_assignment
 import copy
 import time
-import cv2
+#import cv2
 #from google.colab.patches import cv2_imshow
 import random
 from itertools import combinations
