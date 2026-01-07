@@ -21,6 +21,7 @@ import pickle
 
 def main():
     root_dir: str = 'G:/My Drive/leiden_university_course_materials/thesis/viterbi linkage/dataset'
+    root_dir: str = "G:\My Drive\leiden_university_course_materials\thesis\260101_thesis_followup\260106_Dicts"
     # root_dir: str = 'D:/viterbi linkage/dataset/'
     save_dir = root_dir + 'Dicts/'                               #'track_dictory_finetune//track_dictory_unet_seg//'
     segmentation_folder = root_dir + '/segmentation_unet_seg/'    #'Unet_trainingsets//data//segmentation_unet_seg//'
