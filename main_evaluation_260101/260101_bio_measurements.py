@@ -20,13 +20,18 @@ import pandas as pd
 
 
 def main():
+    print(f">> Execution started.")
+    start_time = time.perf_counter()
+    # date_str: str = datetime.now().strftime("%Y%m%d-%H%M%S")
 
-    print(">> setup file path")
-    folder_path: str = 'G:/My Drive/leiden_university_course_materials/thesis/viterbi linkage/dataset/'
 
-    segmentation_folder = folder_path + 'segmentation_unet_seg/'
-    save_dir: str = 'G:/My Drive/leiden_university_course_materials/thesis/260101_thesis_followup/260106_Dicts/'
-    pkl_file_name: str = "viterbi_results_dict_adj2.pkl"
+    print(">> setup paths")
+    project_folder_path: str = 'D:/program_source_code/220402_cell_tracking/220402_cell_tracking/main_evaluation_260101/'
+    data_path: str = project_folder_path + 'data/'
+    pkl_data_path: str = data_path + 'pkl_data/'
+    output_file_path: str = data_path + '260108_all_pkl_track_result_measurements.csv'
+
+    segmentation_folder = data_path + 'segmentation_unet_seg/'
 
     pkl_file_name_list: list = [
                                 "gt_results_dict.pkl",
@@ -38,16 +43,12 @@ def main():
 
     print(">> setup configuration")
     filter_out_track_length_lower_than: int = 16
-
+    pixel_to_microns_ratios: float = 0.8791
 
     myd88_plus_series_list: list = ['S10', 'S11', 'S14', 'S15', 'S18', 'S19']
     myd88_minus_series_list: list = ['S12', 'S13', 'S16', 'S17', 'S20']
 
-    # myd88_plus_series_list: list = ['S10']
-    # myd88_minus_series_list: list = []
 
-    start_time = time.perf_counter()
-    date_str: str = datetime.now().strftime("%Y%m%d-%H%M%S")
 
     print(">> retrieve all segmentation folder paths")
     all_segmented_filename_list: list[str] = listdir(segmentation_folder)
@@ -56,49 +57,40 @@ def main():
 
     track_data_list: list[TrackData] = []
     for pkl_file_name in pkl_file_name_list:
-        series_viterbi_result_list_dict: dict[list] = open_track_dictionary(save_dir + pkl_file_name)   # key: series_id
+        print(">> working on file", pkl_file_name)
 
-        # abs_dir_path = f"{save_dir}{date_str}_cnn_track_data/"
-        # if not os.path.exists(abs_dir_path):
-        #     print(f"create abs_dir_path: {abs_dir_path}")
-        #     os.makedirs(abs_dir_path)
+        series_viterbi_result_list_dict: dict[list] = open_track_dictionary(pkl_data_path + pkl_file_name)   # key: series_id
+
+        print(">> filter related series")
+        for series_id in list(series_viterbi_result_list_dict.keys()):
+            if series_id not in myd88_plus_series_list and series_id not in myd88_minus_series_list:
+                print("remove series ", series_id)
+                del series_viterbi_result_list_dict[series_id] 
+
+
+        print(">> filter result with track length lower than ", filter_out_track_length_lower_than)
+        for series, result_list_list in series_viterbi_result_list_dict.items():
+            result_list_list = filter_track_by_length(result_list_list, filter_out_track_length_lower_than)
+            series_viterbi_result_list_dict[series] = result_list_list
+            
 
         print(">> generate cell coordinate data from cell id")
-        for series, result_list_list in series_viterbi_result_list_dict.items():
-            if series not in myd88_plus_series_list and series not in myd88_minus_series_list:
-                continue
+        tmp_list: list[TrackData] = generate_cell_data_with_coordinate_info(pkl_file_name, 
+                                                                                    series_viterbi_result_list_dict, 
+                                                                                    segmentation_folder, 
+                                                                                    all_segmented_filename_list
+                                                                                    )
+        track_data_list.extend(tmp_list)
 
-
-            print("\t working on series:", series)
-
-            result_list_list = sorted(result_list_list)
-
-            segmented_filename_list: list = derive_segmented_filename_list_by_series(series, all_segmented_filename_list)
-
-            frame_num_node_id_coord_dict_dict = derive_frame_num_node_idx_coord_list_dict(segmentation_folder, segmented_filename_list)
-
-            # filter result_list that is at least given length
-            result_list_list = filter_track_by_length(result_list_list, filter_out_track_length_lower_than)
-
-            # convert data from cell id to coordinates
-            for idx, result_list in enumerate(result_list_list):
-                print(f"\r{idx+1}/ {len(result_list_list)}; ", end='')
-                coord_tuple_list = []
-                for result_tuple in result_list:
-                    cell_idx = result_tuple[0]
-                    frame_num = result_tuple[1] + 1
-                    coord_tuple: CoordTuple = frame_num_node_id_coord_dict_dict[frame_num][cell_idx]
-                    coord_tuple_list.append(coord_tuple)
-
-
-                first_cell_coord_in_track_tuple: tuple = coord_tuple_list[0]
-                x_coord: int = first_cell_coord_in_track_tuple[0]
-                y_coord: int = first_cell_coord_in_track_tuple[1]
-
-                track_id: str = series + ":x" + str(x_coord) + ":y" + str(y_coord)
-
-                track_data: TrackData = TrackData(pkl_file_name, series, track_id, coord_tuple_list)
-                track_data_list.append(track_data)
+        
+        print(">> determine if cell type is plus or minus")
+        for track_data in track_data_list:
+            if track_data.series_num in myd88_plus_series_list:
+                track_data.cell_type = "plus"
+            elif track_data.series_num in myd88_minus_series_list:
+                track_data.cell_type = "minus"
+            else:
+                raise Exception("program flow error")
 
 
 
@@ -107,6 +99,8 @@ def main():
         # the distance from the start point(P1) of a track to the end point(PN) as below. 
         net_displacement_pixel: float = calculate_coord_distance(track_data.start_coord_tuple, track_data.end_coord_tuple)
         track_data.net_displacement_pixel = net_displacement_pixel      
+        track_data.net_displacement_microns = net_displacement_pixel / pixel_to_microns_ratios
+                
         
         # Meandering index: Net displacement divided by all journey of cells(P1+P2+P3+…+PN)
         total_travel_pixel_distance_of_track: float = calculate_total_travel_pixel_distance(track_data.track_coord_tuple_list)
@@ -114,43 +108,25 @@ def main():
 
         meandering_index_pixel: float = net_displacement_pixel / total_travel_pixel_distance_of_track
         track_data.meandering_index_pixel = meandering_index_pixel
+        track_data.meandering_index_microns = meandering_index_pixel / pixel_to_microns_ratios
 
         # all journey of cells(P1+P2+P3+…+PN) divided by frames(N)
         mean_speed_pixel: float = total_travel_pixel_distance_of_track / track_data.total_frame
         track_data.mean_speed_pixel = mean_speed_pixel
+        track_data.mean_speed_microns = mean_speed_pixel / track_data.total_frame
 
 
 
-    print(">> object to dataframe")
-    # Convert the list of objects to a DataFrame
-    df = pd.DataFrame([t.__dict__ for t in track_data_list])
-    df.to_csv('d:/all_pkl_track_result_data.csv')
-    # print(df)
-
-    exit()
+    print(">> track_data_list to dataframe")
+    df = pd.DataFrame([t.to_dict() for t in track_data_list])
 
 
-
-    print(">> print results")
-    for track_data in track_data_list:
-        result: str = ""
-        result += "pkl_file_name: " + pkl_file_name + "\n"
-        result += "track_id: " + track_data.track_id + "\n"
-        result += "total_frame: " + str(track_data.total_frame) + "\n"
-        result += "start_coord_tuple, end_coord_tuple: " + str(track_data.start_coord_tuple) + ", " + str(track_data.end_coord_tuple) + "\n"
-        result += "total_travel_pixel_distance_of_track: " + str(track_data.total_travel_pixel_distance_of_track) + "\n"
-        result += "net_displacement: " + str(track_data.net_displacement_pixel) + "\n"
-        result += "meandering_index: " + str(track_data.meandering_index_pixel) + "\n"
-        result += "mean_speed: " + str(track_data.mean_speed_pixel) + "\n"
-        result += "track coords: " + str(track_data.track_coord_tuple_list)
-        result += "\n\n"
-        
-        print(result)
-
+    print(">> generate csv")
+    df.to_csv(output_file_path)
 
 
     execution_time = time.perf_counter() - start_time
-    print(f"Execution time: {execution_time: 0.4f} seconds")
+    print(f">> Execution completed. Execution time: {execution_time: 0.4f} seconds")
 
 
 
@@ -169,6 +145,8 @@ def main_test_case():
 
 
 
+CoordTuple = namedtuple("CoordTuple", "x y")
+
 class TrackData:
      
     # Constructor
@@ -179,16 +157,86 @@ class TrackData:
         self.track_id: str = track_id       # series no:x_coord:y_coord
         self.track_coord_tuple_list: list[tuple] = track_coord_tuple_list
 
+
         # summarized data
         self.total_frame: int = len(track_coord_tuple_list)
         self.start_coord_tuple: tuple = track_coord_tuple_list[0]
         self.end_coord_tuple: tuple = track_coord_tuple_list[-1]
 
+
         # derived data
         self.total_travel_pixel_distance_of_track = None
+        self.cell_type: str = None                     # {plus, minus}
+
         self.net_displacement_pixel: float = None      # the distance from the start point(P1) of a track to the end point(PN) as below. 
         self.meandering_index_pixel: float = None      # Meandering index: Net displacement divided by all journey of cells(P1+P2+P3+…+PN)
         self.mean_speed_pixel: float = None
+
+        self.net_displacement_microns: float = None
+        self.meandering_index_microns: float = None
+        self.mean_speed_microns: float = None
+
+
+
+
+
+    def to_dict(self):
+        track_coord_list: list = []
+        for track_coord_tuple in self.track_coord_tuple_list:
+            text: str = "(" + str(track_coord_tuple.x) + "," + str(track_coord_tuple.y) + ")"
+            track_coord_list.append(text)
+
+        return {
+            'pkl_file_name': self.pkl_file_name,
+            'series_num': self.series_num,
+            'cell_type': self.cell_type,
+            'track_id': self.track_id,
+            'total_frame': self.total_frame,
+            'net_displacement_microns': self.net_displacement_microns,
+            'meandering_index_microns': self.meandering_index_microns,
+            'mean_speed_microns': self.mean_speed_microns,
+            'net_displacement_pixel': self.net_displacement_pixel,
+            'meandering_index_pixel': self.meandering_index_pixel,
+            'mean_speed_pixel': self.mean_speed_pixel,
+            'total_travel_pixel_distance_of_track': self.total_travel_pixel_distance_of_track,
+            'start_coord_tuple': self.start_coord_tuple._asdict(),
+            'end_coord_tuple': self.end_coord_tuple._asdict(),
+            'track_coord_tuple_list': track_coord_list
+        }
+
+
+
+def generate_cell_data_with_coordinate_info(pkl_file_name: str, series_viterbi_result_list_dict: dict, segmentation_folder: str, all_segmented_filename_list: list):
+    track_data_list: list = []
+    for series, result_list_list in series_viterbi_result_list_dict.items():
+
+        result_list_list = sorted(result_list_list)
+
+        segmented_filename_list: list = derive_segmented_filename_list_by_series(series, all_segmented_filename_list)
+
+        frame_num_node_id_coord_dict_dict = derive_frame_num_node_idx_coord_list_dict(segmentation_folder, segmented_filename_list)
+
+        # convert data from cell id to coordinates
+        for idx, result_list in enumerate(result_list_list):
+            print(f"\r{idx+1}/ {len(result_list_list)}; ", end='')
+            coord_tuple_list = []
+            for result_tuple in result_list:
+                cell_idx = result_tuple[0]
+                frame_num = result_tuple[1] + 1
+                coord_tuple: CoordTuple = frame_num_node_id_coord_dict_dict[frame_num][cell_idx]
+                coord_tuple_list.append(coord_tuple)
+
+
+            first_cell_coord_in_track_tuple: tuple = coord_tuple_list[0]
+            x_coord: int = first_cell_coord_in_track_tuple[0]
+            y_coord: int = first_cell_coord_in_track_tuple[1]
+
+            track_id: str = series + ":x" + str(x_coord) + ":y" + str(y_coord)
+
+            track_data: TrackData = TrackData(pkl_file_name, series, track_id, coord_tuple_list)
+            track_data_list.append(track_data)
+
+    return track_data_list
 
 
 
@@ -220,10 +268,6 @@ def derive_segmented_filename_list_by_series(series: str, segmented_filename_lis
             result_segmented_filename_list.append(segmented_filename)
 
     return result_segmented_filename_list
-
-
-CoordTuple = namedtuple("CoordTuple", "x y")
-
 
 
 
@@ -303,70 +347,6 @@ def get_point_color(color):
     return point_color
 
 
-
-# #print (& save) the cell tracks in each frame for a max number of TRACK_LENGTH frames
-# def draw_and_save_tracks(to_generate_series_list, series_viterbi_result_list_dict, segmentation_folder, video_folder, is_save_result: bool, to_print_track_length: int, dir_name: str, filter_out_track_length_lower_than: int, fixed_track_length_to_generate: int):
-#     generation_mode: str = "single"  #{single, all}
-#     is_use_thread: bool = False
-#     if is_use_thread:
-
-#         pool = ThreadPool(processes=8)
-#         thread_list: list = []
-
-#         for series, result_list_list in series_viterbi_result_list_dict.items():
-#             if series not in to_generate_series_list:
-#                 continue
-
-#             print("working on series:", series)
-
-
-#             args_tuple: tuple = (series, result_list_list, segmentation_folder, video_folder, is_save_result, to_print_track_length, dir_name,) # tuple of args for foo
-#             async_result = pool.apply_async(draw_and_save_tracks_single, args_tuple)
-#             thread_list.append(async_result)
-
-#         total_threads = len(thread_list)
-#         for thread_idx in range(total_threads):
-#             thread_list[thread_idx].get()
-#             print(f"Thread {thread_idx+1}/{total_threads}, series {series} completed")
-
-#     else:
-#         ground_truth_cell_dict = obtain_ground_truth_cell_dict()
-#         if generation_mode == "all":
-#             for series, result_list_list in series_viterbi_result_list_dict.items():
-#                 print("working on series:", series)
-
-
-#                 # is_only_show_ground_truth_related_track = False
-#                 # if is_only_show_ground_truth_related_track:
-#                 #     ground_truth_cell_list = ground_truth_cell_dict[series]
-#                 #     filtered_list_list = []
-#                 #     for result_list in result_list_list:
-#                 #         if result_list[0] in ground_truth_cell_list:
-#                 #             filtered_list_list.append(result_list)
-#                 #     result_list_list = filtered_list_list
-
-#                 draw_and_save_tracks_single(series, result_list_list, segmentation_folder, video_folder, is_save_result, to_print_track_length, dir_name)
-
-#         elif generation_mode == "single":
-#             for series, result_list_list in series_viterbi_result_list_dict.items():
-#                 print("working on series:", series)
-
-#                 result_list_list = sorted(result_list_list)
-
-#                 # filter result_list that is at least given length
-#                 result_list_list = filter_track_by_length(result_list_list, filter_out_track_length_lower_than)
-
-#                 result_list_list = generate_all_combination_fixed_track_length(result_list_list, fixed_track_length_to_generate)
-
-
-#                 for idx, result_list in enumerate(result_list_list):
-#                     print(f"{idx}/ {len(result_list_list)}; ")
-#                     cell_idx = result_list[0][0]
-#                     print("cell_idx", cell_idx, end='')
-#                     dir_suffix = "_cell_idx_" + str(cell_idx)
-#                     draw_and_save_tracks_single(series, [result_list], segmentation_folder, video_folder, is_save_result, to_print_track_length, dir_name, dir_suffix=dir_suffix)
-#         else:
-#             raise Exception()
 
 
 
