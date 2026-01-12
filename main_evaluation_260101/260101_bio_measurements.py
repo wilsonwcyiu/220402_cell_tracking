@@ -38,7 +38,8 @@ def main():
                                 "delta_results_dict.pkl",                                
                                 "hungarian_results_dict.pkl",                                
                                 "kuan_tracks_allseries_unet.pkl",
-                                "viterbi_results_dict_adj2.pkl"
+                                "viterbi_results_dict_adj2.pkl",
+                                "Viterbi-like(Multi)__viterbi_adjust4f_a_hp182__R(ALL)_M(0.89)_MIN(5)_CT(0.48)_ADJ(NO)_CS(D)_BB(S)"
                                 ]
 
     print(">> setup configuration")
