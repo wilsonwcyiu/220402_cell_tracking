@@ -29,7 +29,7 @@ def main():
     project_folder_path: str = 'D:/program_source_code/220402_cell_tracking/220402_cell_tracking/main_evaluation_260101/'
     data_path: str = project_folder_path + 'data/'
     pkl_data_path: str = data_path + 'pkl_data/'
-    output_file_path: str = data_path + '260112b_all_pkl_track_result_measurements.csv'
+    output_file_path: str = data_path + '260112c_all_pkl_track_result_measurements.csv'
 
     segmentation_folder = data_path + 'segmentation_unet_seg/'
 
@@ -173,6 +173,7 @@ class TrackData:
         self.total_frame: int = len(track_coord_tuple_list)
         self.start_coord_tuple: tuple = track_coord_tuple_list[0]
         self.end_coord_tuple: tuple = track_coord_tuple_list[-1]
+        self.abs_y_diff = abs(self.end_coord_tuple[1] - self.start_coord_tuple[1])
 
 
         # derived data
@@ -188,6 +189,7 @@ class TrackData:
         self.meandering_index_microns: float = None
         self.mean_speed_microns: float = None
         self.distance_traveled_per_frame_microns: float = None
+
 
 
 
@@ -216,6 +218,7 @@ class TrackData:
             'total_travel_pixel_distance_of_track': self.total_travel_pixel_distance_of_track,
             'start_coord_tuple': self.start_coord_tuple._asdict(),
             'end_coord_tuple': self.end_coord_tuple._asdict(),
+            'abs_y_diff':self.abs_y_diff,
             'track_coord_tuple_list': track_coord_list
         }
 

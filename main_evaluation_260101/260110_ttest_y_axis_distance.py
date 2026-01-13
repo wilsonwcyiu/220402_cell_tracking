@@ -4,6 +4,7 @@ import seaborn as sns
 from scipy import stats
 import pandas
 import math
+import ast
 
 
 def main():
@@ -12,7 +13,7 @@ def main():
 
     start: int = 10
     increment = 5
-    step = 50
+    step = 60
 
     for _ in range(0, step):
         start = round(start, 0)
@@ -20,7 +21,7 @@ def main():
         start += increment
 
 
-    for net_displacement_micron_threshold in sigificant_data_list:
+    for y_axis_distance_micron_threshold in sigificant_data_list:
         # distance_traveled_per_frame_micron_threshold: float = 1.6
         data_size_percentage_to_keep: int = 100
 
@@ -52,7 +53,10 @@ def main():
         for pkl_file_name in pkl_file_name_list:
             # print("pkl_file_name: ", pkl_file_name)
             filtered_df = df[df['pkl_file_name'] == pkl_file_name]
-            filtered_df = filtered_df[filtered_df["net_displacement_microns"] > net_displacement_micron_threshold]
+
+            
+            # print("fdsgf", filtered_df["start_coord_tuple"].to_dict())
+            filtered_df = filtered_df[np.abs(filtered_df["abs_y_diff"]) > y_axis_distance_micron_threshold]
             filtered_plus_df = filtered_df[filtered_df['cell_type'] == 'plus']
             filtered_minus_df = filtered_df[filtered_df['cell_type'] == 'minus']
 
@@ -105,7 +109,7 @@ def main():
             
             # print("--")
 
-        print("net_displacement_micron_threshold:", str(net_displacement_micron_threshold).ljust(4), ".", significant_single_data_str)
+        print("net_displacement_micron_threshold:", str(y_axis_distance_micron_threshold).ljust(4), ".", significant_single_data_str)
 
 
 
