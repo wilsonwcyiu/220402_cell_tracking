@@ -19,7 +19,7 @@ def main():
     data_path: str = project_folder_path + 'data/'
 
     output_folder: str = data_path + "ttest_result/"
-    measurement_file_path: str = data_path + '260112a_all_pkl_track_result_measurements.csv'
+    measurement_file_path: str = data_path + '260112b_all_pkl_track_result_measurements.csv'
     df = pandas.read_csv(measurement_file_path)
 
     pkl_file_name_list: list[str] = [
