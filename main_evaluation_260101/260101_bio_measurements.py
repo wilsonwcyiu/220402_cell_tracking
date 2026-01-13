@@ -29,7 +29,7 @@ def main():
     project_folder_path: str = 'D:/program_source_code/220402_cell_tracking/220402_cell_tracking/main_evaluation_260101/'
     data_path: str = project_folder_path + 'data/'
     pkl_data_path: str = data_path + 'pkl_data/'
-    output_file_path: str = data_path + '260112_all_pkl_track_result_measurements.csv'
+    output_file_path: str = data_path + '260112a_all_pkl_track_result_measurements.csv'
 
     segmentation_folder = data_path + 'segmentation_unet_seg/'
 
@@ -45,6 +45,7 @@ def main():
     print(">> setup configuration")
     filter_out_track_length_lower_than: int = 16
     pixel_to_microns_ratios: float = 0.8791
+    net_displacement_threshold: float = 
 
     myd88_plus_series_list: list = ['S10', 'S11', 'S14', 'S15', 'S18', 'S19']
     myd88_minus_series_list: list = ['S12', 'S13', 'S16', 'S17', 'S20']
@@ -102,7 +103,11 @@ def main():
         track_data.net_displacement_pixel = net_displacement_pixel      
         track_data.net_displacement_microns = net_displacement_pixel / pixel_to_microns_ratios
                 
-        
+        # distance travelled per frame
+        distance_traveled_per_frame_pixel: float = net_displacement_pixel / track_data.total_frame
+        track_data.distance_traveled_per_frame_pixel = distance_traveled_per_frame_pixel
+        track_data.distance_traveled_per_frame_microns = distance_traveled_per_frame_pixel / pixel_to_microns_ratios
+
         # Meandering index: Net displacement divided by all journey of cells(P1+P2+P3+…+PN)
         total_travel_pixel_distance_of_track: float = calculate_total_travel_pixel_distance(track_data.track_coord_tuple_list)
         track_data.total_travel_pixel_distance_of_track = total_travel_pixel_distance_of_track
@@ -115,6 +120,7 @@ def main():
         mean_speed_pixel: float = total_travel_pixel_distance_of_track / track_data.total_frame
         track_data.mean_speed_pixel = mean_speed_pixel
         track_data.mean_speed_microns = mean_speed_pixel / track_data.total_frame
+        
 
 
 
@@ -172,10 +178,12 @@ class TrackData:
         self.net_displacement_pixel: float = None      # the distance from the start point(P1) of a track to the end point(PN) as below. 
         self.meandering_index_pixel: float = None      # Meandering index: Net displacement divided by all journey of cells(P1+P2+P3+…+PN)
         self.mean_speed_pixel: float = None
+        self.distance_traveled_per_frame_pixel: float = None
 
         self.net_displacement_microns: float = None
         self.meandering_index_microns: float = None
         self.mean_speed_microns: float = None
+        self.distance_traveled_per_frame_microns: float = None
 
 
 
@@ -193,9 +201,11 @@ class TrackData:
             'cell_type': self.cell_type,
             'track_id': self.track_id,
             'total_frame': self.total_frame,
+            'distance_traveled_per_frame_microns': self.distance_traveled_per_frame_microns,
             'net_displacement_microns': self.net_displacement_microns,
             'meandering_index_microns': self.meandering_index_microns,
             'mean_speed_microns': self.mean_speed_microns,
+            'distance_traveled_per_frame_pixel': self.distance_traveled_per_frame_pixel,
             'net_displacement_pixel': self.net_displacement_pixel,
             'meandering_index_pixel': self.meandering_index_pixel,
             'mean_speed_pixel': self.mean_speed_pixel,
