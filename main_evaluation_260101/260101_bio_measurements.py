@@ -29,7 +29,7 @@ def main():
     project_folder_path: str = 'D:/program_source_code/220402_cell_tracking/220402_cell_tracking/main_evaluation_260101/'
     data_path: str = project_folder_path + 'data/'
     pkl_data_path: str = data_path + 'pkl_data/'
-    output_file_path: str = data_path + '260112a_all_pkl_track_result_measurements.csv'
+    output_file_path: str = data_path + '260112b_all_pkl_track_result_measurements.csv'
 
     segmentation_folder = data_path + 'segmentation_unet_seg/'
 
@@ -118,7 +118,7 @@ def main():
         # all journey of cells(P1+P2+P3+…+PN) divided by frames(N)
         mean_speed_pixel: float = total_travel_pixel_distance_of_track / track_data.total_frame
         track_data.mean_speed_pixel = mean_speed_pixel
-        track_data.mean_speed_microns = mean_speed_pixel / track_data.total_frame
+        track_data.mean_speed_microns = mean_speed_pixel / pixel_to_microns_ratios
         
 
 
@@ -133,7 +133,7 @@ def main():
 
     for track_data in track_data_list:
         coord_tuple_list: list[tuple] = track_data.track_coord_tuple_list
-        
+
 
 
     execution_time = time.perf_counter() - start_time
