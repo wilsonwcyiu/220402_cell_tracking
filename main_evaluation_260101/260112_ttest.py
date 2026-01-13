@@ -7,18 +7,24 @@ import math
 
 
 def main():
-    pixel_to_microns_ratios: float = 0.8791
+    sigificant_data_list: list[float] = []
+
+    filter_the_first_x_longest_track: int = 30
+
+
+    # distance_traveled_per_frame_micron_threshold: float = 1.6
+    data_size_percentage_to_keep: int = 100
 
     project_folder_path: str = 'D:/program_source_code/220402_cell_tracking/220402_cell_tracking/main_evaluation_260101/'
     data_path: str = project_folder_path + 'data/'
 
     output_folder: str = data_path + "ttest_result/"
-    measurement_file_path: str = data_path + '260112_all_pkl_track_result_measurements.csv'
+    measurement_file_path: str = data_path + '260112a_all_pkl_track_result_measurements.csv'
     df = pandas.read_csv(measurement_file_path)
 
     pkl_file_name_list: list[str] = [
-                                    'delta_results_dict.pkl', 
                                     'gt_results_dict.pkl', 
+                                    'delta_results_dict.pkl', 
                                     'hungarian_results_dict.pkl', 
                                     'kuan_tracks_allseries_unet.pkl', 
                                     'viterbi_results_dict_adj2.pkl',
@@ -30,15 +36,25 @@ def main():
     measurement_input_list.append(MeasurementInput("Meandering index", "meandering_index_microns"))
     measurement_input_list.append(MeasurementInput("Mean speed", "mean_speed_microns"))
 
-    data_size_percentage_to_keep: int = 100
 
+    # print(">>>> distance_traveled_per_frame_micron_threshold: ", distance_traveled_per_frame_micron_threshold)
+
+    significant_single_data_str: str = ""
     for pkl_file_name in pkl_file_name_list:
         print("pkl_file_name: ", pkl_file_name)
         filtered_df = df[df['pkl_file_name'] == pkl_file_name]
+        # filtered_df = filtered_df[filtered_df["distance_traveled_per_frame_microns"] > distance_traveled_per_frame_micron_threshold]
         filtered_plus_df = filtered_df[filtered_df['cell_type'] == 'plus']
         filtered_minus_df = filtered_df[filtered_df['cell_type'] == 'minus']
 
+        print(">> filter the first", filter_the_first_x_longest_track , "longest track")
+        filtered_plus_df = filtered_plus_df.sort_values(by='net_displacement_microns', ascending=False).head(filter_the_first_x_longest_track)
+        filtered_minus_df = filtered_minus_df.sort_values(by='net_displacement_microns', ascending=False).head(filter_the_first_x_longest_track)
 
+        print("filtered_plus_df: ", filtered_plus_df['net_displacement_microns'].round(2).to_list())
+        print("filtered_minus_df: ", filtered_minus_df['net_displacement_microns'].round(2).to_list())
+
+        significant_single_data_str += "("
         for measurement_input in measurement_input_list:
             measurement_type: str = measurement_input.measurement_name
             filtered_plus_column_data = filtered_plus_df[measurement_input.measurement_column_name]
@@ -49,12 +65,24 @@ def main():
 
 
             myd88_wt = filtered_plus_df_data_list   # myd88+/+ 组
-            myd88_ko = filtered_minus_data_list    # myd88-/- 组
+            myd88_ko = filtered_minus_data_list     # myd88-/- 组
 
             label_list = ['myd88+/+', 'myd88-/-']
             data_list = [myd88_wt, myd88_ko]
 
-            plt = create_ttest_plot(data_list, label_list, measurement_type)
+            dataset_1 = data_list[0]
+            dataset_2 = data_list[1]
+
+            # 2. 计算t检验的p值
+            t_stat, p_value = stats.ttest_ind(myd88_wt, myd88_ko, equal_var=False)
+
+            sig_label = get_significance(p_value)
+
+            significant_single_data_str += sig_label.ljust(3) + " "
+            measurement_type_fixed_length: str = measurement_type.ljust(15)
+            print("measurement_type/ len(dataset_1)/ len(dataset_2)/ sig_label: ", measurement_type_fixed_length, "/ ", len(dataset_1), "/ ", len(dataset_2), "/ ", sig_label)
+                        
+            # plt = create_ttest_plot(data_list, label_list, measurement_type, sig_label)
 
             # plt.tight_layout()
             # plt.show()
@@ -68,7 +96,11 @@ def main():
             #     pkl_file_name = pkl_file_name[0: end_idx]
 
             file_save_path: str = output_folder + pkl_file_name[0:-4] + "-" + measurement_type
-            plt.savefig(file_save_path)
+            # plt.savefig(file_save_path)
+
+        significant_single_data_str += ") "
+        
+        # print("--")
 
 
 
@@ -90,16 +122,17 @@ def reduce_list_data_size(data_list: list, percentage_to_keep: int):
 
 
 
-def create_ttest_plot(data_list, label_list, measurement_type):
+def create_ttest_plot(data_list, label_list, measurement_type, sig_label):
 
     dataset_1 = data_list[0]
     dataset_2 = data_list[1]
 
-    # 2. 计算t检验的p值
-    t_stat, p_value = stats.ttest_ind(dataset_1, dataset_2, equal_var=False)
+    # # 2. 计算t检验的p值
+    # t_stat, p_value = stats.ttest_ind(dataset_1, dataset_2, equal_var=False)
 
-    sig_label = get_significance(p_value)
-    print("measurement_type/ len(dataset_1)/ len(dataset_2)/ sig_label", measurement_type, "/ ", len(dataset_1), "/ ", len(dataset_2), "/ ", sig_label)
+    # sig_label = get_significance(p_value)
+    # measurement_type_fixed_length: str = measurement_type.ljust(15)
+    # print("measurement_type/ len(dataset_1)/ len(dataset_2)/ sig_label", measurement_type_fixed_length, "/ ", len(dataset_1), "/ ", len(dataset_2), "/ ", sig_label)
     
     # 4. 绘图
     plt.figure(figsize=(6, 5))
