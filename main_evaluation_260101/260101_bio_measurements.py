@@ -45,7 +45,7 @@ def main():
     print(">> setup configuration")
     filter_out_track_length_lower_than: int = 16
     pixel_to_microns_ratios: float = 0.8791
-    net_displacement_threshold: float = 
+    net_displacement_threshold: float = 1
 
     myd88_plus_series_list: list = ['S10', 'S11', 'S14', 'S15', 'S18', 'S19']
     myd88_minus_series_list: list = ['S12', 'S13', 'S16', 'S17', 'S20']
