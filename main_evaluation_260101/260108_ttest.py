@@ -13,7 +13,7 @@ def main():
     data_path: str = project_folder_path + 'data/'
 
     output_folder: str = data_path + "ttest_result/"
-    measurement_file_path: str = data_path + '260108_all_pkl_track_result_measurements.csv'
+    measurement_file_path: str = data_path + '260112_all_pkl_track_result_measurements.csv'
     df = pandas.read_csv(measurement_file_path)
 
     pkl_file_name_list: list[str] = [
@@ -21,7 +21,8 @@ def main():
                                     'gt_results_dict.pkl', 
                                     'hungarian_results_dict.pkl', 
                                     'kuan_tracks_allseries_unet.pkl', 
-                                    'viterbi_results_dict_adj2.pkl'
+                                    'viterbi_results_dict_adj2.pkl',
+                                    "Viterbi-like(Multi)__viterbi_adjust4f_a_hp182__R(ALL)_M(0.89)_MIN(5)_CT(0.48)_ADJ(NO)_CS(D)_BB(S).pkl"
                                     ]
 
     measurement_input_list: list[MeasurementInput] = []
@@ -32,59 +33,10 @@ def main():
     data_size_percentage_to_keep: int = 100
 
     for pkl_file_name in pkl_file_name_list:
+        print("pkl_file_name: ", pkl_file_name)
         filtered_df = df[df['pkl_file_name'] == pkl_file_name]
-        filtered_plus_df = df[df['cell_type'] == 'plus']
-        filtered_minus_df = df[df['cell_type'] == 'minus']
-
-
-        ## bugged code
-        # measurement_type: str = "Net Displacement"
-        # filtered_plus_column_data = filtered_plus_df['net_displacement_microns']
-        # filtered_plus_df_data_list: list[float] = filtered_plus_column_data.tolist()
-
-        # filtered_minus_column_data = filtered_plus_df['net_displacement_microns']
-        # filtered_minus_data_list: list[float] = filtered_minus_column_data.tolist()
-
-
-        # # measurement_type: str = "Meandering index"
-        # # filtered_plus_column_data = filtered_plus_df['meandering_index_microns']
-        # # filtered_plus_df_data_list: list[float] = filtered_plus_column_data.tolist()
-
-        # # filtered_minus_column_data = filtered_plus_df['meandering_index_microns']
-        # # filtered_minus_data_list: list[float] = filtered_minus_column_data.tolist()
-
-        
-        # # measurement_type: str = "Mean speed"
-        # # filtered_plus_column_data = filtered_plus_df['mean_speed_microns']
-        # # filtered_plus_df_data_list: list[float] = filtered_plus_column_data.tolist()
-
-        # # filtered_minus_column_data = filtered_plus_df['mean_speed_microns']
-        # # filtered_minus_data_list: list[float] = filtered_minus_column_data.tolist()
-
-
-        # #fixed a bug that 2 plus is being used in ttest
-        # measurement_type: str = "Net Displacement"
-        # filtered_plus_column_data = filtered_plus_df['net_displacement_microns']
-        # filtered_plus_df_data_list: list[float] = filtered_plus_column_data.tolist()
-
-        # filtered_minus_column_data = filtered_minus_df['net_displacement_microns']
-        # filtered_minus_data_list: list[float] = filtered_minus_column_data.tolist()
-
-
-        # measurement_type: str = "Meandering index"
-        # filtered_plus_column_data = filtered_plus_df['meandering_index_microns']
-        # filtered_plus_df_data_list: list[float] = filtered_plus_column_data.tolist()
-
-        # filtered_minus_column_data = filtered_minus_df['meandering_index_microns']
-        # filtered_minus_data_list: list[float] = filtered_minus_column_data.tolist()
-
-        
-        # measurement_type: str = "Mean speed"
-        # filtered_plus_column_data = filtered_plus_df['mean_speed_microns']
-        # filtered_plus_df_data_list: list[float] = filtered_plus_column_data.tolist()
-
-        # filtered_minus_column_data = filtered_minus_df['mean_speed_microns']
-        # filtered_minus_data_list: list[float] = filtered_minus_column_data.tolist()
+        filtered_plus_df = filtered_df[filtered_df['cell_type'] == 'plus']
+        filtered_minus_df = filtered_df[filtered_df['cell_type'] == 'minus']
 
 
         for measurement_input in measurement_input_list:
@@ -106,6 +58,14 @@ def main():
 
             # plt.tight_layout()
             # plt.show()
+
+            pkl_file_name = pkl_file_name.replace("(", "-")
+            pkl_file_name = pkl_file_name.replace(")", "-")
+            pkl_file_name = pkl_file_name.replace(".", "-")
+            
+            # if "(" in pkl_file_name:
+            #     end_idx = pkl_file_name.index("(")
+            #     pkl_file_name = pkl_file_name[0: end_idx]
 
             file_save_path: str = output_folder + pkl_file_name[0:-4] + "-" + measurement_type
             plt.savefig(file_save_path)
@@ -139,7 +99,8 @@ def create_ttest_plot(data_list, label_list, measurement_type):
     t_stat, p_value = stats.ttest_ind(dataset_1, dataset_2, equal_var=False)
 
     sig_label = get_significance(p_value)
-
+    print("measurement_type/ len(dataset_1)/ len(dataset_2)/ sig_label", measurement_type, "/ ", len(dataset_1), "/ ", len(dataset_2), "/ ", sig_label)
+    
     # 4. 绘图
     plt.figure(figsize=(6, 5))
     sns.set_style("whitegrid")
@@ -151,6 +112,7 @@ def create_ttest_plot(data_list, label_list, measurement_type):
     # 添加显著性标记
     y_max = max(np.max(dataset_1), np.max(dataset_2)) * 1.1
     x1, x2 = 0, 1
+    # plt.plot([x1, x1, x2, x2], [y_max, y_max+0.5, y_max+0.5, y_max], lw=1.5, color='black')
     plt.plot([x1, x1, x2, x2], [y_max, y_max+0.5, y_max+0.5, y_max], lw=1.5, color='black')
     plt.text((x1+x2)/2, y_max+0.8, sig_label, ha='center', va='bottom', fontsize=12)
 
@@ -159,6 +121,9 @@ def create_ttest_plot(data_list, label_list, measurement_type):
 
     plt.xticks([0, 1], label_list)
     plt.ylabel(measurement_type + " (μm/min)")
+
+    ymin, ymax = plt.ylim()
+    plt.ylim(ymin, max(ymax, y_max + 1.5))
 
     return plt
 
