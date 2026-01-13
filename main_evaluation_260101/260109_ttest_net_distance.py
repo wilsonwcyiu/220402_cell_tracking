@@ -10,17 +10,17 @@ def main():
     # distance_traveled_per_frame_micron_threshold_list: list[float] = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6]
     sigificant_data_list: list[float] = []
 
-    start: int = 0
-    increment = 0.05
-    step = 80
+    start: int = 100
+    increment = 10
+    step = 20
 
     for _ in range(0, step):
-        start = round(start, 3)
+        start = round(start, 0)
         sigificant_data_list.append(start)
         start += increment
 
 
-    for distance_traveled_per_frame_micron_threshold in sigificant_data_list:
+    for net_displacement_micron_threshold in sigificant_data_list:
         # distance_traveled_per_frame_micron_threshold: float = 1.6
         data_size_percentage_to_keep: int = 100
 
@@ -52,7 +52,7 @@ def main():
         for pkl_file_name in pkl_file_name_list:
             # print("pkl_file_name: ", pkl_file_name)
             filtered_df = df[df['pkl_file_name'] == pkl_file_name]
-            filtered_df = filtered_df[filtered_df["distance_traveled_per_frame_microns"] > distance_traveled_per_frame_micron_threshold]
+            filtered_df = filtered_df[filtered_df["net_displacement_microns"] > net_displacement_micron_threshold]
             filtered_plus_df = filtered_df[filtered_df['cell_type'] == 'plus']
             filtered_minus_df = filtered_df[filtered_df['cell_type'] == 'minus']
 
@@ -77,7 +77,8 @@ def main():
 
                 # 2. 计算t检验的p值
                 t_stat, p_value = stats.ttest_ind(myd88_wt, myd88_ko, equal_var=False)
-
+                # t_stat, p_value = stats.ma(myd88_wt, myd88_ko, equal_var=False)
+                
                 sig_label = get_significance(p_value)
 
                 significant_single_data_str += sig_label.ljust(3) + " "
@@ -104,7 +105,7 @@ def main():
             
             # print("--")
 
-        print("distance_traveled_per_frame_micron_threshold:", str(distance_traveled_per_frame_micron_threshold).ljust(4), ".", significant_single_data_str)
+        print("net_displacement_micron_threshold:", str(net_displacement_micron_threshold).ljust(4), ".", significant_single_data_str)
 
 
 

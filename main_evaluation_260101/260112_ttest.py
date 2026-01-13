@@ -51,8 +51,8 @@ def main():
         filtered_plus_df = filtered_plus_df.sort_values(by='net_displacement_microns', ascending=False).head(filter_the_first_x_longest_track)
         filtered_minus_df = filtered_minus_df.sort_values(by='net_displacement_microns', ascending=False).head(filter_the_first_x_longest_track)
 
-        print("filtered_plus_df: ", filtered_plus_df['net_displacement_microns'].round(2).to_list())
-        print("filtered_minus_df: ", filtered_minus_df['net_displacement_microns'].round(2).to_list())
+        # print("filtered_plus_df: ", filtered_plus_df['net_displacement_microns'].round(2).to_list())
+        # print("filtered_minus_df: ", filtered_minus_df['net_displacement_microns'].round(2).to_list())
 
         significant_single_data_str += "("
         for measurement_input in measurement_input_list:
