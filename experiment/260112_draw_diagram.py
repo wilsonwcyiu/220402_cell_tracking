@@ -1,42 +1,38 @@
+import pandas as pd
+import seaborn as sns
 import matplotlib.pyplot as plt
-import numpy as np
+from scipy.stats import sem
 
+# Example data
+df = pd.DataFrame({
+    "value": [5, 6, 7, 6, 5, 6, 8, 9, 7, 8, 9, 8],
+    "group": ["Group 1"] * 6 + ["Group 2"] * 6
+})
 
-# List of (x, y) coordinates
-coord_tuple_list = [(1, 2), (2, 4), (3, 1), (4, 3), (5, 2)]
+plt.figure()
 
-
-# Split into x and y
-x = [p[0] for p in coord_tuple_list]
-y = [p[1] for p in coord_tuple_list]
-
-# Plot coord_tuple_list + lines
-fig = plt.figure(figsize=(51.2, 51.2), dpi=100)
-# plt.figure()
-plt.plot(x, y, marker='o', linewidth=2)  # line + coord_tuple_list
-
-# Labels
-plt.xlabel("X")
-plt.ylabel("Y")
-plt.title("Diagram with Connected Lines")
-
-sequence = np.arange(len(coord_tuple_list))
-scatter = plt.scatter(
-    x, y,
-    c=sequence,
-    cmap='viridis',   # perceptually uniform
-    s=60
+# Bar plot (set palette explicitly)
+sns.barplot(
+    data=df,
+    x="group",
+    y="value",
+    palette=["skyblue", "lightgreen"],  # bar colors
+    errorbar=lambda x: sem(x),
+    alpha=0.7
 )
 
-cmap='viridis_r'
+# Strip plot (force a different color)
+sns.stripplot(
+    data=df,
+    x="group",
+    y="value",
+    color="black",    # <-- explicitly different from bars
+    size=6,
+    jitter=True,
+    zorder=10
+)
 
-for i in range(len(x) - 1):
-    plt.arrow(
-        x[i], y[i],
-        x[i+1] - x[i], y[i+1] - y[i],
-        length_includes_head=True,
-        head_width=0.05,
-        alpha=0.6
-    )
-
+plt.ylabel("Value")
+plt.title("Bar plot with differently colored stripplot overlay")
+plt.tight_layout()
 plt.show()
