@@ -9,9 +9,9 @@ import math
 def main():
     sigificant_data_list: list[float] = []
 
-    start: int = 2.4
+    start: int = 1
     increment = 0.1
-    step = 1
+    step = 20
 
     for _ in range(0, step):
         start = round(start, 3)
